@@ -1,0 +1,62 @@
+{
+  "name": "pan-journey-backend",
+  "version": "1.0.0",
+  "description": "Pan Journey is a hotel booking platform backend API that enables users to search, view, and book hotels with features like authentication, booking management, cashback handling, and admin operations.",
+  "main": "src/server.js",
+  "type": "module",
+  "keywords": [
+    "hotel-booking",
+    "travel-platform",
+    "nodejs",
+    "express",
+    "backend-api",
+    "pan-journey",
+    "booking-system",
+    "jwt-authentication",
+    "rest-api"
+  ],
+  "author": "Hanuman Sonwal",
+  "license": "ISC",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "build": "echo \"No build step required for Express\"",
+    "lint": "echo \"Add ESLint later\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1054.0",
+    "@aws-sdk/s3-request-presigner": "^3.1054.0",
+    "axios": "^1.16.1",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "crypto": "^1.0.1",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^17.4.2",
+    "ejs": "^6.0.1",
+    "express": "^5.2.1",
+    "geoip-lite": "^2.0.2",
+    "googleapis": "^171.4.0",
+    "ioredis": "^5.11.1",
+    "joi": "^18.2.3",
+    "jsonwebtoken": "^9.0.3",
+    "lucide-react": "^1.22.0",
+    "module-alias": "^2.3.4",
+    "mongoose": "^9.7.1",
+    "multer": "^2.1.1",
+    "multer-s3": "^3.0.1",
+    "node-cron": "^4.5.0",
+    "nodemailer": "^8.0.7",
+    "otp-generator": "^4.0.1",
+    "pdfkit": "^0.19.0",
+    "puppeteer": "^25.3.0",
+    "razorpay": "^2.9.6",
+    "redis": "^5.12.1",
+    "stripe": "^22.2.2",
+    "twilio": "^6.0.2",
+    "uuid": "^14.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

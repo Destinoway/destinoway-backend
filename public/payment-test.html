@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pan Journey Razorpay Test</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+      body {
+        font-family: Arial;
+        padding: 40px;
+        background: #f4f4f4;
+      }
+
+      .container {
+        width: 500px;
+        margin: auto;
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+      }
+
+      input {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+      }
+
+      button {
+        padding: 12px 25px;
+        cursor: pointer;
+      }
+
+      pre {
+        background: #eee;
+        padding: 15px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h2>Pan Journey Payment Test</h2>
+
+      <input id="bookingId" placeholder="Temp Booking Id" />
+
+      <button onclick="startPayment()">Pay Now</button>
+
+      <hr />
+
+      <pre id="result"></pre>
+    </div>
+
+    <script>
+      async function startPayment() {
+        try {
+          const tempBookingId = document.getElementById("bookingId").value;
+
+          if (!tempBookingId) {
+            alert("Enter Temp Booking Id");
+
+            return;
+          }
+
+          // -----------------------
+          // Create Order
+          // -----------------------
+          const token =
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDU3M2JiNjIwY2U1MTdlMzBiMDc4YyIsImlhdCI6MTc4MzY2OTI0NSwiZXhwIjoxNzgzNjcyODQ1fQ.SVtM3HhxrcW3KG0aJBF33w4enRQBjY7Zq1xEsN5AAvg";
+
+          const orderResponse = await fetch(
+            "http://localhost:8000/api/v1/payment/create-booking",
+            {
+              method: "POST",
+
+             headers: {
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${token}`,
+  currency: "AED", // Test ke liye
+},
+
+              body: JSON.stringify({
+                tempBookingId,
+              }),
+            },
+          );
+
+          const orderData = await orderResponse.json();
+
+          console.log(orderData);
+
+          document.getElementById("result").innerHTML = JSON.stringify(
+            orderData,
+            null,
+            2,
+          );
+
+          if (!orderData.success) {
+            alert(orderData.message);
+
+            return;
+          }
+
+          // ---/e```
+          // -------------------
+          // Razorpay
+          // -----------------------
+
+          const options = {
+            key: orderData.data.key,
+
+            amount: orderData.data.amount,
+
+            currency: orderData.data.currency,
+
+            order_id: orderData.data.orderId,
+
+            name: "Pan Journey",
+
+            description: "Hotel Booking",
+
+            handler: async function (response) {
+              console.log(response);
+
+              // -----------------------
+              // Verify Payment
+              // -----------------------
+
+              const verifyResponse = await fetch(
+                "http://localhost:8000/api/v1/payment/booking-payment-verify",
+                {
+                  method: "POST",
+
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                    currency: "AED", // Test ke liye
+                  },
+
+                  body: JSON.stringify({
+                    tempBookingId,
+
+                    razorpay_order_id: response.razorpay_order_id,
+
+                    razorpay_payment_id: response.razorpay_payment_id,
+
+                    razorpay_signature: response.razorpay_signature,
+                  }),
+                },
+              );
+
+              const verifyData = await verifyResponse.json();
+
+              console.log(verifyData);
+
+              document.getElementById("result").innerHTML = JSON.stringify(
+                verifyData,
+                null,
+                2,
+              );
+            },
+          };
+
+          const rzp = new Razorpay(options);
+
+          rzp.open();
+        } catch (err) {
+          console.log(err);
+
+          alert(err.message);
+        }
+      }
+    </script>
+  </body>
+</html>
