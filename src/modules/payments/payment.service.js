@@ -1,476 +1,476 @@
-import crypto from "crypto";
-import mongoose from "mongoose";
-
-import HotelTempBooking from "../hotel/hotelTempBooking/hotelCart.model.js"; // path adjust karna
-import { addPaymentService } from "../addPayment/addPayment.service.js";
-import { hotelTicketingService } from "../hotel/hotelTicketing/hotelTicketing.service.js";
-import {sendBookingConfirmationEmail}  from "../../modules/mail/services/bookingConfirmation.mail.js"
-import{generateHotelInvoiceService} from "../hotel/invoice/invoice.service.js"
-
-import razorpay,{
-  RAZORPAY_KEY_ID,
-  RAZORPAY_KEY_SECRET,
-}  from "../../config/razorpay.config.js";
-
-export const createOrderService = async ({  tempBookingId,
-  userId }) => {
-  // ===========================
-  // Validate Mongo ObjectId
-  // ===========================
-
-  if (!mongoose.Types.ObjectId.isValid(tempBookingId)) {
-    throw new Error("Invalid Temp Booking Id");
-  }
-
-  // ===========================
-  // Find Booking
-  // ===========================
-
-  const booking = await HotelTempBooking.findOne({
-  _id: tempBookingId,
-  userId,
-});
-
-  if (!booking) {
-    throw new Error("Temp booking not found");
-  }
-
-  // ===========================
-  // Booking Status Check
-  // ===========================
-
-  if (booking.tempBookingStatus !== "payment_pending") {
-    throw new Error(
-      `Booking is not ready for payment. Current Status : ${booking.tempBookingStatus}`
-    );
-  }
-
-  // ===========================
-  // Already Paid Check
-  // ===========================
-
-  if (booking.paymentStatus === "paid") {
-    throw new Error("Payment already completed");
-  }
-
-  // ===========================
-  // Amount Check
-  // ===========================
-
-  if (
-    !booking.payableAmount ||
-    booking.payableAmount <= 0
-  ) {
-    throw new Error("Invalid payable amount");
-  }
-
-  // ===========================
-  // Duplicate Order Check
-  // ===========================
-
-  if (
-    booking.payment?.orderId &&
-    booking.payment?.status === "created"
-  ) {
-    return {
-      orderId: booking.payment.orderId,
-      amount: booking.payment.amount * 100,
-      currency: booking.payment.currency,
-      key: process.env.RAZORPAY_KEY_ID,
-      tempBookingId: booking._id,
-    };
-  }
-
-  // ===========================
-  // Razorpay Order Create
-  // ===========================
+// import crypto from "crypto";
+// import mongoose from "mongoose";
+
+// import HotelTempBooking from "../hotel/hotelTempBooking/hotelCart.model.js"; // path adjust karna
+// import { addPaymentService } from "../addPayment/addPayment.service.js";
+// import { hotelTicketingService } from "../hotel/hotelTicketing/hotelTicketing.service.js";
+// import {sendBookingConfirmationEmail}  from "../../modules/mail/services/bookingConfirmation.mail.js"
+// import{generateHotelInvoiceService} from "../hotel/invoice/invoice.service.js"
+
+// import razorpay,{
+//   RAZORPAY_KEY_ID,
+//   RAZORPAY_KEY_SECRET,
+// }  from "../../config/razorpay.config.js";
+
+// export const createOrderService = async ({  tempBookingId,
+//   userId }) => {
+//   // ===========================
+//   // Validate Mongo ObjectId
+//   // ===========================
+
+//   if (!mongoose.Types.ObjectId.isValid(tempBookingId)) {
+//     throw new Error("Invalid Temp Booking Id");
+//   }
+
+//   // ===========================
+//   // Find Booking
+//   // ===========================
+
+//   const booking = await HotelTempBooking.findOne({
+//   _id: tempBookingId,
+//   userId,
+// });
+
+//   if (!booking) {
+//     throw new Error("Temp booking not found");
+//   }
+
+//   // ===========================
+//   // Booking Status Check
+//   // ===========================
+
+//   if (booking.tempBookingStatus !== "payment_pending") {
+//     throw new Error(
+//       `Booking is not ready for payment. Current Status : ${booking.tempBookingStatus}`
+//     );
+//   }
+
+//   // ===========================
+//   // Already Paid Check
+//   // ===========================
+
+//   if (booking.paymentStatus === "paid") {
+//     throw new Error("Payment already completed");
+//   }
+
+//   // ===========================
+//   // Amount Check
+//   // ===========================
+
+//   if (
+//     !booking.payableAmount ||
+//     booking.payableAmount <= 0
+//   ) {
+//     throw new Error("Invalid payable amount");
+//   }
+
+//   // ===========================
+//   // Duplicate Order Check
+//   // ===========================
+
+//   if (
+//     booking.payment?.orderId &&
+//     booking.payment?.status === "created"
+//   ) {
+//     return {
+//       orderId: booking.payment.orderId,
+//       amount: booking.payment.amount * 100,
+//       currency: booking.payment.currency,
+//       key: process.env.RAZORPAY_KEY_ID,
+//       tempBookingId: booking._id,
+//     };
+//   }
+
+//   // ===========================
+//   // Razorpay Order Create
+//   // ===========================
 
-  const razorpayOrder = await razorpay.orders.create({
-  amount: Math.round(booking.payableAmount * 100),
-  currency: booking.pricing.currency,
-  receipt: booking._id.toString(),
-  payment_capture: 1,
-});
+//   const razorpayOrder = await razorpay.orders.create({
+//   amount: Math.round(booking.payableAmount * 100),
+//   currency: booking.pricing.currency,
+//   receipt: booking._id.toString(),
+//   payment_capture: 1,
+// });
 
-  // ===========================
-  // Save Payment Info
-  // ===========================
+//   // ===========================
+//   // Save Payment Info
+//   // ===========================
 
- booking.payment = {
-  gateway: "razorpay",
-  orderId: razorpayOrder.id,
-  amount: booking.payableAmount,
-  currency: booking.pricing.currency,
-  status: "created",
-};
+//  booking.payment = {
+//   gateway: "razorpay",
+//   orderId: razorpayOrder.id,
+//   amount: booking.payableAmount,
+//   currency: booking.pricing.currency,
+//   status: "created",
+// };
 
-  await booking.save();
+//   await booking.save();
 
-  // ===========================
-  // Return Response
-  // ===========================
+//   // ===========================
+//   // Return Response
+//   // ===========================
 
-  return {
-    tempBookingId: booking._id,
+//   return {
+//     tempBookingId: booking._id,
 
-    orderId: razorpayOrder.id,
+//     orderId: razorpayOrder.id,
 
-    amount: razorpayOrder.amount,
+//     amount: razorpayOrder.amount,
 
-    currency: razorpayOrder.currency,
+//     currency: razorpayOrder.currency,
 
-    key: RAZORPAY_KEY_ID,
-  };
-};
+//     key: RAZORPAY_KEY_ID,
+//   };
+// };
 
-export const verifyPaymentService = async ({
+// export const verifyPaymentService = async ({
 
-    tempBookingId,
+//     tempBookingId,
 
-    razorpay_order_id,
+//     razorpay_order_id,
 
-    razorpay_payment_id,
+//     razorpay_payment_id,
 
-    razorpay_signature,
+//     razorpay_signature,
 
-    userId
+//     userId
 
-}) => {
+// }) => {
 
-    // ============================
-    // Validate Booking Id
-    // ============================
+//     // ============================
+//     // Validate Booking Id
+//     // ============================
 
-    if (
-        !mongoose.Types.ObjectId.isValid(
-            tempBookingId
-        )
-    ) {
+//     if (
+//         !mongoose.Types.ObjectId.isValid(
+//             tempBookingId
+//         )
+//     ) {
 
-        throw new Error(
-            "Invalid Temp Booking Id"
-        );
+//         throw new Error(
+//             "Invalid Temp Booking Id"
+//         );
 
-    }
+//     }
 
-    // ============================
-    // Find Booking
-    // ============================
+//     // ============================
+//     // Find Booking
+//     // ============================
 
-  const booking = await HotelTempBooking.findOne({
-  _id: tempBookingId,
-  userId,
-});
+//   const booking = await HotelTempBooking.findOne({
+//   _id: tempBookingId,
+//   userId,
+// });
 
-    if (!booking) {
+//     if (!booking) {
 
-        throw new Error(
-            "Booking not found"
-        );
+//         throw new Error(
+//             "Booking not found"
+//         );
 
-    }
+//     }
 
-    // ============================
-    // Already Paid
-    // ============================
+//     // ============================
+//     // Already Paid
+//     // ============================
 
-    if (
-        booking.paymentStatus ===
-        "paid"
-    ) {
+//     if (
+//         booking.paymentStatus ===
+//         "paid"
+//     ) {
 
-        return {
+//         return {
 
-            alreadyVerified: true,
+//             alreadyVerified: true,
 
-            paymentId:
-            booking.payment.paymentId,
+//             paymentId:
+//             booking.payment.paymentId,
 
-            orderId:
-            booking.payment.orderId
+//             orderId:
+//             booking.payment.orderId
 
-        };
+//         };
 
-    }
+//     }
 
-    // ============================
-    // Order Id Check
-    // ============================
+//     // ============================
+//     // Order Id Check
+//     // ============================
 
-    if (
-        booking.payment.orderId !==
-        razorpay_order_id
-    ) {
+//     if (
+//         booking.payment.orderId !==
+//         razorpay_order_id
+//     ) {
 
-        throw new Error(
-            "Invalid Order Id"
-        );
+//         throw new Error(
+//             "Invalid Order Id"
+//         );
 
-    }
+//     }
 
-    // ============================
-    // Signature Verify
-    // ============================
+//     // ============================
+//     // Signature Verify
+//     // ============================
 
- const generatedSignature = crypto
-  .createHmac("sha256", RAZORPAY_KEY_SECRET)
-  .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-  .digest("hex");
+//  const generatedSignature = crypto
+//   .createHmac("sha256", RAZORPAY_KEY_SECRET)
+//   .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+//   .digest("hex");
 
-    if (
-        generatedSignature !==
-        razorpay_signature
-    ) {
+//     if (
+//         generatedSignature !==
+//         razorpay_signature
+//     ) {
 
-        booking.payment.status =
-        "failed";
+//         booking.payment.status =
+//         "failed";
 
-        booking.paymentStatus =
-        "failed";
+//         booking.paymentStatus =
+//         "failed";
 
-        booking.tempBookingStatus =
-        "payment_failed";
+//         booking.tempBookingStatus =
+//         "payment_failed";
 
-        await booking.save();
+//         await booking.save();
 
-        throw new Error(
-            "Invalid payment signature"
-        );
+//         throw new Error(
+//             "Invalid payment signature"
+//         );
 
-    }
+//     }
 
-    // ============================
-    // Fetch Payment
-    // ============================
+//     // ============================
+//     // Fetch Payment
+//     // ============================
 
-    const payment =
-    await razorpay.payments.fetch(
+//     const payment =
+//     await razorpay.payments.fetch(
 
-        razorpay_payment_id
+//         razorpay_payment_id
 
-    );
+//     );
 
-    if (
-        payment.status !==
-        "captured"
-    ) {
+//     if (
+//         payment.status !==
+//         "captured"
+//     ) {
 
-        throw new Error(
-            "Payment not captured"
-        );
+//         throw new Error(
+//             "Payment not captured"
+//         );
 
-    }
+//     }
 
-    if (
-        payment.order_id !==
-        razorpay_order_id
-    ) {
+//     if (
+//         payment.order_id !==
+//         razorpay_order_id
+//     ) {
 
-        throw new Error(
-            "Order mismatch"
-        );
+//         throw new Error(
+//             "Order mismatch"
+//         );
 
-    }
+//     }
 
-    if (
-        payment.amount !==
-        Math.round(
-            booking.payableAmount * 100
-        )
-    ) {
+//     if (
+//         payment.amount !==
+//         Math.round(
+//             booking.payableAmount * 100
+//         )
+//     ) {
 
-        throw new Error(
-            "Amount mismatch"
-        );
+//         throw new Error(
+//             "Amount mismatch"
+//         );
 
-    }
+//     }
 
-    // ============================
-    // Update Payment
-    // ============================
+//     // ============================
+//     // Update Payment
+//     // ============================
 
-    booking.payment.paymentId =
-    razorpay_payment_id;
+//     booking.payment.paymentId =
+//     razorpay_payment_id;
 
-    booking.payment.signature =
-    razorpay_signature;
+//     booking.payment.signature =
+//     razorpay_signature;
 
-    booking.payment.status =
-    "success";
+//     booking.payment.status =
+//     "success";
 
-    booking.payment.amount =
-    booking.payableAmount;
-    booking.payment.currency = payment.currency;
+//     booking.payment.amount =
+//     booking.payableAmount;
+//     booking.payment.currency = payment.currency;
 
-    booking.payment.gatewayResponse =
-    payment;
+//     booking.payment.gatewayResponse =
+//     payment;
 
-    booking.payment.paidAt =
-    new Date();
+//     booking.payment.paidAt =
+//     new Date();
 
-    // ============================
-    // Update Booking
-    // ============================
+//     // ============================
+//     // Update Booking
+//     // ============================
 
-    booking.paymentStatus =
-    "paid";
+//     booking.paymentStatus =
+//     "paid";
 
-    booking.tempBookingStatus =
-    "payment_success";
+//     booking.tempBookingStatus =
+//     "payment_success";
 
-    await booking.save();
+//     await booking.save();
 
-    // ============================
-// Supplier Add Payment
-// ============================
-// ============================================
-// SUPPLIER ADD PAYMENT
-// ============================================
+//     // ============================
+// // Supplier Add Payment
+// // ============================
+// // ============================================
+// // SUPPLIER ADD PAYMENT
+// // ============================================
 
-const addPaymentResponse = await addPaymentService({
-  BookingRefNo: booking.supplierResponse.bookingRefNo,
-});
+// const addPaymentResponse = await addPaymentService({
+//   BookingRefNo: booking.supplierResponse.bookingRefNo,
+// });
 
-const responseHeader = addPaymentResponse?.Response_Header;
+// const responseHeader = addPaymentResponse?.Response_Header;
 
-if (
-  responseHeader?.Error_Code !== "0000" ||
-  responseHeader?.Status_Id !== "11"
-) {
-  throw new Error(
-    responseHeader?.Error_Desc || "Supplier Add Payment Failed"
-  );
-}
+// if (
+//   responseHeader?.Error_Code !== "0000" ||
+//   responseHeader?.Status_Id !== "11"
+// ) {
+//   throw new Error(
+//     responseHeader?.Error_Desc || "Supplier Add Payment Failed"
+//   );
+// }
 
-// ============================================
-// HOTEL TICKETING + REQUERY
-// ============================================
+// // ============================================
+// // HOTEL TICKETING + REQUERY
+// // ============================================
 
-const ticketResult = await hotelTicketingService({
-  BookingRefNo: booking.supplierResponse.bookingRefNo,
-  SearchKey: booking.supplierData.searchKey,
-});
+// const ticketResult = await hotelTicketingService({
+//   BookingRefNo: booking.supplierResponse.bookingRefNo,
+//   SearchKey: booking.supplierData.searchKey,
+// });
 
-// ============================================
-// UPDATE HOTEL CART
-// ============================================
+// // ============================================
+// // UPDATE HOTEL CART
+// // ============================================
 
-booking.supplierResponse = {
-  ...booking.supplierResponse,
+// booking.supplierResponse = {
+//   ...booking.supplierResponse,
 
-  hotelTicketResponse: ticketResult.ticketingData,
+//   hotelTicketResponse: ticketResult.ticketingData,
 
-  hotelRequeryResponse: ticketResult.requeryData,
+//   hotelRequeryResponse: ticketResult.requeryData,
 
-  hotelVoucherNumber:
-    ticketResult.hotelVoucherNumber,
+//   hotelVoucherNumber:
+//     ticketResult.hotelVoucherNumber,
 
-  voucherNumber:
-    ticketResult.requeryData?.VoucherNumber,
+//   voucherNumber:
+//     ticketResult.requeryData?.VoucherNumber,
 
-  invoiceNumber:
-    ticketResult.requeryData?.InvoiceNumber,
+//   invoiceNumber:
+//     ticketResult.requeryData?.InvoiceNumber,
 
-  ticketStatusId:
-    ticketResult.requeryData?.TicketStatusId,
+//   ticketStatusId:
+//     ticketResult.requeryData?.TicketStatusId,
 
-  ticketStatusDesc:
-    ticketResult.requeryData?.TicketStatusDesc,
+//   ticketStatusDesc:
+//     ticketResult.requeryData?.TicketStatusDesc,
 
-  checkInDate:
-    ticketResult.requeryData?.CheckInDate,
+//   checkInDate:
+//     ticketResult.requeryData?.CheckInDate,
 
-  checkOutDate:
-    ticketResult.requeryData?.CheckOutDate,
+//   checkOutDate:
+//     ticketResult.requeryData?.CheckOutDate,
 
-  confirmedAt: new Date(),
-};
+//   confirmedAt: new Date(),
+// };
 
-await booking.save();
-// ============================================
-// GENERATE INVOICE + SEND EMAIL
-// ============================================
+// await booking.save();
+// // ============================================
+// // GENERATE INVOICE + SEND EMAIL
+// // ============================================
 
-try {
+// try {
 
-  const pdfBuffer = await generateHotelInvoiceService(
-    booking.userId,
-    booking.supplierResponse.bookingRefNo
-  );
+//   const pdfBuffer = await generateHotelInvoiceService(
+//     booking.userId,
+//     booking.supplierResponse.bookingRefNo
+//   );
 
-  await sendBookingConfirmationEmail({
+//   await sendBookingConfirmationEmail({
 
-    email:
-    booking.supplierData.OccupantEmail,
+//     email:
+//     booking.supplierData.OccupantEmail,
 
-    customerName:
-      booking.supplierData.customerName,
+//     customerName:
+//       booking.supplierData.customerName,
 
-    bookingRefNo:
-      booking.supplierResponse.bookingRefNo,
+//     bookingRefNo:
+//       booking.supplierResponse.bookingRefNo,
 
-    hotelName:
-      booking.supplierResponse.hotelRequeryResponse?.HotelDetails?.HotelName,
+//     hotelName:
+//       booking.supplierResponse.hotelRequeryResponse?.HotelDetails?.HotelName,
 
-    hotelAddress:
-      booking.supplierResponse.hotelRequeryResponse?.HotelDetails?.Address,
+//     hotelAddress:
+//       booking.supplierResponse.hotelRequeryResponse?.HotelDetails?.Address,
 
-    city:
-      booking.supplierResponse.hotelRequeryResponse?.HotelDetails?.City,
+//     city:
+//       booking.supplierResponse.hotelRequeryResponse?.HotelDetails?.City,
 
-    checkIn:
-      booking.supplierResponse.checkInDate,
+//     checkIn:
+//       booking.supplierResponse.checkInDate,
 
-    checkOut:
-      booking.supplierResponse.checkOutDate,
+//     checkOut:
+//       booking.supplierResponse.checkOutDate,
 
-    rooms:
-      booking.supplierResponse.hotelRequeryResponse?.RoomDetails?.length || 0,
+//     rooms:
+//       booking.supplierResponse.hotelRequeryResponse?.RoomDetails?.length || 0,
 
-    guests:
-      booking.supplierResponse.hotelRequeryResponse?.PAXDetails?.length || 0,
+//     guests:
+//       booking.supplierResponse.hotelRequeryResponse?.PAXDetails?.length || 0,
 
-    amount:
-      booking.payment.amount,
+//     amount:
+//       booking.payment.amount,
 
-    currency:
-      booking.payment.currency,
+//     currency:
+//       booking.payment.currency,
 
-    pdfBuffer,
-  });
+//     pdfBuffer,
+//   });
 
-  console.log("Booking confirmation email sent successfully.");
+//   console.log("Booking confirmation email sent successfully.");
 
-} catch (error) {
+// } catch (error) {
 
-  console.error("Email sending failed:", error.message);
+//   console.error("Email sending failed:", error.message);
 
-  // Email fail hone se booking fail nahi honi chahiye.
-}
+//   // Email fail hone se booking fail nahi honi chahiye.
+// }
 
-// ============================================
-// FINAL RESPONSE
-// ============================================
+// // ============================================
+// // FINAL RESPONSE
+// // ============================================
 
-return {
-  success: true,
+// return {
+//   success: true,
 
-  paymentVerified: true,
+//   paymentVerified: true,
 
-  tempBookingId: booking._id,
+//   tempBookingId: booking._id,
 
-  bookingRefNo: booking.supplierResponse.bookingRefNo,
+//   bookingRefNo: booking.supplierResponse.bookingRefNo,
 
-  paymentId: razorpay_payment_id,
+//   paymentId: razorpay_payment_id,
 
-  orderId: razorpay_order_id,
+//   orderId: razorpay_order_id,
 
-  amount: booking.payableAmount,
-   currency: booking.payment.currency,
+//   amount: booking.payableAmount,
+//    currency: booking.payment.currency,
 
-  currencySymbol: booking.pricing.currencySymbol,
+//   currencySymbol: booking.pricing.currencySymbol,
 
   
 
  
-};}
+// };}

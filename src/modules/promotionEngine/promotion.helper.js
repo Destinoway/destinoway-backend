@@ -1,84 +1,84 @@
-import Coupon from "./coupon.model.js";
+// import Coupon from "./coupon.model.js";
 
-export const findBestCoupon =
-  async ({
-    module,
-    bookingAmount,
-    serviceTax,
-  }) => {
-    const coupons =
-      await Coupon.find({
-        applicableModules:
-          module,
-        isAutoApply: true,
-        isActive: true,
-      });
+// export const findBestCoupon =
+//   async ({
+//     module,
+//     bookingAmount,
+//     serviceTax,
+//   }) => {
+//     const coupons =
+//       await Coupon.find({
+//         applicableModules:
+//           module,
+//         isAutoApply: true,
+//         isActive: true,
+//       });
 
-    let bestCoupon = null;
-    let bestDiscount = 0;
+//     let bestCoupon = null;
+//     let bestDiscount = 0;
 
-    const maxAllowedDiscount =
-      serviceTax * 0.7;
+//     const maxAllowedDiscount =
+//       serviceTax * 0.7;
 
-    let availableCoupons =
-      [];
+//     let availableCoupons =
+//       [];
 
-    for (const coupon of coupons) {
-      if (
-        bookingAmount <
-        coupon.minAmount
-      ) {
-        continue;
-      }
+//     for (const coupon of coupons) {
+//       if (
+//         bookingAmount <
+//         coupon.minAmount
+//       ) {
+//         continue;
+//       }
 
-      let discount = 0;
+//       let discount = 0;
 
-      if (
-        coupon.discountType ===
-        "flat"
-      ) {
-        discount =
-          coupon.discountValue;
-      }
+//       if (
+//         coupon.discountType ===
+//         "flat"
+//       ) {
+//         discount =
+//           coupon.discountValue;
+//       }
 
-      if (
-        coupon.discountType ===
-        "percent"
-      ) {
-        discount =
-          (bookingAmount *
-            coupon.discountValue) /
-          100;
-      }
+//       if (
+//         coupon.discountType ===
+//         "percent"
+//       ) {
+//         discount =
+//           (bookingAmount *
+//             coupon.discountValue) /
+//           100;
+//       }
 
-      // cap discount
-      if (
-        discount >
-        maxAllowedDiscount
-      ) {
-        discount =
-          maxAllowedDiscount;
-      }
+//       // cap discount
+//       if (
+//         discount >
+//         maxAllowedDiscount
+//       ) {
+//         discount =
+//           maxAllowedDiscount;
+//       }
 
-      availableCoupons.push({
-        code: coupon.code,
-        discount,
-      });
+//       availableCoupons.push({
+//         code: coupon.code,
+//         discount,
+//       });
 
-      if (
-        discount >
-        bestDiscount
-      ) {
-        bestDiscount =
-          discount;
+//       if (
+//         discount >
+//         bestDiscount
+//       ) {
+//         bestDiscount =
+//           discount;
 
-        bestCoupon = coupon;
-      }
-    }
+//         bestCoupon = coupon;
+//       }
+//     }
 
-    return {
-      bestCoupon,
-      bestDiscount,
-      availableCoupons,
-    };
-  };
+//     return {
+//       bestCoupon,
+//       bestDiscount,
+//       availableCoupons,
+//     };
+//   };
