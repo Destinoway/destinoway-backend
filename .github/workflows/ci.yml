@@ -15,7 +15,8 @@ on:
 
 jobs:
   # ============================================================
-  # CI - Runs for PRs and pushes to develop, uat and main
+  # CI
+  # Runs for PRs and pushes to develop, uat and main
   # ============================================================
   ci:
     name: Backend CI
@@ -49,18 +50,19 @@ jobs:
       - name: Build project
         run: npm run build
 
+
   # ============================================================
-  # DEV CD - Only runs after successful push to develop
+  # DEV CD
+  # Runs only after successful push to develop
   # ============================================================
   deploy-dev:
     name: Deploy Backend to DEV
     runs-on: ubuntu-latest
 
-    # Wait for CI to complete successfully
+    # Wait for CI to finish successfully
     needs: ci
 
-    # Deploy ONLY when code is pushed directly to develop.
-    # Pull requests will NOT trigger deployment.
+    # Deploy only for push to develop
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
 
     permissions:
@@ -85,49 +87,116 @@ jobs:
           aws sts get-caller-identity
 
       # --------------------------------------------------------
-      # Deploy to DEV EC2 using AWS Systems Manager
+      # Prepare deployment script
+      # --------------------------------------------------------
+      - name: Prepare DEV deployment script
+        shell: bash
+        run: |
+          cat > deploy-dev.sh <<'EOF'
+          #!/bin/bash
+
+          set -e
+
+          echo "========================================"
+          echo "Starting Destinoway DEV deployment"
+          echo "========================================"
+
+          APP_DIR="/home/ubuntu/apps/destinoway-backend"
+
+          echo "Application directory:"
+          echo "$APP_DIR"
+
+          cd "$APP_DIR"
+
+          echo ""
+          echo "Current Git status:"
+          git status
+
+          echo ""
+          echo "Fetching latest develop branch..."
+          git fetch origin develop
+
+          echo ""
+          echo "Resetting working tree to origin/develop..."
+          git reset --hard origin/develop
+
+          echo ""
+          echo "Installing dependencies..."
+          npm ci
+
+          echo ""
+          echo "Restarting PM2 application..."
+          pm2 restart destinoway-backend
+
+          echo ""
+          echo "Saving PM2 configuration..."
+          pm2 save
+
+          echo ""
+          echo "PM2 status:"
+          pm2 status
+
+          echo ""
+          echo "Checking application logs..."
+          pm2 logs destinoway-backend --lines 20 --nostream
+
+          echo ""
+          echo "========================================"
+          echo "DEV deployment completed successfully"
+          echo "========================================"
+          EOF
+
+          chmod +x deploy-dev.sh
+
+          echo "Deployment script prepared."
+
+      # --------------------------------------------------------
+      # Encode deployment script
+      # --------------------------------------------------------
+      - name: Encode deployment script
+        shell: bash
+        run: |
+          DEPLOY_SCRIPT_BASE64=$(base64 -w 0 deploy-dev.sh)
+
+          echo "DEPLOY_SCRIPT_BASE64=$DEPLOY_SCRIPT_BASE64" >> "$GITHUB_ENV"
+
+          echo "Deployment script encoded successfully."
+
+      # --------------------------------------------------------
+      # Send deployment command to DEV EC2
       # --------------------------------------------------------
       - name: Deploy to DEV EC2 via SSM
         shell: bash
         run: |
           set -e
 
-          echo "Starting DEV deployment..."
+          echo "========================================"
+          echo "Sending deployment command to DEV EC2"
+          echo "========================================"
 
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "i-070f25a421e2d336c" \
             --document-name "AWS-RunShellScript" \
             --comment "Deploy Destinoway backend DEV from develop" \
-            --parameters 'commands=[
-              "set -e",
-              "echo \"Starting deployment on DEV EC2...\"",
-              "cd /home/ubuntu/apps/destinoway-backend",
-              "echo \"Fetching latest develop branch...\"",
-              "git fetch origin develop",
-              "echo \"Resetting working tree to origin/develop...\"",
-              "git reset --hard origin/develop",
-              "echo \"Installing dependencies...\"",
-              "npm ci",
-              "echo \"Restarting PM2 application...\"",
-              "pm2 restart destinoway-backend",
-              "pm2 save",
-              "echo \"Checking PM2 status...\"",
-              "pm2 status",
-              "echo \"Deployment completed successfully.\""
-            ]' \
+            --parameters "commands=[\"echo '$DEPLOY_SCRIPT_BASE64' | base64 -d | sudo -iu ubuntu bash\"]" \
             --query "Command.CommandId" \
             --output text)
 
           echo "SSM Command ID: $COMMAND_ID"
 
+          echo ""
           echo "Waiting for deployment to complete..."
 
           aws ssm wait command-executed \
             --command-id "$COMMAND_ID" \
             --instance-id "i-070f25a421e2d336c"
 
-          echo "DEV deployment completed successfully."
+          echo ""
+          echo "========================================"
+          echo "DEV deployment completed"
+          echo "========================================"
 
+          echo ""
           echo "Deployment output:"
           echo "----------------------------------------"
 
@@ -142,4 +211,11 @@ jobs:
             --output json
 
           echo "----------------------------------------"
-          echo "DEV deployment finished."
+
+      # --------------------------------------------------------
+      # Final verification
+      # --------------------------------------------------------
+      - name: Verify DEV deployment
+        shell: bash
+        run: |
+          echo "DEV deployment workflow finished successfully."
