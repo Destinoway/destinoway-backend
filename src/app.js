@@ -20,22 +20,19 @@ import masterRoutes from "./modules/master-data/masterData.routes.js";
 // import invoiceRoutes from "./modules/hotel/invoice/invoice.route.js";
 // import paymentRoutes from "./modules/payments/payment.routes.js";
 
-import healthRoutes from "./routes/health.routes.js";
 import gatewayroutewebhook from "./modules/gateways/routes/webhook.routes.js";
 import mediaRoutes from "./modules/media/media.routes.js";
 import countryRoutes from "./modules/priceMarkup/countryData/country.routes.js";
 import markeupRoutes from "./modules/priceMarkup/markup/markup.routes.js";
 import stateRoutes from "./modules/priceMarkup/stateData/state.routes.js";
 // import couponCode from "./modules/promotionEngine/promotion.routes.js";
+import homecontent from "./modules/HomeContent/homeContent.route.js";
 import roleRoutes from "./modules/role/role.routes.js";
 import support from "./modules/supportContact/support.routes.js";
 import tax from "./modules/tax/tax.route.js";
-import userRoutes from "./modules/user/user.routes.js";
-import homecontent from "./modules/HomeContent/homeContent.route.js";
-import wishlistRoutes from "./modules/wishlist/wishlist.routes.js";
 import theme from "./modules/theme/theme.route.js";
-
-import path from "path";
+import userRoutes from "./modules/user/user.routes.js";
+import wishlistRoutes from "./modules/wishlist/wishlist.routes.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -86,9 +83,6 @@ app.use("/api/v1/customer/profile", profileRoutes);
 app.use("/api/v1/markup", markeupRoutes);
 app.use("/api/v1/currency", currencyRoutes);
 app.use("/api/v1/newsletter", newsletter);
-
-
-app.use("/api/v1", healthRoutes);
 
 app.use("/api/v1/masterData", masterRoutes);
 app.use("/api/v1/customer", customerProfileRoutes);
