@@ -1,36 +1,36 @@
-import Coupon from "./coupon.model.js";
+// import Coupon from "./coupon.model.js";
 
-export const disableExpiredCoupons =
-  async () => {
-    try {
+// export const disableExpiredCoupons =
+//   async () => {
+//     try {
 
-      const now =
-        new Date();
+//       const now =
+//         new Date();
 
-      const result =
-        await Coupon.updateMany(
-          {
-            "validity.startDate": {
-              $lt: now
-            },
+//       const result =
+//         await Coupon.updateMany(
+//           {
+//             "validity.startDate": {
+//               $lt: now
+//             },
 
-            isActive: true
-          },
+//             isActive: true
+//           },
 
-          {
-            $set: {
-              isActive: false
-            }
-          }
-        );
+//           {
+//             $set: {
+//               isActive: false
+//             }
+//           }
+//         );
 
-      console.log(
-        `${result.modifiedCount} expired coupons disabled`
-      );
+//       console.log(
+//         `${result.modifiedCount} expired coupons disabled`
+//       );
 
-    } catch (error) {
-      console.log(
-        error.message
-      );
-    }
-  };
+//     } catch (error) {
+//       console.log(
+//         error.message
+//       );
+//     }
+//   };

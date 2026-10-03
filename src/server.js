@@ -5,9 +5,9 @@ import { connectDB } from "./config/db.js";
 import "./modules/priceMarkup/markup/cron/markup.cron.js";
 import "./modules/promotionEngine/couponExpiry.job.js";
 
-import {
-  disableExpiredCoupons
-} from "./modules/promotionEngine/couponExpiry.service.js";
+// import {
+//   disableExpiredCoupons
+// } from "./modules/promotionEngine/couponExpiry.service.js";
 
 dotenv.config();
 

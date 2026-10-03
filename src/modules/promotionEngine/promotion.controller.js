@@ -1,237 +1,237 @@
-import HotelTempBooking
-from "../hotel/hotelTempBooking/hotelTempBooking.model.js";
+// import HotelTempBooking
+// from "../hotel/hotelTempBooking/hotelTempBooking.model.js";
 
-import {
-  applyManualCoupon,
-  createCouponService,
-   getAllCouponsService,
-  getSingleCouponService,
-  updateCouponAdminService,
-  updateCouponStatusService,
-  deleteCouponAdminService,
-  giftcard
-} from "./promotion.service.js";
+// import {
+//   applyManualCoupon,
+//   createCouponService,
+//    getAllCouponsService,
+//   getSingleCouponService,
+//   updateCouponAdminService,
+//   updateCouponStatusService,
+//   deleteCouponAdminService,
+//   giftcard
+// } from "./promotion.service.js";
 
-import {
-  sendSuccess,
-  sendError,
-} from "../../utils/response/ApiResponse.js";
-
-
-/*
-====================================
-ADMIN CREATE COUPON
-====================================
-*/
-
-export const createCouponController =
-  async (req, res) => {
-    try {
-      const data =
-        await createCouponService(
-          req.body
-        );
-
-      return sendSuccess(
-        res,
-        "Coupon created successfully",
-        data
-      );
-    } catch (error) {
-      return sendError(
-        res,
-        error.message
-      );
-    }
-  };
+// import {
+//   sendSuccess,
+//   sendError,
+// } from "../../utils/response/ApiResponse.js";
 
 
-/*
-====================================
-USER MANUAL APPLY COUPON
-====================================
-*/
+// /*
+// ====================================
+// ADMIN CREATE COUPON
+// ====================================
+// */
 
-export const applyCouponController =
-  async (req, res) => {
-    try {
+// export const createCouponController =
+//   async (req, res) => {
+//     try {
+//       const data =
+//         await createCouponService(
+//           req.body
+//         );
 
-      const {
-        tempBookingId,
-        couponCode,
-      } = req.body;
-
-      const booking =
-        await HotelTempBooking.findById(
-          tempBookingId
-        );
-
-      if (!booking) {
-        throw new Error(
-          "Booking not found"
-        );
-      }
-
-      const data =
-        await applyManualCoupon({
-          booking,
-          couponCode,
-          module: "hotel",
-        });
-
-      return sendSuccess(
-        res,
-        "Coupon applied successfully",
-        data
-      );
-
-    } catch (error) {
-      return sendError(
-        res,
-        error.message
-      );
-    }
-  };
-
-  export const getAllCouponsController =
-  async (req, res) => {
-    try {
-      const data =
-        await getAllCouponsService(
-          req.query
-        );
-
-      return sendSuccess(
-        res,
-        "Coupons fetched successfully",
-        data
-      );
-
-    } catch (error) {
-      return sendError(
-        res,
-        error.message
-      );
-    }
-  };
-  export const giftcardcontoroller =
-  async (req, res) => {
-    try {
-      const data =
-        await giftcard(
-          req.query
-        );
-
-      return sendSuccess(
-        res,
-        "Coupons fetched successfully",
-        data
-      );
-
-    } catch (error) {
-      return sendError(
-        res,
-        error.message
-      );
-    }
-  };
+//       return sendSuccess(
+//         res,
+//         "Coupon created successfully",
+//         data
+//       );
+//     } catch (error) {
+//       return sendError(
+//         res,
+//         error.message
+//       );
+//     }
+//   };
 
 
-/*
-====================================
-GET SINGLE COUPON
-====================================
-*/
-export const getSingleCouponController =
-  async (req, res) => {
-    try {
-      const data =
-        await getSingleCouponService(
-          req.params.id
-        );
+// /*
+// ====================================
+// USER MANUAL APPLY COUPON
+// ====================================
+// */
 
-      return sendSuccess(
-        res,
-        "Coupon fetched successfully",
-        data
-      );
+// export const applyCouponController =
+//   async (req, res) => {
+//     try {
 
-    } catch (error) {
-      return sendError(
-        res,
-        error.message
-      );
-    }
-  };
+//       const {
+//         tempBookingId,
+//         couponCode,
+//       } = req.body;
 
-/*
-====================================
-UPDATE COUPON
-====================================
-*/
-export const updateCouponAdminController =
-  async (req, res) => {
-    try {
-      const data =
-        await updateCouponAdminService(
-          req.params.id,
-          req.body
-        );
+//       const booking =
+//         await HotelTempBooking.findById(
+//           tempBookingId
+//         );
 
-      return sendSuccess(
-        res,
-        "Coupon updated successfully",
-        data
-      );
+//       if (!booking) {
+//         throw new Error(
+//           "Booking not found"
+//         );
+//       }
 
-    } catch (error) {
-      return sendError(
-        res,
-        error.message
-      );
-    }
-  };
-  export const updateCouponStatusController =
-  async (req, res) => {
-    try {
-      const data =
-        await updateCouponStatusService(
-          req.params.id,
-          req.body.isActive
-        );
+//       const data =
+//         await applyManualCoupon({
+//           booking,
+//           couponCode,
+//           module: "hotel",
+//         });
 
-      return sendSuccess(
-        res,
-        "Coupon status updated successfully",
-        data
-      );
+//       return sendSuccess(
+//         res,
+//         "Coupon applied successfully",
+//         data
+//       );
 
-    } catch (error) {
-      return sendError(
-        res,
-        error.message
-      );
-    }
-  };
+//     } catch (error) {
+//       return sendError(
+//         res,
+//         error.message
+//       );
+//     }
+//   };
 
-  export const deleteCouponAdminController =
-  async (req, res) => {
-    try {
-      const data =
-        await deleteCouponAdminService(
-          req.params.id
-        );
+//   export const getAllCouponsController =
+//   async (req, res) => {
+//     try {
+//       const data =
+//         await getAllCouponsService(
+//           req.query
+//         );
 
-      return sendSuccess(
-        res,
-        "Coupon deleted successfully",
-        data
-      );
+//       return sendSuccess(
+//         res,
+//         "Coupons fetched successfully",
+//         data
+//       );
 
-    } catch (error) {
-      return sendError(
-        res,
-        error.message
-      );
-    }
-  };
+//     } catch (error) {
+//       return sendError(
+//         res,
+//         error.message
+//       );
+//     }
+//   };
+//   export const giftcardcontoroller =
+//   async (req, res) => {
+//     try {
+//       const data =
+//         await giftcard(
+//           req.query
+//         );
+
+//       return sendSuccess(
+//         res,
+//         "Coupons fetched successfully",
+//         data
+//       );
+
+//     } catch (error) {
+//       return sendError(
+//         res,
+//         error.message
+//       );
+//     }
+//   };
+
+
+// /*
+// ====================================
+// GET SINGLE COUPON
+// ====================================
+// */
+// export const getSingleCouponController =
+//   async (req, res) => {
+//     try {
+//       const data =
+//         await getSingleCouponService(
+//           req.params.id
+//         );
+
+//       return sendSuccess(
+//         res,
+//         "Coupon fetched successfully",
+//         data
+//       );
+
+//     } catch (error) {
+//       return sendError(
+//         res,
+//         error.message
+//       );
+//     }
+//   };
+
+// /*
+// ====================================
+// UPDATE COUPON
+// ====================================
+// */
+// export const updateCouponAdminController =
+//   async (req, res) => {
+//     try {
+//       const data =
+//         await updateCouponAdminService(
+//           req.params.id,
+//           req.body
+//         );
+
+//       return sendSuccess(
+//         res,
+//         "Coupon updated successfully",
+//         data
+//       );
+
+//     } catch (error) {
+//       return sendError(
+//         res,
+//         error.message
+//       );
+//     }
+//   };
+//   export const updateCouponStatusController =
+//   async (req, res) => {
+//     try {
+//       const data =
+//         await updateCouponStatusService(
+//           req.params.id,
+//           req.body.isActive
+//         );
+
+//       return sendSuccess(
+//         res,
+//         "Coupon status updated successfully",
+//         data
+//       );
+
+//     } catch (error) {
+//       return sendError(
+//         res,
+//         error.message
+//       );
+//     }
+//   };
+
+//   export const deleteCouponAdminController =
+//   async (req, res) => {
+//     try {
+//       const data =
+//         await deleteCouponAdminService(
+//           req.params.id
+//         );
+
+//       return sendSuccess(
+//         res,
+//         "Coupon deleted successfully",
+//         data
+//       );
+
+//     } catch (error) {
+//       return sendError(
+//         res,
+//         error.message
+//       );
+//     }
+//   };
