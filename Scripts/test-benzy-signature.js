@@ -339,7 +339,10 @@
 
 // await testBenzySignature();
 
-
+import dotenv from "dotenv";
+dotenv.config();
+import axios from "axios";
+import redisClient from "../src/config/redis.js";
 
 const TOKEN_KEY = "benzy:hotel:token";
 const TOKEN_TTL = 10 * 24 * 60 * 60; // 10 days
