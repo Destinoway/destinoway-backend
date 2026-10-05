@@ -103,6 +103,15 @@ import redisClient from "../src/config/redis.js";
 const BENZY_TOKEN_KEY = "benzy:hotel:token";
 const BENZY_TOKEN_TTL = 10 * 24 * 60 * 60; // 10 days
 
+const BENZY_SIGNATURE_URL="https://b2bapiutils.benzyinfotech.com/Utils/Signature"
+
+"BENZY_MERCHANT_ID"="300"
+"BENZY_API_KEY"="kXAY9yHARK"
+"BENZY_CLIENT_ID"="bitest"
+"BENZY_PASSWORD"="staging@1"
+"BENZY_AGENT_CODE"=
+"BENZY_BROWSER_KEY"="caecd3cd30225512c1811070dce615c1"
+"BENZY_KEY"="ef20-925c-4489-bfeb-236c8b406f7e"
 async function testBenzySignature() {
   try {
     console.log("=================================");
@@ -117,42 +126,42 @@ async function testBenzySignature() {
 
     console.log(
       "Signature URL:",
-      process.env.BENZY_SIGNATURE_URL || "❌ NOT FOUND"
+     BENZY_SIGNATURE_URL || "❌ NOT FOUND"
     );
 
     console.log(
       "Merchant ID exists:",
-      !!process.env.BENZY_MERCHANT_ID
+      BENZY_MERCHANT_ID
     );
 
     console.log(
       "API Key exists:",
-      !!process.env.BENZY_API_KEY
+      BENZY_API_KEY
     );
 
     console.log(
       "Client ID exists:",
-      !!process.env.BENZY_CLIENT_ID
+      BENZY_CLIENT_ID
     );
 
     console.log(
       "Password exists:",
-      !!process.env.BENZY_PASSWORD
+     BENZY_PASSWORD
     );
 
     console.log(
       "Agent Code exists:",
-      !!process.env.BENZY_AGENT_CODE
+      BENZY_AGENT_CODE
     );
 
     console.log(
       "Browser Key exists:",
-      !!process.env.BENZY_BROWSER_KEY
+      BENZY_BROWSER_KEY
     );
 
     console.log(
       "Benzy Key exists:",
-      !!process.env.BENZY_KEY
+      BENZY_KEY
     );
 
     // --------------------------------------------------
@@ -197,13 +206,13 @@ async function testBenzySignature() {
     const response = await axios.post(
       process.env.BENZY_SIGNATURE_URL,
       {
-        MerchantID: process.env.BENZY_MERCHANT_ID,
-        ApiKey: process.env.BENZY_API_KEY,
-        ClientID: process.env.BENZY_CLIENT_ID,
-        Password: process.env.BENZY_PASSWORD,
-        AgentCode: process.env.BENZY_AGENT_CODE,
-        BrowserKey: process.env.BENZY_BROWSER_KEY,
-        Key: process.env.BENZY_KEY,
+        MerchantID:BENZY_MERCHANT_ID,
+        ApiKey:BENZY_API_KEY,
+        ClientID:BENZY_CLIENT_ID,
+        Password:BENZY_PASSWORD,
+        AgentCode:BENZY_AGENT_CODE,
+        BrowserKey:BENZY_BROWSER_KEY,
+        Key:BENZY_KEY,
       },
       {
         headers: {
