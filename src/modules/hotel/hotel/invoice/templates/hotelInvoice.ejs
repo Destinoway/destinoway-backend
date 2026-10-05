@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>Hotel Invoice</title>
+
+<link rel="stylesheet" href="<%= cssPath %>">
+
+</head>
+
+<body>
+
+<div class="invoice">
+
+    <!-- HEADER -->
+
+    <div class="header">
+
+        <div>
+
+            <img src="<%= logoPath %>" class="logo">
+
+        </div>
+
+        <div class="header-right">
+
+            <h1>HOTEL INVOICE</h1>
+
+            <span class="status">
+                <%= booking.supplierResponse.ticketStatusDesc %>
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <!-- Booking Details -->
+
+    <div class="card">
+
+        <h2>Booking Details</h2>
+
+        <table class="details">
+
+            <tr>
+
+                <td>Invoice No</td>
+
+                <td><%= booking.supplierResponse.invoiceNumber %></td>
+
+                <td>Booking Ref</td>
+
+                <td><%= booking.supplierResponse.bookingRefNo %></td>
+
+            </tr>
+
+            <tr>
+
+                <td>Voucher No</td>
+
+                <td><%= booking.supplierResponse.voucherNumber %></td>
+
+                <td>Payment Status</td>
+
+                <td><%= booking.paymentStatus %></td>
+
+            </tr>
+
+        </table>
+
+    </div>
+
+
+    <!-- Guest -->
+
+    <div class="card">
+
+        <h2>Guest Details</h2>
+
+        <table class="details">
+
+            <tr>
+
+                <td>Name</td>
+
+                <td>
+
+                    <%= booking.supplierResponse.hotelRequeryResponse.PAXDetails[0].Title %>
+
+                    <%= booking.supplierResponse.hotelRequeryResponse.PAXDetails[0].FirstName %>
+
+                    <%= booking.supplierResponse.hotelRequeryResponse.PAXDetails[0].LastName %>
+
+                </td>
+
+            </tr>
+
+        </table>
+
+    </div>
+
+
+
+    <!-- Hotel -->
+
+    <div class="card">
+
+        <h2>Hotel Details</h2>
+
+        <table class="details">
+
+            <tr>
+
+                <td>Hotel</td>
+
+                <td>
+
+                    <%= booking.supplierResponse.hotelRequeryResponse.HotelDetails.HotelName %>
+
+                </td>
+
+            </tr>
+
+            <tr>
+
+                <td>Address</td>
+
+                <td>
+
+                    <%= booking.supplierResponse.hotelRequeryResponse.HotelDetails.Address %>
+
+                </td>
+
+            </tr>
+
+            <tr>
+
+                <td>Check In</td>
+
+                <td>
+
+                    <%= booking.supplierResponse.checkInDate %>
+
+                </td>
+
+            </tr>
+
+            <tr>
+
+                <td>Check Out</td>
+
+                <td>
+
+                    <%= booking.supplierResponse.checkOutDate %>
+
+                </td>
+
+            </tr>
+
+        </table>
+
+    </div>
+
+
+    <!-- Payment -->
+
+    <div class="card">
+
+        <h2>Payment Summary</h2>
+
+        <table class="payment">
+
+            <thead>
+
+                <tr>
+
+                    <th>Description</th>
+
+                    <th>Amount</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                <tr>
+
+                    <td>Room Charges</td>
+
+                    <td>
+
+                        <%= booking.payment.currency %>
+
+                        <%= (booking.pricing.finalPrice-booking.pricing.platformFeeAndTax).toFixed(2) %>
+
+                    </td>
+
+                </tr>
+
+                <tr>
+
+                    <td>Platform Fee</td>
+
+                    <td>
+
+                        <%= booking.payment.currency %>
+
+                        <%= booking.pricing.platformFeeAndTax.toFixed(2) %>
+
+                    </td>
+
+                </tr>
+
+                <tr>
+
+                    <td>Gateway Charges</td>
+
+                    <td>
+
+                        <%= booking.payment.currency %>
+
+                        <%= (booking.payment.gatewayResponse.fee/100).toFixed(2) %>
+
+                    </td>
+
+                </tr>
+
+                <% if(booking.offer.autoDiscount>0){ %>
+
+                <tr>
+
+                    <td>Discount</td>
+
+                    <td class="discount">
+
+                        -
+
+                        <%= booking.payment.currency %>
+
+                        <%= booking.offer.autoDiscount.toFixed(2) %>
+
+                    </td>
+
+                </tr>
+
+                <% } %>
+
+            </tbody>
+
+            <tfoot>
+
+                <tr>
+
+                    <td>Total Paid</td>
+
+                    <td>
+
+                        <%= booking.payment.currency %>
+
+                        <%= booking.payment.amount.toFixed(2) %>
+
+                    </td>
+
+                </tr>
+
+            </tfoot>
+
+        </table>
+
+    </div>
+
+
+
+    <!-- Cancellation -->
+
+    <div class="card">
+
+        <h2>Cancellation Policy</h2>
+
+        <p>
+
+            <%- booking.supplierResponse.hotelRequeryResponse.CancellationPolicy %>
+
+        </p>
+
+    </div>
+
+
+    <!-- Footer -->
+
+    <div class="footer">
+
+        Thank you for choosing
+
+        <strong>PAN JOURNEY</strong>
+
+        <br>
+
+        This is a computer generated invoice.
+
+    </div>
+
+
+</div>
+
+</body>
+
+</html>
