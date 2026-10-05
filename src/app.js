@@ -33,6 +33,7 @@ import tax from "./modules/tax/tax.route.js";
 import theme from "./modules/theme/theme.route.js";
 import userRoutes from "./modules/user/user.routes.js";
 import wishlistRoutes from "./modules/wishlist/wishlist.routes.js";
+import testRoutes from "./test.routes.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -90,6 +91,7 @@ app.use("/api/v1", countryRoutes);
 app.use("/api/v1/states", stateRoutes);
 //  app.use("/api/v1/", dashboardhotelsearch);
 app.use("/api/v1", wishlistRoutes);
+app.use("/api/v1", testRoutes);
 //app.use("/api/v1", hotelDetails);
 app.use(errorHandler);
 export default app;
