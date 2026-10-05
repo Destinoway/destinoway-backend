@@ -1,7 +1,5 @@
 import axios from "axios";
 import redisClient from "../../../../config/redis.js";
-import dotenv from "dotenv";
-dotenv.config();
 
 
 const BENZY_TOKEN_KEY = "benzy:hotel:token";
@@ -20,7 +18,7 @@ export const getBenzyToken = async () => {
   console.log("Benzy token not found. Calling Signature API...");
 
   const { data } = await axios.post(
-    process.env.BENZY_SIGNATURE_URL,
+    "https://api.benzy.com/v1/Signature",
     {
       MerchantID: process.env.BENZY_MERCHANT_ID,
       ApiKey: process.env.BENZY_API_KEY,
