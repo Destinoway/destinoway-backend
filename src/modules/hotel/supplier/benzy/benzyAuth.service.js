@@ -1,9 +1,7 @@
-import axios from "axios";
-import redisClient from "../../../../config/redis.js";
 import dotenv from "dotenv";
 dotenv.config();
-
-
+import axios from "axios";
+import redisClient from "../../../../config/redis.js";
 
 const AKBAR_TOKEN_KEY = "AKBAR:hotel:token";
 const AKBAR_TOKEN_TTL = 10 * 24 * 60 * 60; // 10 days
@@ -35,7 +33,7 @@ export const getAKBARToken = async () => {
       headers: {
         "Content-Type": "application/json",
       },
-    }
+    },
   );
 
   if (data?.Code !== "200" || !data?.Token) {
