@@ -1,0 +1,184 @@
+/* Reset */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #f4f7fb;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #222;
+  padding: 30px;
+}
+
+/* Main Invoice */
+
+.invoice {
+  width: 210mm;
+  min-height: 297mm;
+  margin: auto;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, .08);
+}
+
+/* ================= Header ================= */
+
+.header {
+  background: linear-gradient(135deg,#0F75BC,#1C9CEB);
+  color: white;
+  padding: 35px 45px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  height: 60px;
+}
+
+.header-right{
+  text-align:right;
+}
+
+.header h1{
+  font-size:34px;
+  letter-spacing:1px;
+}
+
+.status{
+  display:inline-block;
+  margin-top:12px;
+  background:#ffffff;
+  color:#0F75BC;
+  padding:8px 18px;
+  border-radius:25px;
+  font-weight:bold;
+  font-size:14px;
+}
+
+/* ================= Cards ================= */
+
+.card{
+  margin:25px 30px;
+  border:1px solid #E8EEF5;
+  border-radius:10px;
+  overflow:hidden;
+}
+
+.card h2{
+  background:#F5FAFF;
+  color:#0F75BC;
+  padding:14px 18px;
+  font-size:18px;
+  border-bottom:1px solid #E8EEF5;
+}
+
+/* ================= Detail Table ================= */
+
+.details{
+  width:100%;
+  border-collapse:collapse;
+}
+
+.details td{
+  padding:14px 18px;
+  border-bottom:1px solid #f0f0f0;
+  font-size:14px;
+}
+
+.details tr:last-child td{
+  border-bottom:none;
+}
+
+.details td:nth-child(odd){
+  width:180px;
+  font-weight:600;
+  color:#666;
+}
+
+.details td:nth-child(even){
+  color:#222;
+}
+
+/* ================= Payment ================= */
+
+.payment{
+  width:100%;
+  border-collapse:collapse;
+}
+
+.payment thead{
+  background:#0F75BC;
+  color:white;
+}
+
+.payment th{
+  padding:15px;
+  text-align:left;
+}
+
+.payment td{
+  padding:15px;
+  border-bottom:1px solid #ECECEC;
+}
+
+.payment th:last-child,
+.payment td:last-child{
+  text-align:right;
+}
+
+.payment tbody tr:nth-child(even){
+  background:#FAFCFF;
+}
+
+.payment tfoot{
+  background:#EDF7FF;
+  font-weight:bold;
+  font-size:16px;
+}
+
+.payment tfoot td{
+  padding:18px;
+}
+
+.discount{
+  color:#0E9F6E;
+  font-weight:bold;
+}
+
+/* ================= Footer ================= */
+
+.footer{
+  margin-top:40px;
+  padding:30px;
+  text-align:center;
+  font-size:13px;
+  color:#777;
+  border-top:1px solid #ECECEC;
+}
+
+/* ================= Print ================= */
+
+@page{
+  size:A4;
+  margin:0;
+}
+
+@media print{
+
+body{
+  background:white;
+  padding:0;
+}
+
+.invoice{
+  width:100%;
+  box-shadow:none;
+  border-radius:0;
+}
+
+}
