@@ -168,7 +168,7 @@ async function testBenzySignature() {
     // 2. Validate Signature URL
     // --------------------------------------------------
 
-    if (!process.env.BENZY_SIGNATURE_URL) {
+    if (!BENZY_SIGNATURE_URL) {
       throw new Error(
         "BENZY_SIGNATURE_URL is missing from environment variables"
       );
@@ -204,7 +204,7 @@ async function testBenzySignature() {
     // --------------------------------------------------
 
     const response = await axios.post(
-      process.env.BENZY_SIGNATURE_URL,
+      BENZY_SIGNATURE_URL,
       {
         MerchantID:BENZY_MERCHANT_ID,
         ApiKey:BENZY_API_KEY,
