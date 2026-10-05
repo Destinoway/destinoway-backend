@@ -105,13 +105,13 @@ const BENZY_TOKEN_TTL = 10 * 24 * 60 * 60; // 10 days
 
 const BENZY_SIGNATURE_URL="https://b2bapiutils.benzyinfotech.com/Utils/Signature"
 
-"BENZY_MERCHANT_ID"="300"
-"BENZY_API_KEY"="kXAY9yHARK"
-"BENZY_CLIENT_ID"="bitest"
-"BENZY_PASSWORD"="staging@1"
-"BENZY_AGENT_CODE"=
-"BENZY_BROWSER_KEY"="caecd3cd30225512c1811070dce615c1"
-"BENZY_KEY"="ef20-925c-4489-bfeb-236c8b406f7e"
+const BENZY_MERCHANT_ID="300";
+const BENZY_API_KEY="kXAY9yHARK"
+const BENZY_CLIENT_ID="bitest"
+const BENZY_PASSWORD="staging@1"
+const BENZY_AGENT_CODE=""
+const BENZY_BROWSER_KEY="caecd3cd30225512c1811070dce615c1"
+const BENZY_KEY="ef20-925c-4489-bfeb-236c8b406f7e"
 async function testBenzySignature() {
   try {
     console.log("=================================");
