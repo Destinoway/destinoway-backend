@@ -1,5 +1,8 @@
 import axios from "axios";
 import redisClient from "../../../../config/redis.js";
+import dotenv from "dotenv";
+dotenv.config();
+
 
 const BENZY_TOKEN_KEY = "benzy:hotel:token";
 const BENZY_TOKEN_TTL = 10 * 24 * 60 * 60; // 10 days
