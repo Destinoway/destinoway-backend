@@ -5,31 +5,31 @@ dotenv.config();
 
 
 
-const BENZY_TOKEN_KEY = "benzy:hotel:token";
-const BENZY_TOKEN_TTL = 10 * 24 * 60 * 60; // 10 days
+const AKBAR_TOKEN_KEY = "AKBAR:hotel:token";
+const AKBAR_TOKEN_TTL = 10 * 24 * 60 * 60; // 10 days
 
-export const getBenzyToken = async () => {
+export const getAKBARToken = async () => {
   // 1. Check Redis
-  const cachedToken = await redisClient.get(BENZY_TOKEN_KEY);
+  const cachedToken = await redisClient.get(AKBAR_TOKEN_KEY);
 
   if (cachedToken) {
-    console.log("Benzy token found in Redis");
+    console.log("AKBAR token found in Redis");
     return cachedToken;
   }
 
   // 2. Generate new token
-  console.log("Benzy token not found. Calling Signature API...");
+  console.log("AKBAR token not found. Calling Signature API...");
 
   const { data } = await axios.post(
-    process.env.BENZY_SIGNATURE_URL,
+    process.env.AKBAR_SIGNATURE_URL,
     {
-      MerchantID: process.env.BENZY_MERCHANT_ID,
-      ApiKey: process.env.BENZY_API_KEY,
-      ClientID: process.env.BENZY_CLIENT_ID,
-      Password: process.env.BENZY_PASSWORD,
-      AgentCode: process.env.BENZY_AGENT_CODE,
-      BrowserKey: process.env.BENZY_BROWSER_KEY,
-      Key: process.env.BENZY_KEY,
+      MerchantID: process.env.AKBAR_MERCHANT_ID,
+      ApiKey: process.env.AKBAR_API_KEY,
+      ClientID: process.env.AKBAR_CLIENT_ID,
+      Password: process.env.AKBAR_PASSWORD,
+      AgentCode: process.env.AKBAR_AGENT_CODE,
+      BrowserKey: process.env.AKBAR_BROWSER_KEY,
+      Key: process.env.AKBAR_KEY,
     },
     {
       headers: {
@@ -39,15 +39,15 @@ export const getBenzyToken = async () => {
   );
 
   if (data?.Code !== "200" || !data?.Token) {
-    throw new Error("Failed to generate Benzy token");
+    throw new Error("Failed to generate AKBAR token");
   }
 
   // 3. Save token in Redis for 10 days
-  await redisClient.set(BENZY_TOKEN_KEY, data.Token, {
-    EX: BENZY_TOKEN_TTL,
+  await redisClient.set(AKBAR_TOKEN_KEY, data.Token, {
+    EX: AKBAR_TOKEN_TTL,
   });
 
-  console.log("New Benzy token saved in Redis");
+  console.log("New AKBAR token saved in Redis");
 
   return data.Token;
 };

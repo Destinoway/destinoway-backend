@@ -1,13 +1,11 @@
-import {
-  searchDestinationAPI,
-} from "./adapters/flyshop/destination.api.js";
+import { searchAKBARDestinationAPI } from "./adapters/akbar/akbarDestination.api.js";
 
 import {
-  mapDestinationResponse,
-} from "./adapters/flyshop/destination.mapper.js";
+  mapAkbarDestinationResponse,
+} from "./adapters/akbar/akbarDestination.mapper.js";
 
 export const searchDestinationService = async (searchInput) => {
-  const response = await searchDestinationAPI(searchInput);
-console.log(response)
-  return mapDestinationResponse(response);
+  const response = await searchAKBARDestinationAPI(searchInput);
+
+  return mapAkbarDestinationResponse(response);
 };
