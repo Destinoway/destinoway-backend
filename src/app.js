@@ -50,6 +50,7 @@ app.use(
       "https://main.d2s4wo3hb5kyyq.amplifyapp.com",
       "https://www.panjourney.com",
       "https://panjourney.com",
+      "https://dev.destinoway.com",
     ],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization", "Accept", "currency"],
