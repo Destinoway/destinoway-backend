@@ -5,7 +5,14 @@ export const akbarHotelRateAPI = async ({
   searchId,
   searchTracingKey,
 }) => {
+
+  console.log("========== AKBAR RATE API START ==========");
+
+console.log("Search ID:", searchId);
+console.log("Search Tracing Key:", searchTracingKey);
   const token = await getAKBARToken();
+
+  console.log("AKBAR Token received:", !!token);
 
   const response = await axios.get(
     `${process.env.AKBAR_HOTEL_API_URL}/api/hotels/search/result/${searchId}/rate`,
@@ -20,4 +27,14 @@ export const akbarHotelRateAPI = async ({
   );
 
   return response.data;
+
 };
+
+  console.log("AKBAR RATE STATUS:", response.status);
+
+console.log(
+  "AKBAR RATE RESPONSE:",
+  JSON.stringify(response.data, null, 2)
+);
+
+console.log("========== AKBAR RATE API END ==========");
