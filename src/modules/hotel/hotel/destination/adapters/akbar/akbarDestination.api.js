@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getAKBARToken } from "./../../../../supplier/benzy/akbarAuth.service.js";
+import { getAKBARToken } from "../../../../supplier/akbar/akbarAuth.service.js";
 
 export const searchAKBARDestinationAPI = async (searchInput) => {
   const token = await getAKBARToken();
