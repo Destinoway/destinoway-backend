@@ -55,7 +55,7 @@
 // };
 
 import axios from "axios";
-import { getAKBARToken } from "./../../../../supplier/benzy/benzyAuth.service.js";
+import { getAKBARToken } from "../../../../supplier/akbar/akbarAuth.service.js";
 
 export const searchAKBARDestinationAPI = async (searchInput) => {
   console.log("🔍 AKBAR AUTOSUGGEST START");
@@ -78,7 +78,7 @@ export const searchAKBARDestinationAPI = async (searchInput) => {
           Authorization: `Bearer ${token}`,
         },
         timeout: 15000,
-      }
+      },
     );
 
     console.log("✅ AKBAR AUTOSUGGEST SUCCESS");

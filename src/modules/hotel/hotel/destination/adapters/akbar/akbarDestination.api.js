@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getAKBARToken } from "./../../../../supplier/benzy/benzyAuth.service.js";
+import { getAKBARToken } from "./../../../../supplier/benzy/akbarAuth.service.js";
 
 export const searchAKBARDestinationAPI = async (searchInput) => {
   const token = await getAKBARToken();
@@ -13,7 +13,7 @@ export const searchAKBARDestinationAPI = async (searchInput) => {
       headers: {
         Authorization: `Bearer ${token}`,
       },
-    }
+    },
   );
 
   return data;
