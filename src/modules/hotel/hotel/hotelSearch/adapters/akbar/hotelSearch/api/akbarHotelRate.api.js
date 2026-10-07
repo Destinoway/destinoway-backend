@@ -125,47 +125,23 @@ export const akbarHotelRateAPI = async ({
     // API TIMER START
     const apiStart = performance.now();
 
-    const response = await axios.get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "search-tracing-key": searchTracingKey,
-      },
+const response = await axios.get(url, {
+  headers: {
+    Authorization: `Bearer ${token}`,
+    "search-tracing-key": searchTracingKey,
+  },
+  timeout: 30000,
+});
 
-      timeout: 30000,
-    });
+const apiEnd = performance.now();
 
-    // API TIMER END
-    const apiEnd = performance.now();
+console.log(
+  `⏱️ AKBAR RATE API TIME: ${(apiEnd - apiStart).toFixed(2)} ms`
+);
 
-    console.log(
-      `⏱️ AKBAR RATE API TIME: ${(apiEnd - apiStart).toFixed(2)} ms`
-    );
-
-    console.log("AKBAR RATE STATUS:", response.status);
-
-    console.log(
-      "AKBAR RATE RESPONSE:",
-      JSON.stringify(response.data, null, 2)
-    );
-
-    console.log("========== AKBAR RATE API END ==========");
-
-    return response.data;
+return response.data;
   } catch (error) {
-    console.error("========== AKBAR RATE API ERROR ==========");
-
-    console.error("Message:", error.message);
-    console.error("Status:", error.response?.status);
-
-    console.error(
-      "Response:",
-      JSON.stringify(error.response?.data, null, 2)
-    );
-
-    console.error("URL:", error.config?.url);
-    console.error("Params:", error.config?.params);
-
-    console.error("==========================================");
+   
 
     throw error;
   }

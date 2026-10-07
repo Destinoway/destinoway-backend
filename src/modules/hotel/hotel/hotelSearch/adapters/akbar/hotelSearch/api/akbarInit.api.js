@@ -30,41 +30,29 @@ export const akbarInitAPI = async (payload) => {
   console.log("AKBAR INIT URL:", url);
 
   try {
-    // API TIMER START
-    const apiStart = performance.now();
+  const apiStart = performance.now();
 
-    const response = await axios.post(
-      url,
-      payload,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        timeout: 30000,
-      }
-    );
+const response = await axios.post(
+  url,
+  payload,
+  {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    timeout: 30000,
+  }
+);
 
-    // API TIMER END
-    const apiEnd = performance.now();
+const apiEnd = performance.now();
 
-    console.log(
-      `⏱️ AKBAR INIT API TIME: ${(apiEnd - apiStart).toFixed(2)} ms`
-    );
+console.log(
+  `⏱️ AKBAR INIT API TIME: ${(apiEnd - apiStart).toFixed(2)} ms`
+);
 
-    console.log("AKBAR INIT STATUS:", response.status);
-
-    return response.data;
+return response.data;
   } catch (error) {
-    console.error("========== AKBAR INIT API ERROR ==========");
-
-    console.error("Message:", error.message);
-    console.error("Status:", error.response?.status);
-
-    console.error(
-      "Response:",
-      JSON.stringify(error.response?.data, null, 2)
-    );
+    
 
     throw error;
   }
