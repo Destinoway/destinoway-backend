@@ -9,29 +9,26 @@ import {
   getHotelSearchResults,
 } from "../service/hotelSearchResult.service.js";
 
-export const getHotelSearchResultsController =
-  asyncHandler(async (req, res) => {
+export const getHotelSearchResultsController = asyncHandler(
+  async (req, res) => {
     try {
-      const {
-        searchId,
-      } = req.params;
+      const { searchId } = req.params;
 
       const {
         page = 1,
         limit = 20,
       } = req.query;
 
-      const result =
-        await getHotelSearchResults({
-          searchId,
-          page,
-          limit,
-        });
+      const result = await getHotelSearchResults({
+        searchId,
+        page,
+        limit,
+      });
 
       return sendSuccess(
         res,
-        result,
-        "Hotel search results fetched successfully"
+        "Hotel search results fetched successfully",
+        result
       );
     } catch (error) {
       console.error(
@@ -42,7 +39,9 @@ export const getHotelSearchResultsController =
       return sendError(
         res,
         error.message ||
-          "Unable to fetch hotel search results"
+          "Unable to fetch hotel search results",
+        error.statusCode || 500
       );
     }
-  });
+  }
+);
