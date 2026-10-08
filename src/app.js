@@ -7,11 +7,13 @@ import { errorHandler } from "./middleware/error.middleware.js";
 import addBalanceRoute from "./modules/addPayment/addPaymentRoutes.js";
 import authRoutes from "./modules/auth/admin-auth/auth.routes.js";
 import otpRoutes from "./modules/auth/customer-auth/auth.routes.js";
+import destination from "./modules/hotel/hotel/destination/destination.routes.js";
 import customerProfileRoutes from "./modules/auth/customer-auth/customer-documents/customerDocument.routes.js";
 import profileRoutes from "./modules/auth/customer-auth/customerProfile/profile.routes.js";
 import cmsRoutes from "./modules/cms/cms.routes.js";
 import newsletter from "./modules/contactUsForm/newsletter.routes.js";
 import currencyRoutes from "./modules/currencyConverter/currency.route.js";
+import hotelSearch from "./modules/hotel/hotel/hotelSearch/routes/hotelSearch.routes.js";
 //import dashboardhotelsearch from "./modules/dashboardHotels/hotel.routes.js";
 import masterRoutes from "./modules/master-data/masterData.routes.js";
 // import grievanceRedressal from "./modules/grievanceRedressal/grievanceRedressal.routes.js";
@@ -50,6 +52,8 @@ app.use(
       "https://main.d2s4wo3hb5kyyq.amplifyapp.com",
       "https://www.panjourney.com",
       "https://panjourney.com",
+      "https://dev.destinoway.com",
+      "https://develop.d1kvqncg9r5rhb.amplifyapp.com"
     ],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization", "Accept", "currency"],
@@ -65,10 +69,12 @@ app.use(express.json());
 app.use(express.static("public"));
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/media", mediaRoutes);
+app.use("/api/v1/hotelSearch", hotelSearch);
 app.use("/api/v1", support);
 //app.use("/api/v1", grievanceRedressal);
 // app.use("/api/v1/payment", paymentRoutes);
 app.use("/api/v1/newsletter", newsletter);
+app.use("/api/v1/destination", destination);
 app.use("/api/v1/tax", tax);
 // app.use("/api/v1/couponCode", couponCode);
 app.use("/api/v1/users", userRoutes);
