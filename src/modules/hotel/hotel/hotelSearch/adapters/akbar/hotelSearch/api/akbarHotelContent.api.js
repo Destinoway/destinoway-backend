@@ -56,11 +56,15 @@ import { getAKBARToken } from "../../../../../../supplier/akbar/akbarAuth.servic
 export const akbarHotelContentAPI = async ({
   searchId,
   searchTracingKey,
+  limit = 50,
+  offset = -1,
 }) => {
   console.log("========== AKBAR CONTENT API START ==========");
 
   console.log("Search ID:", searchId);
   console.log("Search Tracing Key:", searchTracingKey);
+  console.log("Content Limit:", limit);
+  console.log("Content Offset:", offset);
 
   const token = await getAKBARToken();
 
@@ -75,14 +79,16 @@ export const akbarHotelContentAPI = async ({
 
     const response = await axios.get(url, {
       params: {
-        limit: 50,
-        offset: -1,
+        limit,
+        offset,
         filterdata: false,
       },
+
       headers: {
         Authorization: `Bearer ${token}`,
         "search-tracing-key": searchTracingKey,
       },
+
       timeout: 30000,
     });
 
@@ -92,18 +98,9 @@ export const akbarHotelContentAPI = async ({
       `⏱️ AKBAR CONTENT API TIME: ${(apiEnd - apiStart).toFixed(2)} ms`
     );
 
-    // ========================================
-    // RAW CONTENT DEBUG
-    // ========================================
+    console.log("========== AKBAR CONTENT RESPONSE ==========");
 
-    console.log(
-      "========== AKBAR RAW CONTENT DEBUG =========="
-    );
-
-    console.log(
-      "CONTENT STATUS:",
-      response.status
-    );
+    console.log("CONTENT STATUS:", response.status);
 
     console.log(
       "CONTENT SEARCH STATUS:",
@@ -112,16 +109,12 @@ export const akbarHotelContentAPI = async ({
 
     console.log(
       "CONTENT HOTEL COUNT:",
-      response.data?.hotels?.length
+      response.data?.hotels?.length || 0
     );
 
     console.log(
-      "CONTENT SAMPLE:",
-      JSON.stringify(
-        response.data?.hotels?.slice(0, 3),
-        null,
-        2
-      )
+      "CONTENT TOTAL:",
+      response.data?.total ?? null
     );
 
     console.log(
@@ -132,9 +125,7 @@ export const akbarHotelContentAPI = async ({
       }))
     );
 
-    console.log(
-      "============================================="
-    );
+    console.log("=============================================");
 
     return response.data;
   } catch (error) {
@@ -145,11 +136,7 @@ export const akbarHotelContentAPI = async ({
 
     console.error(
       "Response:",
-      JSON.stringify(
-        error.response?.data,
-        null,
-        2
-      )
+      JSON.stringify(error.response?.data, null, 2)
     );
 
     console.error("=============================================");
