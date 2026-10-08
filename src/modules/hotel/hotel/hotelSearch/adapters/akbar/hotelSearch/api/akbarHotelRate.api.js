@@ -75,6 +75,10 @@ export const akbarHotelRateAPIWithPolling =
 
         const data =
           response.data;
+          console.log(
+  "🔍 AKBAR RAW RATE RESPONSE:",
+  JSON.stringify(data, null, 2)
+);
 
         const elapsed =
           performance.now() - start;
