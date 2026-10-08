@@ -1,8 +1,7 @@
 export const mapAkbarHotelRateResponse = (
   response
 ) => {
-  const hotels =
-    response?.hotels || [];
+  const hotels = response?.hotels || [];
 
   return hotels
     .filter((hotel) => hotel?.id)
@@ -15,73 +14,57 @@ export const mapAkbarHotelRateResponse = (
       rate: hotel.rate
         ? {
             total:
-              hotel.rate.total ??
-              null,
+              hotel.rate.total ?? null,
 
             baseRate:
-              hotel.rate.baseRate ??
-              null,
+              hotel.rate.baseRate ?? null,
 
             commission:
-              hotel.rate.commission ??
-              null,
+              hotel.rate.commission ?? null,
 
             discounts:
-              hotel.rate.discounts ??
-              null,
+              hotel.rate.discounts ?? null,
 
             taxes:
-              hotel.rate.taxes ??
-              null,
+              hotel.rate.taxes ?? null,
 
             provider:
-              hotel.rate.provider ??
-              null,
+              hotel.rate.provider ?? null,
 
             pointEquivalent:
-              hotel.rate
-                .pointEquivalent ??
-              null,
+              hotel.rate.pointEquivalent ?? null,
 
             otherRateComponents:
-              hotel.rate
-                .otherRateComponents ||
-              [],
+              hotel.rate.otherRateComponents || [],
 
             offer:
-              hotel.rate.offer ??
-              null,
+              hotel.rate.offer ?? null,
 
             gstOnCommission:
-              hotel.rate
-                .gstOnCommission ??
-              null,
+              hotel.rate.gstOnCommission ?? null,
           }
         : null,
 
       isRecommended:
-        hotel.isRecommended ??
-        false,
+        hotel.isRecommended ?? false,
 
       moreRatesExpected:
-        hotel.moreRatesExpected ??
-        false,
+        hotel.moreRatesExpected ?? false,
 
       isRefundable:
-        hotel.isRefundable ??
-        false,
+        hotel.isRefundable ?? false,
 
       freeBreakfast:
-        hotel.freeBreakfast ??
-        null,
+        hotel.freeBreakfast ?? null,
 
       payAtHotel:
-        hotel.payAtHotel ??
-        false,
+        hotel.payAtHotel ?? false,
 
       freeCancellation:
-        hotel.freeCancellation ??
-        false,
+        hotel.freeCancellation ?? false,
+
+      availableSuppliers:
+        hotel.availableSuppliers || [],
 
       rawSupplierData: hotel,
     }));
