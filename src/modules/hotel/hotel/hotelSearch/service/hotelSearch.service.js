@@ -6,27 +6,31 @@ import {
 
 import {
   createHotelSearchState,
-  getUserActiveSearchId,
+  getActiveSearchId,
   cancelAndDeleteHotelSearch,
   failHotelSearch,
 } from "./hotelSearch.redis.service.js";
 
+// =========================================================
+// SUPPLIER ADAPTERS
+// =========================================================
 
 const supplierAdapters = {
   AKBAR: akbarHotelSearchAdapter,
 };
 
+// =========================================================
+// START HOTEL SEARCH
+// =========================================================
 
 export const searchHotels = async ({
   payload,
-  userId,
+  searchSessionId,
 }) => {
-
   const supplier = "AKBAR";
 
   const adapter =
     supplierAdapters[supplier];
-
 
   if (!adapter) {
     throw new Error(
@@ -34,111 +38,100 @@ export const searchHotels = async ({
     );
   }
 
-
-  if (!userId) {
+  if (!searchSessionId) {
     throw new Error(
-      "User ID is required for hotel search"
+      "Search session ID is required"
     );
   }
 
-
-  // =====================================================
+  // =======================================================
   // 1. FIND PREVIOUS ACTIVE SEARCH
-  // =====================================================
+  // =======================================================
 
   const previousSearchId =
-    await getUserActiveSearchId(
-      userId
+    await getActiveSearchId(
+      searchSessionId
     );
 
+  // =======================================================
+  // 2. CANCEL PREVIOUS SEARCH
+  // =======================================================
 
   if (previousSearchId) {
-
     console.log(
-      "🔄 PREVIOUS ACTIVE SEARCH FOUND:",
+      "🔄 PREVIOUS HOTEL SEARCH FOUND:",
       previousSearchId
     );
 
-
     await cancelAndDeleteHotelSearch(
-      previousSearchId
+      previousSearchId,
+      searchSessionId
     );
   }
 
-
-  // =====================================================
-  // 2. CREATE NEW INTERNAL SEARCH ID
-  // =====================================================
+  // =======================================================
+  // 3. CREATE NEW INTERNAL SEARCH ID
+  // =======================================================
 
   const searchId =
     crypto.randomUUID();
 
-
-  // =====================================================
-  // 3. CREATE REDIS STATE
-  // =====================================================
+  // =======================================================
+  // 4. CREATE REDIS STATE
+  // =======================================================
 
   await createHotelSearchState({
     searchId,
-    userId,
+    searchSessionId,
     supplier,
   });
 
+  console.log(
+    "🚀 NEW HOTEL SEARCH:",
+    searchId
+  );
 
-  // =====================================================
-  // 4. START BACKGROUND SEARCH
-  // =====================================================
+  // =======================================================
+  // 5. START BACKGROUND SEARCH
+  // =======================================================
 
   setImmediate(() => {
-
     adapter
-      .search(
-        payload,
-        {
-          internalSearchId:
-            searchId,
-        }
-      )
-      .catch(
-        async (error) => {
+      .search(payload, {
+        internalSearchId: searchId,
+        searchSessionId,
+      })
+      .catch(async (error) => {
+        console.error(
+          "❌ BACKGROUND HOTEL SEARCH FAILED:",
+          error
+        );
 
-          console.error(
-            "❌ BACKGROUND HOTEL SEARCH FAILED:",
+        try {
+          await failHotelSearch(
+            searchId,
             error
           );
-
-
-          try {
-
-            await failHotelSearch(
-              searchId,
-              error
-            );
-
-          } catch (
+        } catch (redisError) {
+          console.error(
+            "❌ FAILED TO UPDATE REDIS SEARCH ERROR:",
             redisError
-          ) {
-
-            console.error(
-              "❌ FAILED TO UPDATE REDIS ERROR:",
-              redisError
-            );
-          }
+          );
         }
-      );
+      });
   });
 
-
-  // =====================================================
-  // 5. RETURN IMMEDIATELY
-  // =====================================================
+  // =======================================================
+  // 6. RETURN IMMEDIATELY
+  // =======================================================
 
   return {
     searchId,
 
+    searchSessionId,
+
     supplier,
 
-    status:
-      "processing",
+    status: "processing",
   };
 };

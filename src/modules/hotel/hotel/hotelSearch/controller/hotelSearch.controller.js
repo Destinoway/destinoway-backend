@@ -1,3 +1,5 @@
+import crypto from "crypto";
+
 import { asyncHandler } from "../../../../../middleware/asyncHandler.js";
 
 import {
@@ -10,44 +12,69 @@ import {
 } from "../service/hotelSearch.service.js";
 
 
+// =========================================================
+// HOTEL SEARCH
+// =========================================================
+
 export const searchHotelsController =
-  asyncHandler(
-    async (req, res) => {
+  asyncHandler(async (req, res) => {
+    try {
+      // =====================================================
+      // GET ANONYMOUS SEARCH SESSION ID
+      // =====================================================
 
-      try {
+      let searchSessionId =
+        req.headers[
+          "x-search-session-id"
+        ];
 
-        const userId =
-          req.user?.id ||
-          req.user?._id ||
-          req.user?.userId;
-
-
-        const result =
-          await searchHotels({
-            payload: req.body,
-            userId,
-          });
-
-
-        return sendSuccess(
-          res,
-          result,
-          "Hotel search started successfully"
-        );
-
-      } catch (error) {
-
-        console.error(
-          "❌ HOTEL SEARCH ERROR:",
-          error
-        );
-
-
-        return sendError(
-          res,
-          error.message ||
-            "Hotel search failed"
-        );
+      // Express header can technically be an array
+      if (Array.isArray(searchSessionId)) {
+        searchSessionId =
+          searchSessionId[0];
       }
+
+      // =====================================================
+      // IF FIRST SEARCH → CREATE SESSION ID
+      // =====================================================
+
+      if (!searchSessionId) {
+        searchSessionId =
+          crypto.randomUUID();
+      }
+
+      // =====================================================
+      // START SEARCH
+      // =====================================================
+
+      const result =
+        await searchHotels({
+          payload: req.body,
+          searchSessionId,
+        });
+
+      // Send session ID back to frontend
+      // so it can reuse it for next search.
+      res.setHeader(
+        "X-Search-Session-Id",
+        searchSessionId
+      );
+
+      return sendSuccess(
+        res,
+        result,
+        "Hotel search started successfully"
+      );
+    } catch (error) {
+      console.error(
+        "❌ HOTEL SEARCH ERROR:",
+        error
+      );
+
+      return sendError(
+        res,
+        error.message ||
+          "Hotel search failed"
+      );
     }
-  );
+  });
