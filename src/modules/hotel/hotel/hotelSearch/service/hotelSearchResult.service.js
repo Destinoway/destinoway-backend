@@ -63,7 +63,7 @@ import {
 
 import {
   mapHotelSearchResponse,
-} from "../mappers/hotelSearch.response.mapper.js";
+} from "../adapters/akbar/hotelSearch/mappers/hotelSearch.response.mapper.js";
 
 export const getHotelSearchResults = async ({
   searchId,
