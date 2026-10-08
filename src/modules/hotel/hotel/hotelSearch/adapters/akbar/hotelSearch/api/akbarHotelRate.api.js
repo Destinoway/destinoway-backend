@@ -247,127 +247,171 @@
 //     );
 //   }
 // };
-
 import axios from "axios";
-import { getAKBARToken } from "../../../../../../supplier/akbar/akbarAuth.service.js";
 
-const RATE_REQUEST_TIMEOUT = 10000;
-const RATE_MAX_POLL_TIME = 20000;
-const RATE_POLL_DELAY = 700;
+import {
+  getAKBARToken,
+} from "../../../../../../supplier/akbar/akbarAuth.service.js";
 
-const sleep = (ms) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
-
-export const akbarHotelRateAPI = async ({
-  searchId,
-  searchTracingKey,
-}) => {
-  const token = await getAKBARToken();
-
-  const url = `${process.env.AKBAR_HOTEL_API_URL}/api/hotels/search/result/${searchId}/rate`;
-
-  console.log("💰 AKBAR RATE API START");
-  console.log("Search ID:", searchId);
-
-  try {
-    const apiStart = performance.now();
-
-    const response = await axios.get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "search-tracing-key": searchTracingKey,
-      },
-      timeout: RATE_REQUEST_TIMEOUT,
-    });
-
-    const apiEnd = performance.now();
-
-    console.log(
-      `⏱️ AKBAR RATE API TIME: ${(apiEnd - apiStart).toFixed(2)} ms`
-    );
-
-    console.log("✅ AKBAR RATE STATUS:", response.status);
-
-    return response.data;
-  } catch (error) {
-    console.error("❌ AKBAR RATE ERROR");
-
-    console.error("Message:", error.message);
-    console.error("Status:", error.response?.status);
-    console.error("Response:", error.response?.data);
-    console.error("URL:", error.config?.url);
-
-    throw error;
-  }
-};
-
+/**
+ * Poll AKBAR Rate API until search is completed.
+ *
+ * Important:
+ * - No overall 20-second timeout.
+ * - Every individual HTTP request has a timeout.
+ * - onUpdate() receives every rate response.
+ */
 export const akbarHotelRateAPIWithPolling = async ({
   searchId,
   searchTracingKey,
+  onUpdate,
 }) => {
-  const pollingStart = Date.now();
+  const url =
+    `${process.env.AKBAR_HOTEL_API_URL}` +
+    `/api/hotels/search/result/${searchId}/rate`;
+
+  console.log(
+    "🔄 AKBAR RATE POLLING START"
+  );
 
   let attempt = 0;
 
   while (true) {
-    attempt++;
+    attempt += 1;
 
-    const elapsed = Date.now() - pollingStart;
+    const attemptStart = performance.now();
 
-    if (elapsed >= RATE_MAX_POLL_TIME) {
-      throw new Error(
-        `AKBAR Rate polling timeout after ${RATE_MAX_POLL_TIME} ms`
+    try {
+      const token =
+        await getAKBARToken();
+
+      console.log(
+        `🔄 AKBAR RATE ATTEMPT #${attempt}`
       );
-    }
 
-    console.log("");
-    console.log("==========================================");
-    console.log(`🔄 AKBAR RATE POLLING ATTEMPT: ${attempt}`);
-    console.log(`⏱️ ELAPSED: ${elapsed} ms`);
-    console.log("==========================================");
+      const response = await axios.get(
+        url,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "search-tracing-key":
+              searchTracingKey,
+          },
 
-    const response = await akbarHotelRateAPI({
-      searchId,
-      searchTracingKey,
-    });
-
-    const searchStatus = String(
-      response?.searchStatus || ""
-    ).toLowerCase();
-
-    const hotels = response?.hotels || [];
-
-    const total = response?.total ?? hotels.length;
-
-    console.log("📊 RATE SEARCH STATUS:", searchStatus);
-    console.log("🏨 RATE HOTELS:", hotels.length);
-    console.log("📦 RATE TOTAL:", total);
-
-    // IMPORTANT:
-    // Do NOT use hotels.length >= total here.
-    // Supplier can return inProgress with hotels already available.
-    if (searchStatus === "completed") {
-      console.log("");
-      console.log("✅ AKBAR RATE SEARCH COMPLETED");
-      console.log("Final Rate Hotels:", hotels.length);
-      console.log("Final Rate Total:", total);
-
-      return response;
-    }
-
-    if (
-      searchStatus === "failed" ||
-      searchStatus === "error"
-    ) {
-      throw new Error(
-        `AKBAR Rate search failed. Status: ${searchStatus}`
+          // Individual HTTP request timeout only.
+          // There is NO overall polling timeout.
+          timeout: 60000,
+        }
       );
+
+      const attemptEnd =
+        performance.now();
+
+      const data = response.data;
+
+      console.log(
+        `⏱️ AKBAR RATE ATTEMPT #${attempt} TIME: ` +
+          `${(attemptEnd - attemptStart).toFixed(2)} ms`
+      );
+
+      console.log(
+        `📊 AKBAR RATE STATUS: ${
+          data?.searchStatus
+        }`
+      );
+
+      console.log(
+        `📊 AKBAR RATE HOTELS: ${
+          data?.hotels?.length || 0
+        }`
+      );
+
+      console.log(
+        `📊 AKBAR RATE TOTAL: ${
+          data?.total ??
+          data?.Count ??
+          data?.count ??
+          0
+        }`
+      );
+
+      /**
+       * Send every response to background search.
+       */
+      if (onUpdate) {
+        await onUpdate(data);
+      }
+
+      const searchStatus =
+        String(
+          data?.searchStatus || ""
+        ).toLowerCase();
+
+      /**
+       * SUCCESS
+       */
+      if (
+        searchStatus === "completed"
+      ) {
+        console.log(
+          "✅ AKBAR RATE SEARCH COMPLETED"
+        );
+
+        return data;
+      }
+
+      /**
+       * FAILURE
+       */
+      if (
+        searchStatus === "failed" ||
+        searchStatus === "error"
+      ) {
+        throw new Error(
+          `AKBAR Rate search failed. Status: ${data?.searchStatus}`
+        );
+      }
+
+      /**
+       * Still processing.
+       */
+      console.log(
+        "⏳ AKBAR RATE SEARCH STILL IN PROGRESS"
+      );
+
+      /**
+       * Small delay before next poll.
+       *
+       * We are intentionally NOT using
+       * a 20-second total timeout.
+       */
+      await sleep(1000);
+    } catch (error) {
+      console.error(
+        `❌ AKBAR RATE ATTEMPT #${attempt} ERROR`
+      );
+
+      console.error(
+        "Message:",
+        error.message
+      );
+
+      console.error(
+        "Status:",
+        error.response?.status
+      );
+
+      console.error(
+        "Response:",
+        error.response?.data
+      );
+
+      throw error;
     }
-
-    console.log(
-      `⏳ RATE STILL IN PROGRESS. Waiting ${RATE_POLL_DELAY} ms...`
-    );
-
-    await sleep(RATE_POLL_DELAY);
   }
 };
+
+const sleep = (ms) =>
+  new Promise((resolve) =>
+    setTimeout(resolve, ms)
+  );
