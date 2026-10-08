@@ -1,15 +1,8 @@
 import { akbarInitAPI } from "./api/akbarInit.api.js";
-
 import { akbarHotelContentAPI } from "./api/akbarHotelContent.api.js";
+import { akbarHotelRateAPIWithPolling } from "./api/akbarHotelRate.api.js";
 
-import {
-  akbarHotelRateAPIWithPolling,
-} from "./api/akbarHotelRate.api.js";
-
-import {
-  mapAkbarInitRequest,
-} from "./mappers/akbarInit.request.mapper.js";
-
+import { mapAkbarInitRequest } from "./mappers/akbarInit.request.mapper.js";
 import {
   mapAkbarHotelContentResponse,
 } from "./mappers/akbarHotelContent.response.mapper.js";
@@ -26,10 +19,6 @@ import {
 } from "../../../service/hotelSearch.redis.service.js";
 
 
-// =========================================================
-// AKBAR HOTEL SEARCH ADAPTER
-// =========================================================
-
 export const akbarHotelSearchAdapter = {
   async search(
     payload,
@@ -39,10 +28,6 @@ export const akbarHotelSearchAdapter = {
     } = {}
   ) {
     const totalStart = performance.now();
-
-    // =======================================================
-    // VALIDATION
-    // =======================================================
 
     if (!internalSearchId) {
       throw new Error(
@@ -56,9 +41,9 @@ export const akbarHotelSearchAdapter = {
       );
     }
 
-    // =======================================================
+    // =========================================================
     // SEARCH ACTIVE CHECK
-    // =======================================================
+    // =========================================================
 
     const ensureSearchIsActive = async () => {
       const active = await isHotelSearchActive(
@@ -67,12 +52,8 @@ export const akbarHotelSearchAdapter = {
       );
 
       if (!active) {
-        console.log("");
-        console.log("==========================================");
-        console.log("🛑 AKBAR SEARCH CANCELLED");
-        console.log("==========================================");
         console.log(
-          "Internal Search ID:",
+          "🛑 AKBAR SEARCH CANCELLED:",
           internalSearchId
         );
 
@@ -82,17 +63,15 @@ export const akbarHotelSearchAdapter = {
       return true;
     };
 
-    // =======================================================
-    // 1. CHECK SEARCH
-    // =======================================================
 
     if (!(await ensureSearchIsActive())) {
       return;
     }
 
-    // =======================================================
-    // 2. MAP INIT REQUEST
-    // =======================================================
+
+    // =========================================================
+    // INIT
+    // =========================================================
 
     const mappingStart = performance.now();
 
@@ -102,21 +81,18 @@ export const akbarHotelSearchAdapter = {
     const mappingEnd = performance.now();
 
     console.log(
-      `⏱️ INIT REQUEST MAPPING TIME: ${(
-        mappingEnd - mappingStart
-      ).toFixed(2)} ms`
+      `⏱️ INIT REQUEST MAPPING TIME: ${(mappingEnd - mappingStart).toFixed(2)} ms`
     );
 
-    // =======================================================
-    // 3. AKBAR INIT
-    // =======================================================
 
     if (!(await ensureSearchIsActive())) {
       return;
     }
 
+
     const initResponse =
       await akbarInitAPI(initPayload);
+
 
     if (!initResponse?.searchId) {
       throw new Error(
@@ -124,9 +100,6 @@ export const akbarHotelSearchAdapter = {
       );
     }
 
-    // =======================================================
-    // AKBAR SEARCH CONTEXT
-    // =======================================================
 
     const searchContext = {
       searchId: initResponse.searchId,
@@ -134,35 +107,19 @@ export const akbarHotelSearchAdapter = {
         initResponse.searchTracingKey,
     };
 
-    console.log("");
-    console.log("==========================================");
-    console.log("🔎 AKBAR SEARCH CONTEXT");
-    console.log("==========================================");
 
     console.log(
-      "Internal Search ID:",
-      internalSearchId
+      "🔎 AKBAR SEARCH CONTEXT",
+      {
+        internalSearchId,
+        searchSessionId,
+        akbarSearchId:
+          searchContext.searchId,
+        searchTracingKey:
+          searchContext.searchTracingKey,
+      }
     );
 
-    console.log(
-      "Search Session ID:",
-      searchSessionId
-    );
-
-    console.log(
-      "Akbar Search ID:",
-      searchContext.searchId
-    );
-
-    console.log(
-      "Search Tracing Key:",
-      searchContext.searchTracingKey
-    );
-
-    // =======================================================
-    // 4. UPDATE REDIS
-    // AKBAR INIT COMPLETED
-    // =======================================================
 
     await updateHotelSearchMeta(
       internalSearchId,
@@ -178,180 +135,397 @@ export const akbarHotelSearchAdapter = {
       }
     );
 
-    // =======================================================
-    // 5. START CONTENT #1 + RATE IN PARALLEL
-    // =======================================================
 
-    const contentRateStart =
-      performance.now();
+    // =========================================================
+    // LOCAL SEARCH STATE
+    // =========================================================
 
-    console.log("");
-    console.log("==========================================");
-    console.log("🚀 STARTING CONTENT + RATE");
-    console.log("==========================================");
+    let allContentHotels = [];
 
-    // -------------------------------------------------------
-    // CONTENT #1
-    // -------------------------------------------------------
+    const contentMap = new Map();
+
+    const rateMap = new Map();
+
+    let latestRateResponse = null;
+
+    let totalContent = 0;
+
+
+    // =========================================================
+    // BUILD MERGED RESULTS
+    // =========================================================
+
+    const buildMergedHotels = () => {
+      const contentHotels = Array.from(
+        contentMap.values()
+      );
+
+      const mergedHotels =
+        contentHotels
+          .map((hotel) => {
+            const rateHotel =
+              rateMap.get(
+                String(
+                  hotel.supplierHotelId
+                )
+              );
+
+            if (!rateHotel?.rate) {
+              return null;
+            }
+
+            return {
+              ...hotel,
+
+              rate:
+                rateHotel.rate,
+
+              isRecommended:
+                rateHotel.isRecommended ??
+                null,
+
+              isRefundable:
+                rateHotel.isRefundable ??
+                null,
+
+              moreRatesExpected:
+                rateHotel.moreRatesExpected ??
+                false,
+
+              freeBreakfast:
+                rateHotel.freeBreakfast ??
+                null,
+
+              payAtHotel:
+                rateHotel.payAtHotel ??
+                false,
+
+              freeCancellation:
+                rateHotel.freeCancellation ??
+                false,
+
+              currency:
+                latestRateResponse?.currency ||
+                "INR",
+
+              rateSupplierData:
+                rateHotel,
+            };
+          })
+          .filter(Boolean);
+
+      return mergedHotels;
+    };
+
+
+    // =========================================================
+    // REDIS WRITE QUEUE
+    // =========================================================
+    //
+    // Content aur Rate dono parallel update kar sakte hain.
+    // Isliye Redis writes ko queue kar rahe hain.
+    //
+
+    let publishChain = Promise.resolve();
+
+
+    const publishMatchedResults = (
+      reason = "unknown"
+    ) => {
+      publishChain =
+        publishChain
+          .then(async () => {
+
+            if (
+              !(await ensureSearchIsActive())
+            ) {
+              return;
+            }
+
+            const mergedHotels =
+              buildMergedHotels();
+
+
+            await setHotelSearchResults(
+              internalSearchId,
+              mergedHotels
+            );
+
+
+            console.log(
+              `📦 AKBAR REDIS PUBLISH [${reason}] → ${mergedHotels.length} matched hotels`
+            );
+          })
+          .catch((error) => {
+            console.error(
+              "❌ AKBAR REDIS PUBLISH ERROR:",
+              error
+            );
+          });
+
+
+      return publishChain;
+    };
+
+
+    // =========================================================
+    // CONTENT UPDATE
+    // =========================================================
+
+    const processContentResponse = async (
+      response,
+      reason
+    ) => {
+
+      const hotels =
+        response?.hotels || [];
+
+
+      for (const hotel of hotels) {
+
+        if (!hotel?.id) {
+          continue;
+        }
+
+        const hotelId =
+          String(hotel.id);
+
+        contentMap.set(
+          hotelId,
+          hotel
+        );
+      }
+
+
+      allContentHotels =
+        Array.from(
+          contentMap.values()
+        );
+
+
+      console.log(
+        `🏨 AKBAR CONTENT ${reason}: ${hotels.length}`
+      );
+
+      console.log(
+        `📦 AKBAR TOTAL CONTENT LOADED: ${allContentHotels.length}`
+      );
+
+
+      await publishMatchedResults(
+        `CONTENT-${reason}`
+      );
+    };
+
+
+    // =========================================================
+    // RATE UPDATE
+    // =========================================================
+
+    const processRateResponse = async (
+      response
+    ) => {
+
+      if (!response) {
+        return;
+      }
+
+
+      latestRateResponse =
+        response;
+
+
+      const rates =
+        mapAkbarHotelRateResponse(
+          response
+        );
+
+
+      for (const rateHotel of rates) {
+
+        if (
+          !rateHotel?.supplierHotelId
+        ) {
+          continue;
+        }
+
+
+        if (!rateHotel?.rate) {
+          continue;
+        }
+
+
+        rateMap.set(
+          String(
+            rateHotel.supplierHotelId
+          ),
+          rateHotel
+        );
+      }
+
+
+      console.log(
+        `💰 AKBAR RATE UPDATE → ${rates.length} rates`
+      );
+
+
+      console.log(
+        `🔗 CURRENT CONTENT: ${contentMap.size}`
+      );
+
+
+      console.log(
+        `🔗 CURRENT MATCHED RATES: ${rateMap.size}`
+      );
+
+
+      await publishMatchedResults(
+        "RATE-UPDATE"
+      );
+    };
+
+
+    // =========================================================
+    // CONTENT #1 + RATE START TOGETHER
+    // =========================================================
+
+    console.log(
+      "🚀 STARTING AKBAR CONTENT + RATE IN PARALLEL"
+    );
+
 
     const content1Promise =
       akbarHotelContentAPI({
         ...searchContext,
 
-        // Supplier requirement:
-        // first content request = 50 + offset -1
         limit: 50,
+
         offset: -1,
       });
 
-    // -------------------------------------------------------
-    // RATE POLLING
-    // -------------------------------------------------------
 
     const ratePromise =
       akbarHotelRateAPIWithPolling(
-        searchContext
+        searchContext,
+        {
+          onUpdate:
+            processRateResponse,
+
+          shouldContinue:
+            ensureSearchIsActive,
+        }
       );
 
-    // =======================================================
-    // 6. WAIT FOR CONTENT #1
-    // =======================================================
+
+    // =========================================================
+    // CONTENT #1
+    // =========================================================
 
     const content1Response =
       await content1Promise;
 
-    // Search may have been cancelled while
-    // Akbar was processing Content #1.
-    if (!(await ensureSearchIsActive())) {
+
+    if (
+      !(await ensureSearchIsActive())
+    ) {
       return;
     }
 
-    const content1Hotels =
-      content1Response?.hotels || [];
 
-    const totalContent =
+    totalContent =
       content1Response?.total ??
       content1Response?.Count ??
       content1Response?.count ??
       0;
 
-    console.log("");
-    console.log("==========================================");
-    console.log("📄 CONTENT #1 COMPLETED");
-    console.log("==========================================");
 
     console.log(
-      "Content #1 Hotels:",
-      content1Hotels.length
-    );
-
-    console.log(
-      "Total Content Hotels:",
+      "📊 AKBAR TOTAL CONTENT:",
       totalContent
     );
 
-    // =======================================================
-    // UPDATE REDIS
-    // =======================================================
 
     await updateHotelSearchMeta(
       internalSearchId,
       {
         totalContent,
-        contentStatus: "processing",
+        contentStatus:
+          "processing",
       }
     );
 
-    // =======================================================
-    // 7. CONTENT PAGINATION
-    // =======================================================
 
-    const allContentHotels = [
-      ...content1Hotels,
-    ];
+    await processContentResponse(
+      content1Response,
+      "PAGE-1"
+    );
+
+
+    // =========================================================
+    // CONTENT PAGINATION
+    // =========================================================
 
     let currentOffset = 50;
 
     const CONTENT_PAGE_SIZE = 2500;
 
+
     while (
       totalContent > 0 &&
-      allContentHotels.length < totalContent
+      allContentHotels.length <
+        totalContent
     ) {
-      // -----------------------------------------------------
-      // IMPORTANT:
-      // Check whether this search is still active.
-      // If another search was started from the same browser,
-      // this search will stop here.
-      // -----------------------------------------------------
 
-      if (!(await ensureSearchIsActive())) {
+      if (
+        !(await ensureSearchIsActive())
+      ) {
         return;
       }
+
 
       const remaining =
         totalContent -
         allContentHotels.length;
 
-      const currentLimit = Math.min(
-        CONTENT_PAGE_SIZE,
-        remaining
-      );
 
-      console.log("");
-      console.log("==========================================");
-      console.log("📄 AKBAR CONTENT NEXT PAGE");
-      console.log("==========================================");
+      const currentLimit =
+        Math.min(
+          CONTENT_PAGE_SIZE,
+          remaining
+        );
+
 
       console.log(
-        "Current Hotels:",
-        allContentHotels.length
+        `📄 AKBAR CONTENT NEXT PAGE → offset=${currentOffset}, limit=${currentLimit}`
       );
 
-      console.log(
-        "Remaining Hotels:",
-        remaining
-      );
-
-      console.log(
-        "Request Limit:",
-        currentLimit
-      );
-
-      console.log(
-        "Request Offset:",
-        currentOffset
-      );
 
       const contentResponse =
         await akbarHotelContentAPI({
           ...searchContext,
 
-          limit: currentLimit,
-          offset: currentOffset,
+          limit:
+            currentLimit,
+
+          offset:
+            currentOffset,
         });
 
-      // -----------------------------------------------------
-      // CHECK AGAIN AFTER SUPPLIER REQUEST
-      // -----------------------------------------------------
 
-      if (!(await ensureSearchIsActive())) {
+      if (
+        !(await ensureSearchIsActive())
+      ) {
         return;
       }
 
+
       const hotels =
-        contentResponse?.hotels || [];
+        contentResponse?.hotels ||
+        [];
 
-      console.log(
-        "Hotels Received:",
-        hotels.length
-      );
-
-      // -----------------------------------------------------
-      // SAFETY CHECK
-      // -----------------------------------------------------
 
       if (!hotels.length) {
+
         console.warn(
           "⚠️ AKBAR returned 0 hotels. Stopping pagination."
         );
@@ -359,387 +533,130 @@ export const akbarHotelSearchAdapter = {
         break;
       }
 
-      allContentHotels.push(
-        ...hotels
+
+      await processContentResponse(
+        contentResponse,
+        `OFFSET-${currentOffset}`
       );
 
-      currentOffset += hotels.length;
 
-      console.log(
-        "Total Hotels Collected:",
-        allContentHotels.length
-      );
+      currentOffset +=
+        hotels.length;
     }
 
-    // =======================================================
-    // 8. CONTENT COMPLETED
-    // =======================================================
 
-    if (!(await ensureSearchIsActive())) {
-      return;
-    }
-
-    console.log("");
-    console.log("==========================================");
-    console.log("📦 AKBAR CONTENT COMPLETED");
-    console.log("==========================================");
-
-    console.log(
-      "Expected Content:",
-      totalContent
-    );
-
-    console.log(
-      "Raw Content:",
-      allContentHotels.length
-    );
-
-    // =======================================================
-    // UPDATE REDIS
-    // =======================================================
+    // =========================================================
+    // CONTENT COMPLETED
+    // =========================================================
 
     await updateHotelSearchMeta(
       internalSearchId,
       {
-        contentStatus: "completed",
+        contentStatus:
+          "completed",
+
         totalContent:
           allContentHotels.length,
       }
     );
 
-    // =======================================================
-    // 9. WAIT FOR RATE TO COMPLETE
-    // =======================================================
 
-    console.log("");
-    console.log("==========================================");
-    console.log("⏳ WAITING FOR FINAL RATE RESPONSE");
-    console.log("==========================================");
+    console.log(
+      "✅ AKBAR CONTENT COMPLETED:",
+      allContentHotels.length
+    );
+
+
+    // =========================================================
+    // WAIT FOR RATE COMPLETION
+    // =========================================================
 
     const rateResponse =
       await ratePromise;
 
-    // -------------------------------------------------------
-    // IMPORTANT:
-    // Rate may have completed after user started another
-    // search. Don't save old search results.
-    // -------------------------------------------------------
 
-    if (!(await ensureSearchIsActive())) {
+    if (
+      !(await ensureSearchIsActive())
+    ) {
       return;
     }
 
-    const contentRateEnd =
-      performance.now();
 
-    console.log(
-      `⏱️ CONTENT + RATE TOTAL TIME: ${(
-        contentRateEnd -
-        contentRateStart
-      ).toFixed(2)} ms`
-    );
-
-    // =======================================================
-    // 10. DEDUPLICATE CONTENT
-    // =======================================================
-
-    const uniqueContentHotels =
-      Array.from(
-        new Map(
-          allContentHotels
-            .filter(
-              (hotel) => hotel?.id
-            )
-            .map((hotel) => [
-              String(hotel.id),
-              hotel,
-            ])
-        ).values()
+    // Rate cancelled / stopped
+    if (!rateResponse) {
+      console.log(
+        "🛑 AKBAR RATE RETURNED NULL"
       );
 
-    console.log("");
-    console.log("==========================================");
-    console.log("📦 CONTENT SUMMARY");
-    console.log("==========================================");
+      return;
+    }
+
+
+    // =========================================================
+    // FINAL RATE UPDATE
+    // =========================================================
+
+    await processRateResponse(
+      rateResponse
+    );
+
+
+    await publishChain;
+
+
+    // =========================================================
+    // FINAL RESULT
+    // =========================================================
+
+    const finalHotels =
+      buildMergedHotels();
+
 
     console.log(
-      "Expected Content:",
-      totalContent
+      "=========================================="
     );
 
     console.log(
-      "Raw Content:",
+      "✅ AKBAR HOTEL SEARCH COMPLETED"
+    );
+
+    console.log(
+      "CONTENT:",
       allContentHotels.length
     );
 
     console.log(
-      "Unique Content:",
-      uniqueContentHotels.length
-    );
-
-    // =======================================================
-    // 11. MAP CONTENT
-    // =======================================================
-
-    const contentMappingStart =
-      performance.now();
-
-    const content =
-      mapAkbarHotelContentResponse({
-        hotels: uniqueContentHotels,
-      });
-
-    const contentMappingEnd =
-      performance.now();
-
-    console.log(
-      `⏱️ CONTENT MAPPING TIME: ${(
-        contentMappingEnd -
-        contentMappingStart
-      ).toFixed(2)} ms`
-    );
-
-    // =======================================================
-    // 12. MAP RATE
-    // =======================================================
-
-    const rateMappingStart =
-      performance.now();
-
-    const rates =
-      mapAkbarHotelRateResponse(
-        rateResponse
-      );
-
-    const rateMappingEnd =
-      performance.now();
-
-    console.log(
-      `⏱️ RATE MAPPING TIME: ${(
-        rateMappingEnd -
-        rateMappingStart
-      ).toFixed(2)} ms`
-    );
-
-    // =======================================================
-    // 13. CONTENT / RATE MATCH
-    // =======================================================
-
-    console.log("");
-    console.log("==========================================");
-    console.log("🔗 AKBAR CONTENT / RATE MATCH");
-    console.log("==========================================");
-
-    console.log(
-      "CONTENT HOTEL COUNT:",
-      content.length
+      "RATES:",
+      rateMap.size
     );
 
     console.log(
-      "RATE HOTEL COUNT:",
-      rates.length
+      "MATCHED:",
+      finalHotels.length
     );
-
-    const rateIdSet =
-      new Set(
-        rates
-          .filter(
-            (hotel) =>
-              hotel?.supplierHotelId
-          )
-          .map(
-            (hotel) =>
-              String(
-                hotel.supplierHotelId
-              )
-          )
-      );
 
     console.log(
-      "CONTENT/RATE SAMPLE:",
-      content
-        .slice(0, 10)
-        .map((hotel) => ({
-          supplierHotelId:
-            hotel.supplierHotelId,
-
-          name:
-            hotel.name,
-
-          hasRateMatch:
-            rateIdSet.has(
-              String(
-                hotel.supplierHotelId
-              )
-            ),
-        }))
+      "=========================================="
     );
 
-    // =======================================================
-    // 14. MERGE CONTENT + RATE
-    // ONLY RATE AVAILABLE HOTELS
-    // =======================================================
-
-    const mergeStart =
-      performance.now();
-
-    const rateMap =
-      new Map(
-        rates
-          .filter(
-            (hotel) =>
-              hotel?.supplierHotelId &&
-              hotel?.rate
-          )
-          .map((hotel) => [
-            String(
-              hotel.supplierHotelId
-            ),
-            hotel,
-          ])
-      );
-
-    const mergedHotels =
-      content
-        .map((hotel) => {
-          const rateHotel =
-            rateMap.get(
-              String(
-                hotel.supplierHotelId
-              )
-            );
-
-          if (!rateHotel?.rate) {
-            return null;
-          }
-
-          return {
-            ...hotel,
-
-            rate:
-              rateHotel.rate,
-
-            isRecommended:
-              rateHotel.isRecommended ??
-              null,
-
-            isRefundable:
-              rateHotel.isRefundable ??
-              null,
-
-            moreRatesExpected:
-              rateHotel.moreRatesExpected ??
-              false,
-
-            freeBreakfast:
-              rateHotel.freeBreakfast ??
-              null,
-
-            payAtHotel:
-              rateHotel.payAtHotel ??
-              false,
-
-            freeCancellation:
-              rateHotel.freeCancellation ??
-              false,
-
-            currency:
-              rateResponse?.currency ||
-              "INR",
-
-            rateSupplierData:
-              rateHotel,
-          };
-        })
-        .filter(Boolean);
-
-    const mergeEnd =
-      performance.now();
-
-    console.log(
-      `⏱️ HOTEL MERGE TIME: ${(
-        mergeEnd - mergeStart
-      ).toFixed(2)} ms`
-    );
-
-    // =======================================================
-    // 15. FINAL ACTIVE CHECK
-    // =======================================================
-
-    if (!(await ensureSearchIsActive())) {
-      return;
-    }
-
-    // =======================================================
-    // 16. SAVE RESULTS TO REDIS
-    // =======================================================
 
     await setHotelSearchResults(
       internalSearchId,
-      mergedHotels
+      finalHotels
     );
+
 
     await updateHotelSearchMeta(
       internalSearchId,
       {
-        rateStatus: "completed",
+        rateStatus:
+          "completed",
 
         availableHotels:
-          mergedHotels.length,
+          finalHotels.length,
       }
     );
 
-    // =======================================================
-    // 17. FINAL DEBUG
-    // =======================================================
-
-    console.log("");
-    console.log("==========================================");
-    console.log("🏨 FINAL AKBAR HOTEL RESULT");
-    console.log("==========================================");
-
-    console.log(
-      "CONTENT HOTELS:",
-      content.length
-    );
-
-    console.log(
-      "RATE HOTELS:",
-      rates.length
-    );
-
-    console.log(
-      "RATE AVAILABLE HOTELS:",
-      mergedHotels.length
-    );
-
-    console.log(
-      "REMOVED NO-RATE HOTELS:",
-      content.length -
-        mergedHotels.length
-    );
-
-    console.log("");
-
-    console.log(
-      mergedHotels
-        .slice(0, 10)
-        .map((hotel) => ({
-          supplierHotelId:
-            hotel.supplierHotelId,
-
-          name:
-            hotel.name,
-
-          total:
-            hotel.rate?.total ??
-            null,
-        }))
-    );
-
-    // =======================================================
-    // 18. COMPLETE SEARCH
-    // =======================================================
 
     await completeHotelSearch(
       internalSearchId,
@@ -751,35 +668,19 @@ export const akbarHotelSearchAdapter = {
           "completed",
 
         availableHotels:
-          mergedHotels.length,
+          finalHotels.length,
       }
     );
 
-    // =======================================================
-    // 19. TOTAL TIME
-    // =======================================================
-
-    const totalEnd =
-      performance.now();
-
-    console.log("");
-
-    console.log("==========================================");
-    console.log("⏱️ AKBAR SEARCH COMPLETE");
-    console.log("==========================================");
 
     console.log(
-      `TOTAL AKBAR SEARCH TIME: ${(
-        totalEnd - totalStart
-      ).toFixed(2)} ms`
+      `⏱️ TOTAL AKBAR SEARCH TIME: ${(performance.now() - totalStart).toFixed(2)} ms`
     );
 
-    // =======================================================
-    // 20. FINAL COMMON RESPONSE
-    // =======================================================
 
     return {
-      supplier: "AKBAR",
+      supplier:
+        "AKBAR",
 
       searchContext,
 
@@ -787,7 +688,8 @@ export const akbarHotelSearchAdapter = {
 
       searchSessionId,
 
-      hotels: mergedHotels,
+      hotels:
+        finalHotels,
     };
   },
 };
