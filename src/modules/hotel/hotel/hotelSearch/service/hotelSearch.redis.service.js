@@ -8,28 +8,37 @@ const getMetaKey = (searchId) =>
 const getResultsKey = (searchId) =>
   `hotel-search:${searchId}:results`;
 
+const getUserActiveKey = (userId) =>
+  `hotel-search:user:${userId}:active`;
+
 /**
- * Create initial search state
+ * Create a new search state.
  */
 export const createHotelSearchState = async ({
   searchId,
+  userId,
   supplier = "AKBAR",
 }) => {
+  const now = new Date().toISOString();
+
   const meta = {
     searchId,
+    userId: String(userId),
     supplier,
+
     status: "processing",
 
     contentStatus: "processing",
     rateStatus: "inprogress",
 
     totalContent: 0,
+    contentReceived: 0,
     availableHotels: 0,
 
     error: null,
 
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: now,
+    updatedAt: now,
   };
 
   await redisClient.set(
@@ -48,11 +57,19 @@ export const createHotelSearchState = async ({
     }
   );
 
+  await redisClient.set(
+    getUserActiveKey(userId),
+    searchId,
+    {
+      EX: SEARCH_TTL,
+    }
+  );
+
   return meta;
 };
 
 /**
- * Get search metadata
+ * Get search meta.
  */
 export const getHotelSearchMeta = async (searchId) => {
   const data = await redisClient.get(
@@ -67,18 +84,124 @@ export const getHotelSearchMeta = async (searchId) => {
 };
 
 /**
- * Update search metadata
+ * Get user's active search.
+ */
+export const getUserActiveSearchId = async (userId) => {
+  if (!userId) {
+    return null;
+  }
+
+  return redisClient.get(
+    getUserActiveKey(userId)
+  );
+};
+
+/**
+ * Delete complete search.
+ */
+export const deleteHotelSearch = async (searchId) => {
+  const meta = await getHotelSearchMeta(searchId);
+
+  await redisClient.del(
+    getMetaKey(searchId),
+    getResultsKey(searchId)
+  );
+
+  if (meta?.userId) {
+    const activeSearchId =
+      await getUserActiveSearchId(meta.userId);
+
+    // Delete active pointer only if it still points
+    // to this search.
+    if (activeSearchId === searchId) {
+      await redisClient.del(
+        getUserActiveKey(meta.userId)
+      );
+    }
+  }
+};
+
+/**
+ * Cancel old search and remove its Redis data.
+ */
+export const cancelAndDeleteHotelSearch = async (
+  searchId
+) => {
+  const meta = await getHotelSearchMeta(searchId);
+
+  if (!meta) {
+    return;
+  }
+
+  console.log(
+    `🛑 CANCELING OLD HOTEL SEARCH: ${searchId}`
+  );
+
+  // Mark cancelled first so background job stops.
+  await redisClient.set(
+    getMetaKey(searchId),
+    JSON.stringify({
+      ...meta,
+      status: "cancelled",
+      updatedAt: new Date().toISOString(),
+    }),
+    {
+      EX: 60,
+    }
+  );
+
+  // Give currently running code a chance to see
+  // cancelled state.
+  await redisClient.del(
+    getResultsKey(searchId)
+  );
+
+  const activeSearchId =
+    await getUserActiveSearchId(meta.userId);
+
+  if (activeSearchId === searchId) {
+    await redisClient.del(
+      getUserActiveKey(meta.userId)
+    );
+  }
+
+  console.log(
+    `🗑️ OLD HOTEL SEARCH REDIS DATA DELETED: ${searchId}`
+  );
+};
+
+/**
+ * Check whether search is still active.
+ */
+export const isHotelSearchActive = async (
+  searchId
+) => {
+  const meta = await getHotelSearchMeta(searchId);
+
+  return Boolean(
+    meta &&
+      meta.status === "processing"
+  );
+};
+
+/**
+ * Update search meta.
  */
 export const updateHotelSearchMeta = async (
   searchId,
   updates
 ) => {
-  const current = await getHotelSearchMeta(searchId);
+  const current =
+    await getHotelSearchMeta(searchId);
 
   if (!current) {
-    throw new Error(
-      `Hotel search state not found: ${searchId}`
-    );
+    return null;
+  }
+
+  // Never allow cancelled/deleted search
+  // to become active again.
+  if (current.status === "cancelled") {
+    return null;
   }
 
   const updated = {
@@ -99,12 +222,23 @@ export const updateHotelSearchMeta = async (
 };
 
 /**
- * Save hotel results
+ * Save progressive matched results.
  */
 export const setHotelSearchResults = async (
   searchId,
   hotels
 ) => {
+  const active =
+    await isHotelSearchActive(searchId);
+
+  if (!active) {
+    console.log(
+      `⛔ SEARCH ${searchId} IS NO LONGER ACTIVE. SKIPPING REDIS WRITE.`
+    );
+
+    return false;
+  }
+
   await redisClient.set(
     getResultsKey(searchId),
     JSON.stringify(hotels || []),
@@ -113,104 +247,126 @@ export const setHotelSearchResults = async (
     }
   );
 
-  await updateHotelSearchMeta(searchId, {
-    availableHotels: hotels?.length || 0,
-  });
+  await updateHotelSearchMeta(
+    searchId,
+    {
+      availableHotels:
+        hotels?.length || 0,
+    }
+  );
+
+  return true;
 };
 
 /**
- * Get all currently available hotel results
+ * Get results.
  */
 export const getHotelSearchResults = async (
   searchId
 ) => {
-  const data = await redisClient.get(
-    getResultsKey(searchId)
-  );
+  const data =
+    await redisClient.get(
+      getResultsKey(searchId)
+    );
 
-  if (!data) {
-    return [];
-  }
-
-  return JSON.parse(data);
+  return data
+    ? JSON.parse(data)
+    : [];
 };
 
 /**
- * Get paginated hotel results
+ * Paginated results.
  */
-export const getHotelSearchResultsPaginated = async ({
-  searchId,
-  page = 1,
-  limit = 20,
-}) => {
-  const safePage = Math.max(Number(page) || 1, 1);
+export const getHotelSearchResultsPaginated =
+  async ({
+    searchId,
+    page = 1,
+    limit = 20,
+  }) => {
+    const safePage = Math.max(
+      Number(page) || 1,
+      1
+    );
 
-  const safeLimit = Math.min(
-    Math.max(Number(limit) || 20, 1),
-    100
-  );
+    const safeLimit = Math.min(
+      Math.max(Number(limit) || 20, 1),
+      100
+    );
 
-  const hotels = await getHotelSearchResults(
-    searchId
-  );
+    const hotels =
+      await getHotelSearchResults(
+        searchId
+      );
 
-  const total = hotels.length;
+    const total = hotels.length;
 
-  const startIndex =
-    (safePage - 1) * safeLimit;
+    const startIndex =
+      (safePage - 1) * safeLimit;
 
-  const endIndex =
-    startIndex + safeLimit;
+    const endIndex =
+      startIndex + safeLimit;
 
-  const items = hotels.slice(
-    startIndex,
-    endIndex
-  );
+    return {
+      items: hotels.slice(
+        startIndex,
+        endIndex
+      ),
 
-  return {
-    items,
-
-    pagination: {
-      page: safePage,
-      limit: safeLimit,
-      total,
-      hasMore: endIndex < total,
-    },
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        hasMore: endIndex < total,
+      },
+    };
   };
-};
 
 /**
- * Mark search as completed
+ * Complete search.
  */
-export const completeHotelSearch = async (
-  searchId,
-  data = {}
-) => {
-  return updateHotelSearchMeta(searchId, {
-    status: "completed",
-    contentStatus:
-      data.contentStatus || "completed",
-    rateStatus:
-      data.rateStatus || "completed",
-    availableHotels:
-      data.availableHotels ?? 0,
-  });
-};
+export const completeHotelSearch =
+  async (
+    searchId,
+    data = {}
+  ) => {
+    return updateHotelSearchMeta(
+      searchId,
+      {
+        status: "completed",
+
+        contentStatus:
+          data.contentStatus ||
+          "completed",
+
+        rateStatus:
+          data.rateStatus ||
+          "completed",
+
+        availableHotels:
+          data.availableHotels ?? 0,
+      }
+    );
+  };
 
 /**
- * Mark search as failed
+ * Fail search.
  */
 export const failHotelSearch = async (
   searchId,
   error
 ) => {
-  return updateHotelSearchMeta(searchId, {
-    status: "failed",
-    contentStatus: "failed",
-    rateStatus: "failed",
-    error:
-      error?.message ||
-      String(error) ||
-      "Hotel search failed",
-  });
+  return updateHotelSearchMeta(
+    searchId,
+    {
+      status: "failed",
+
+      contentStatus: "failed",
+      rateStatus: "failed",
+
+      error:
+        error?.message ||
+        String(error) ||
+        "Hotel search failed",
+    }
+  );
 };

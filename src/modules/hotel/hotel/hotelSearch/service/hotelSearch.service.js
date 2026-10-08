@@ -6,17 +6,27 @@ import {
 
 import {
   createHotelSearchState,
+  getUserActiveSearchId,
+  cancelAndDeleteHotelSearch,
   failHotelSearch,
 } from "./hotelSearch.redis.service.js";
+
 
 const supplierAdapters = {
   AKBAR: akbarHotelSearchAdapter,
 };
 
-export const searchHotels = async (payload) => {
+
+export const searchHotels = async ({
+  payload,
+  userId,
+}) => {
+
   const supplier = "AKBAR";
 
-  const adapter = supplierAdapters[supplier];
+  const adapter =
+    supplierAdapters[supplier];
+
 
   if (!adapter) {
     throw new Error(
@@ -24,59 +34,111 @@ export const searchHotels = async (payload) => {
     );
   }
 
-  /**
-   * Internal search ID
-   *
-   * This ID is exposed to frontend.
-   * Supplier's actual AKBAR searchId remains backend-only.
-   */
-  const searchId = crypto.randomUUID();
 
-  /**
-   * Create Redis search state first.
-   */
+  if (!userId) {
+    throw new Error(
+      "User ID is required for hotel search"
+    );
+  }
+
+
+  // =====================================================
+  // 1. FIND PREVIOUS ACTIVE SEARCH
+  // =====================================================
+
+  const previousSearchId =
+    await getUserActiveSearchId(
+      userId
+    );
+
+
+  if (previousSearchId) {
+
+    console.log(
+      "🔄 PREVIOUS ACTIVE SEARCH FOUND:",
+      previousSearchId
+    );
+
+
+    await cancelAndDeleteHotelSearch(
+      previousSearchId
+    );
+  }
+
+
+  // =====================================================
+  // 2. CREATE NEW INTERNAL SEARCH ID
+  // =====================================================
+
+  const searchId =
+    crypto.randomUUID();
+
+
+  // =====================================================
+  // 3. CREATE REDIS STATE
+  // =====================================================
+
   await createHotelSearchState({
     searchId,
+    userId,
     supplier,
   });
 
-  /**
-   * Start supplier search in background.
-   *
-   * Important:
-   * We DO NOT await this.
-   */
-  setImmediate(() => {
-    adapter
-      .search(payload, {
-        internalSearchId: searchId,
-      })
-      .catch(async (error) => {
-        console.error(
-          "❌ BACKGROUND HOTEL SEARCH FAILED:",
-          error
-        );
 
-        try {
-          await failHotelSearch(
+  // =====================================================
+  // 4. START BACKGROUND SEARCH
+  // =====================================================
+
+  setImmediate(() => {
+
+    adapter
+      .search(
+        payload,
+        {
+          internalSearchId:
             searchId,
+        }
+      )
+      .catch(
+        async (error) => {
+
+          console.error(
+            "❌ BACKGROUND HOTEL SEARCH FAILED:",
             error
           );
-        } catch (redisError) {
-          console.error(
-            "❌ FAILED TO UPDATE REDIS SEARCH ERROR:",
+
+
+          try {
+
+            await failHotelSearch(
+              searchId,
+              error
+            );
+
+          } catch (
             redisError
-          );
+          ) {
+
+            console.error(
+              "❌ FAILED TO UPDATE REDIS ERROR:",
+              redisError
+            );
+          }
         }
-      });
+      );
   });
 
-  /**
-   * Return immediately to frontend.
-   */
+
+  // =====================================================
+  // 5. RETURN IMMEDIATELY
+  // =====================================================
+
   return {
     searchId,
+
     supplier,
-    status: "processing",
+
+    status:
+      "processing",
   };
 };
