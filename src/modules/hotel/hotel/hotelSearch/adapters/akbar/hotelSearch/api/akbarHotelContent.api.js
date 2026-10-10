@@ -65,7 +65,7 @@ export const akbarHotelContentAPI = async ({
           Authorization: `Bearer ${token}`,
           "search-tracing-key": searchTracingKey,
         },
-        timeout: 30000,
+        timeout: 60000,
       });
 
       const data = response.data;
