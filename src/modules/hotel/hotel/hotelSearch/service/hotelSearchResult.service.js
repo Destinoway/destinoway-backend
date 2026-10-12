@@ -75,6 +75,21 @@ const getHotelAmenities = (hotel) => {
   return names.map(normalizeText).filter(Boolean);
 };
 
+const getReviewRating = (hotel) => {
+  const review = hotel.userReview;
+  const value =
+    review && typeof review === "object"
+      ? review.rating ??
+        review.ratingValue ??
+        review.reviewRating ??
+        review.overallRating ??
+        review.score
+      : review;
+  const rating = parseNumber(value);
+
+  return rating;
+};
+
 // =========================================================
 // SEARCH, FILTER, SORT AND PAGINATION
 // =========================================================
@@ -96,6 +111,14 @@ export const getHotelSearchResults = async ({
 
   // Amenities: comma-separated or array
   amenities,
+
+  // Additional filters
+  minReviewRating,
+  propertyType,
+  availableOnly,
+  isRecommended,
+  freeCancellation,
+  freeBreakfast,
 
   // Sorting
   sortBy = "price",
@@ -130,12 +153,20 @@ export const getHotelSearchResults = async ({
 
   const parsedMinPrice = parseNumber(minPrice);
   const parsedMaxPrice = parseNumber(maxPrice);
+  const parsedMinReviewRating = parseNumber(minReviewRating);
+  const parsedAvailableOnly = parseBoolean(availableOnly);
+  const parsedIsRecommended = parseBoolean(isRecommended);
+  const parsedFreeCancellation = parseBoolean(freeCancellation);
+  const parsedFreeBreakfast = parseBoolean(freeBreakfast);
 
   const ratings = parseList(starRatings)
     .map(Number)
     .filter(Number.isFinite);
 
   const selectedAmenities = parseList(amenities)
+    .map(normalizeText);
+
+  const selectedPropertyTypes = parseList(propertyType)
     .map(normalizeText);
 
   const normalizedHotelName = normalizeText(hotelName);
@@ -173,6 +204,56 @@ export const getHotelSearchResults = async ({
     if (
       ratings.length > 0 &&
       !ratings.includes(rating)
+    ) {
+      return false;
+    }
+
+    // Minimum user review rating
+    if (parsedMinReviewRating !== null) {
+      const reviewRating = getReviewRating(hotel);
+
+      if (
+        reviewRating === null ||
+        reviewRating < parsedMinReviewRating
+      ) {
+        return false;
+      }
+    }
+
+    // Property types: any selected type can match
+    if (
+      selectedPropertyTypes.length > 0 &&
+      !selectedPropertyTypes.includes(normalizeText(hotel.propertyType))
+    ) {
+      return false;
+    }
+
+    // Availability
+    if (
+      parsedAvailableOnly === true &&
+      hotel.isSoldOut === true
+    ) {
+      return false;
+    }
+
+    // Booking benefits
+    if (
+      parsedIsRecommended !== null &&
+      Boolean(hotel.isRecommended) !== parsedIsRecommended
+    ) {
+      return false;
+    }
+
+    if (
+      parsedFreeCancellation !== null &&
+      Boolean(hotel.freeCancellation) !== parsedFreeCancellation
+    ) {
+      return false;
+    }
+
+    if (
+      parsedFreeBreakfast !== null &&
+      Boolean(hotel.freeBreakfast) !== parsedFreeBreakfast
     ) {
       return false;
     }
