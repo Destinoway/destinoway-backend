@@ -90,7 +90,7 @@ app.use("/api/v1/customer/profile", profileRoutes);
 app.use("/api/v1/markup", markeupRoutes);
 app.use("/api/v1/currency", currencyRoutes);
 app.use("/api/v1/newsletter", newsletter);
-
+app.use("/api/v1/hotelDetails", hotelDetailsRoutes);
 app.use("/api/v1/masterData", masterRoutes);
 app.use("/api/v1/customer", customerProfileRoutes);
 app.use("/api/v1", countryRoutes);
