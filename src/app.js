@@ -21,7 +21,7 @@ import masterRoutes from "./modules/master-data/masterData.routes.js";
 //import hotelDetails from "./modules/hotel/hotelDetails/hotel.routes.js";
 // import invoiceRoutes from "./modules/hotel/invoice/invoice.route.js";
 // import paymentRoutes from "./modules/payments/payment.routes.js";
-
+import hotelDetailsRoutes from "./modules/hotel/hotel/hotelDetail/routes/hotelDetails.routes.js";
 import gatewayroutewebhook from "./modules/gateways/routes/webhook.routes.js";
 import homecontent from "./modules/HomeContent/homeContent.route.js";
 import mediaRoutes from "./modules/media/media.routes.js";
