@@ -6,7 +6,12 @@ import { hotelRoomsAPI } from "../adapters/akbar/api/hotelRooms.api.js";
 import { mapHotelContent } from "../adapters/akbar/mappers/hotelContent.mapper.js";
 import { mapHotelRooms } from "../adapters/akbar/mappers/hotelRooms.mapper.js";
 
-export const getHotelDetails = async ({ searchId, hotelId }) => {
+export const getHotelDetails = async ({
+  searchId,
+  hotelId,
+  page,
+  limit,
+}) => {
   if (!hotelId) {
     const error = new Error("Hotel ID is required");
     error.statusCode = 400;
@@ -43,7 +48,7 @@ export const getHotelDetails = async ({ searchId, hotelId }) => {
       roomsResult.status === "fulfilled"
         ? {
             success: true,
-            data: mapHotelRooms(roomsResult.value),
+            data: mapHotelRooms(roomsResult.value, { page, limit }),
           }
         : {
             success: false,

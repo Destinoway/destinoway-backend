@@ -123,21 +123,43 @@ const mapRecommendation = (recommendation) => ({
     : [],
 });
 
-const mapRooms = (rooms) => {
+const parsePositiveInteger = (value, fallback) => {
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) && parsed > 0
+    ? Math.floor(parsed)
+    : fallback;
+};
+
+const mapRooms = (rooms, { page = 1, limit = 20 } = {}) => {
   if (!rooms || typeof rooms !== "object") {
     return rooms;
   }
 
+  const recommendations = Array.isArray(rooms.recommendations)
+    ? rooms.recommendations
+    : [];
+  const safePage = parsePositiveInteger(page, 1);
+  const safeLimit = Math.min(parsePositiveInteger(limit, 20), 100);
+  const startIndex = (safePage - 1) * safeLimit;
+
   return {
     ...pick(rooms, ["stayPeriod", "status"]),
-    recommendations: Array.isArray(rooms.recommendations)
-      ? rooms.recommendations.map(mapRecommendation)
-      : [],
+    recommendations: recommendations
+      .slice(startIndex, startIndex + safeLimit)
+      .map(mapRecommendation),
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total: recommendations.length,
+      hasMore: startIndex + safeLimit < recommendations.length,
+    },
   };
 };
 
-export const mapHotelRooms = (data) => ({
+export const mapHotelRooms = (data, pagination) => ({
   rooms: mapRooms(
-    data?.rooms ?? data?.data?.rooms ?? data?.data ?? data
+    data?.rooms ?? data?.data?.rooms ?? data?.data ?? data,
+    pagination
   ),
 });

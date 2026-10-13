@@ -5,6 +5,8 @@ export const hotelRoomsController = async (req, res) => {
     const data = await getHotelRooms({
       searchId: req.params.searchId,
       hotelId: req.params.hotelId,
+      page: req.query.page,
+      limit: req.query.limit,
     });
 
     return res.status(200).json({

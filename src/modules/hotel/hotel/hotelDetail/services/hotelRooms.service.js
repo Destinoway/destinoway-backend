@@ -2,7 +2,12 @@ import { resolveSupplierSearch } from "../utils/resolveSupplierSearch.js";
 import { hotelRoomsAPI } from "../adapters/akbar/api/hotelRooms.api.js";
 import { mapHotelRooms } from "../adapters/akbar/mappers/hotelRooms.mapper.js";
 
-export const getHotelRooms = async ({ searchId, hotelId }) => {
+export const getHotelRooms = async ({
+  searchId,
+  hotelId,
+  page,
+  limit,
+}) => {
   if (!hotelId) {
     const error = new Error("Hotel ID is required");
     error.statusCode = 400;
@@ -20,6 +25,6 @@ export const getHotelRooms = async ({ searchId, hotelId }) => {
   return {
     searchId,
     supplier: search.supplier,
-    ...mapHotelRooms(data),
+    ...mapHotelRooms(data, { page, limit }),
   };
 };
