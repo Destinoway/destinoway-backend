@@ -218,6 +218,8 @@ export const searchHotels = async ({
     searchId,
     searchSessionId,
     supplier,
+    checkIn: payload.checkIn,
+    checkOut: payload.checkOut,
   });
 
   console.log("🚀 NEW HOTEL SEARCH:", searchId);
