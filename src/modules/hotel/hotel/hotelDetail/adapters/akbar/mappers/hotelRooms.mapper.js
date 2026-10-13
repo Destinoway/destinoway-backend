@@ -88,14 +88,7 @@ const mapRoomGroup = (group) => ({
     "bookNowPayLaterDate",
     "ratePerNight",
   ]),
-  occupancies: mapItems(group?.occupancies, [
-    "occupancyId",
-    "numOfAdults",
-    "numOfChildren",
-    "childAges",
-  ]),
   taxes: mapRateComponents(group?.taxes),
-  fees: mapRateComponents(group?.fees),
   discounts: mapRateComponents(group?.discounts),
   otherRateComponents: mapRateComponents(group?.otherRateComponents),
   commission: pick(group?.commission, ["amount", "description", "type"]),
@@ -131,6 +124,30 @@ const parsePositiveInteger = (value, fallback) => {
     : fallback;
 };
 
+const mapOccupancies = (recommendations) => {
+  const uniqueOccupancies = new Map();
+
+  for (const recommendation of recommendations) {
+    for (const group of recommendation?.roomGroup ?? []) {
+      for (const occupancy of group?.occupancies ?? []) {
+        const mappedOccupancy = pick(occupancy, [
+          "occupancyId",
+          "numOfAdults",
+          "numOfChildren",
+          "childAges",
+        ]);
+        const key = JSON.stringify(mappedOccupancy);
+
+        if (!uniqueOccupancies.has(key)) {
+          uniqueOccupancies.set(key, mappedOccupancy);
+        }
+      }
+    }
+  }
+
+  return [...uniqueOccupancies.values()];
+};
+
 const mapRooms = (rooms, { page = 1, limit = 20 } = {}) => {
   if (!rooms || typeof rooms !== "object") {
     return rooms;
@@ -145,6 +162,7 @@ const mapRooms = (rooms, { page = 1, limit = 20 } = {}) => {
 
   return {
     ...pick(rooms, ["stayPeriod", "status"]),
+    occupancies: mapOccupancies(recommendations),
     recommendations: recommendations
       .slice(startIndex, startIndex + safeLimit)
       .map(mapRecommendation),

@@ -24,6 +24,10 @@ export const getHotelDetails = async ({ searchId, hotelId }) => {
   return {
     searchId: search.internalSearchId,
     supplier: search.supplier,
+    stayPeriod: {
+      checkIn: search.checkIn,
+      checkOut: search.checkOut,
+    },
     content: {
       success: true,
       data: mapHotelContent(content),

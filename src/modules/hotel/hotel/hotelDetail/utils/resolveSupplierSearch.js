@@ -28,5 +28,7 @@ export const resolveSupplierSearch = async (searchId) => {
     supplier: "1",
     supplierSearchId: meta.akbarSearchId,
     searchTracingKey: meta.searchTracingKey,
+    checkIn: meta.checkIn,
+    checkOut: meta.checkOut,
   };
 };
