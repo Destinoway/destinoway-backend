@@ -22,6 +22,7 @@ import masterRoutes from "./modules/master-data/masterData.routes.js";
 // import invoiceRoutes from "./modules/hotel/invoice/invoice.route.js";
 // import paymentRoutes from "./modules/payments/payment.routes.js";
 import hotelDetailsRoutes from "./modules/hotel/hotel/hotelDetail/routes/hotelDetails.routes.js";
+import hotelPriceVerifyRoutes from "./modules/hotel/hotel/priceVerify/routes/hotelPriceVerify.routes.js";
 import gatewayroutewebhook from "./modules/gateways/routes/webhook.routes.js";
 import homecontent from "./modules/HomeContent/homeContent.route.js";
 import mediaRoutes from "./modules/media/media.routes.js";
@@ -91,6 +92,8 @@ app.use("/api/v1/markup", markeupRoutes);
 app.use("/api/v1/currency", currencyRoutes);
 app.use("/api/v1/newsletter", newsletter);
 app.use("/api/v1/hotelDetails", hotelDetailsRoutes);
+app.use("/api/v1/hotelDetails", hotelPriceVerifyRoutes);
+
 app.use("/api/v1/masterData", masterRoutes);
 app.use("/api/v1/customer", customerProfileRoutes);
 app.use("/api/v1", countryRoutes);

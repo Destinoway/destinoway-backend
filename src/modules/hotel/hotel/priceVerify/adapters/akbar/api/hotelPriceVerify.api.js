@@ -1,24 +1,13 @@
-
-
-
 import axios from "axios";
 import { getAKBARToken } from "../../../../../supplier/akbar/akbarAuth.service.js";
 
-export const hotelPricingAPI = async ({
+export const akbarHotelPriceVerifyAPI = async ({
   supplierSearchId,
   hotelId,
   providerName,
   recommendationId,
   searchTracingKey,
 }) => {
-  if (!providerName || !recommendationId) {
-    const error = new Error(
-      "providerName and recommendationId are required"
-    );
-    error.statusCode = 400;
-    throw error;
-  }
-
   const token = await getAKBARToken();
 
   const url =
