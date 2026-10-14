@@ -1,4 +1,5 @@
-import { resolveSupplierSearch } from "../utils/resolveSupplierSearch.js";
+import { resolveSupplierSearch } from "../../utils/resolveSupplierSearch.js";
+import { cacheHotelRoomProviders } from "../../utils/hotelRoomProviderCache.js";
 import { hotelRoomsAPI } from "../adapters/akbar/api/hotelRooms.api.js";
 import { mapHotelRooms } from "../adapters/akbar/mappers/hotelRooms.mapper.js";
 
@@ -21,6 +22,8 @@ export const getHotelRooms = async ({
     hotelId,
     searchTracingKey: search.searchTracingKey,
   });
+
+  await cacheHotelRoomProviders({ searchId, hotelId, rooms: data });
 
   return {
     searchId,

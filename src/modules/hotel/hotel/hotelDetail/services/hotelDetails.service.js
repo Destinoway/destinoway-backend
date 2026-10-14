@@ -1,4 +1,4 @@
-import { resolveSupplierSearch } from "../utils/resolveSupplierSearch.js";
+import { resolveSupplierSearch } from "../../utils/resolveSupplierSearch.js";
 
 import { hotelContentAPI } from "../adapters/akbar/api/hotelContent.api.js";
 

@@ -1,11 +1,10 @@
-import { getHotelPricing } from "../services/hotelPricing.service.js";
+import { verifyHotelPrice } from "../services/hotelPriceVerify.service.js";
 
-export const hotelPricingController = async (req, res) => {
+export const hotelPriceVerifyController = async (req, res) => {
   try {
-    const data = await getHotelPricing({
+    const data = await verifyHotelPrice({
       searchId: req.params.searchId,
       hotelId: req.params.hotelId,
-      providerName: req.body.providerName,
       recommendationId: req.body.recommendationId,
     });
 
@@ -16,9 +15,11 @@ export const hotelPricingController = async (req, res) => {
       meta: null,
     });
   } catch (error) {
+    console.error("Hotel price verification error:", error.message);
+
     return res.status(error.statusCode || 500).json({
       success: false,
-      message: error.message || "Failed to fetch hotel pricing",
+      message: error.message || "Failed to verify hotel price",
       data: null,
       meta: null,
     });

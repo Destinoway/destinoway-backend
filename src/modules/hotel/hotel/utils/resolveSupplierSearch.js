@@ -1,4 +1,4 @@
-import { getHotelSearchMeta } from "../../hotelSearch/service/hotelSearch.redis.service.js";
+import { getHotelSearchMeta } from "../hotelSearch/service/hotelSearch.redis.service.js";
 
 export const resolveSupplierSearch = async (searchId) => {
   if (!searchId) {
@@ -15,7 +15,13 @@ export const resolveSupplierSearch = async (searchId) => {
     throw error;
   }
 
-  if (!meta.akbarSearchId) {
+  const supplierCode = meta.supplier ?? "AKBAR";
+  const supplierSearchId =
+    meta.supplierSearchIds?.[supplierCode] ??
+    meta[`${supplierCode.toLowerCase()}SearchId`] ??
+    (supplierCode === "AKBAR" ? meta.akbarSearchId : null);
+
+  if (!supplierSearchId) {
     const error = new Error(
       "Supplier search ID is not available for this search"
     );
@@ -26,7 +32,8 @@ export const resolveSupplierSearch = async (searchId) => {
   return {
     internalSearchId: searchId,
     supplier: "1",
-    supplierSearchId: meta.akbarSearchId,
+    supplierCode,
+    supplierSearchId,
     searchTracingKey: meta.searchTracingKey,
     checkIn: meta.checkIn,
     checkOut: meta.checkOut,
