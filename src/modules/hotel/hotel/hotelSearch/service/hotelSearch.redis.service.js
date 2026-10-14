@@ -24,6 +24,7 @@ export const createHotelSearchState = async ({
   supplier = "AKBAR",
   checkIn,
   checkOut,
+  occupancies = [],
 }) => {
   const meta = {
     searchId,
@@ -31,6 +32,7 @@ export const createHotelSearchState = async ({
     supplier,
     checkIn: checkIn ?? null,
     checkOut: checkOut ?? null,
+    occupancies,
 
     status: "processing",
 

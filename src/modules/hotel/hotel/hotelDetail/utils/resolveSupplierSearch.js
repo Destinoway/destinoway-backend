@@ -30,5 +30,6 @@ export const resolveSupplierSearch = async (searchId) => {
     searchTracingKey: meta.searchTracingKey,
     checkIn: meta.checkIn,
     checkOut: meta.checkOut,
+    occupancies: meta.occupancies ?? [],
   };
 };

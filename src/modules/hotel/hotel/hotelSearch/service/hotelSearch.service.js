@@ -220,6 +220,12 @@ export const searchHotels = async ({
     supplier,
     checkIn: payload.checkIn,
     checkOut: payload.checkOut,
+    occupancies: (payload.rooms ?? []).map((room, index) => ({
+      occupancyId: index + 1,
+      numOfAdults: Number(room.adults ?? 0),
+      numOfChildren: Number(room.children ?? 0),
+      childAges: room.childAges?.length ? room.childAges : null,
+    })),
   });
 
   console.log("🚀 NEW HOTEL SEARCH:", searchId);
