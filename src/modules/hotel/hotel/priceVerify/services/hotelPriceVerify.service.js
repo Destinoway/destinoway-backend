@@ -34,27 +34,6 @@ const formatHotelAddress = (address) => {
     .join(", ");
 };
 
-const getTime = (value) => {
-  if (typeof value === "string") {
-    return value;
-  }
-
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  return (
-    value.time ??
-    value.from ??
-    value.start ??
-    value.checkinStart ??
-    value.checkInStart ??
-    value.checkinTime ??
-    value.checkInTime ??
-    null
-  );
-};
-
 const getRefundable = (room) => {
   if (typeof room?.refundable === "boolean") {
     return room.refundable;
@@ -81,7 +60,7 @@ const mapVerifiedRoom = (room, occupancies) => ({
   description: room?.room?.description ?? null,
   roomCount: room?.roomCount ?? 1,
   beds: room?.room?.beds ?? [],
-  amenities: getNames(room?.room?.facilities),
+  facilities: getNames(room?.room?.facilities),
   boardBasis: room?.boardBasis?.description ?? null,
   occupancies: room?.occupancies ?? occupancies,
   refundable: getRefundable(room),
@@ -187,7 +166,7 @@ export const verifyHotelPrice = async ({
       name: hotel.name ?? null,
       address: formatHotelAddress(hotel.address),
       starCategory: hotel.starRating ?? null,
-      amenities: [
+      facilities: [
         ...new Set([
           ...getNames(hotel.facilities),
           ...getNames(supplierHotel.facilityGroups),
@@ -195,16 +174,9 @@ export const verifyHotelPrice = async ({
       ],
     },
     stay: {
-      checkIn: {
-        date: search.checkIn,
-        time: getTime(supplierHotel.checkinInfo),
-      },
-      checkOut: {
-        date: search.checkOut,
-        time: getTime(supplierHotel.checkoutInfo),
-      },
+      checkIn: search.checkIn,
+      checkOut: search.checkOut,
     },
-    guestDetails: search.occupancies,
     pricing: {
       refundable:
         roomGroups.length > 0 &&
