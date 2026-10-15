@@ -1,6 +1,38 @@
 import axios from "axios";
 import { getAKBARToken } from "../../../../../supplier/akbar/akbarAuth.service.js";
 
+const summarizeItineraryResponse = (responseData) => {
+  const summary = {
+    topLevelKeys:
+      responseData && typeof responseData === "object"
+        ? Object.keys(responseData)
+        : [],
+    transactionIdFields: [],
+    statusFields: [],
+  };
+  const pending = [{ value: responseData, path: "", depth: 0 }];
+
+  while (pending.length > 0) {
+    const { value, path, depth } = pending.pop();
+    if (!value || typeof value !== "object" || depth >= 6) continue;
+
+    for (const [key, child] of Object.entries(value)) {
+      const fieldPath = path ? `${path}.${key}` : key;
+      if (/^transaction.?id$/i.test(key)) {
+        summary.transactionIdFields.push(fieldPath);
+      }
+      if (/^(status|statuscode|code|errorcode|resultcode)$/i.test(key)) {
+        summary.statusFields.push(fieldPath);
+      }
+      if (child && typeof child === "object") {
+        pending.push({ value: child, path: fieldPath, depth: depth + 1 });
+      }
+    }
+  }
+
+  return summary;
+};
+
 export const createAkbarHotelItineraryAPI = async ({
   payload,
   searchTracingKey,
@@ -30,6 +62,11 @@ export const createAkbarHotelItineraryAPI = async ({
     },
     timeout: 60000,
   });
+
+  console.info(
+    "[AKBAR itinerary] Supplier response summary:",
+    summarizeItineraryResponse(response.data),
+  );
 
   return response.data;
 };
