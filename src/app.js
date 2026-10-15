@@ -94,7 +94,7 @@ app.use("/api/v1/currency", currencyRoutes);
 app.use("/api/v1/newsletter", newsletter);
 app.use("/api/v1/hotelDetails", hotelDetailsRoutes);
 app.use("/api/v1/hotelDetails", hotelPriceVerifyRoutes);
-app.use("/api/v1/hotelDetails", hotelItineraryRoutes);
+app.use("/api/v1/hoteltempBooking", hotelItineraryRoutes);
 
 app.use("/api/v1/masterData", masterRoutes);
 app.use("/api/v1/customer", customerProfileRoutes);
