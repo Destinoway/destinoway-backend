@@ -53,19 +53,30 @@ export const createAkbarHotelItineraryAPI = async ({
   payload,
   searchTracingKey,
 }) => {
-  const itineraryUrl =
+  const configuredItineraryUrl =
     process.env.AKBAR_HOTEL_ITINERARY_URL ||
-    (process.env.AKBAR_HOTEL_API_URL
-      ? `${process.env.AKBAR_HOTEL_API_URL}/Hotel/CreateItinerary`
-      : null);
+    process.env.AKBAR_HOTEL_API_URL;
 
-  if (!itineraryUrl) {
+  if (!configuredItineraryUrl) {
     const error = new Error(
       "AKBAR_HOTEL_ITINERARY_URL or AKBAR_HOTEL_API_URL must be configured"
     );
     error.statusCode = 503;
     throw error;
   }
+
+  const itineraryEndpoint = new URL(configuredItineraryUrl);
+  if (!/\/Hotel\/CreateItinerary\/?$/i.test(itineraryEndpoint.pathname)) {
+    itineraryEndpoint.pathname =
+      `${itineraryEndpoint.pathname.replace(/\/+$/, "")}/Hotel/CreateItinerary`;
+  }
+  itineraryEndpoint.pathname = itineraryEndpoint.pathname.replace(/\/+$/, "");
+
+  const itineraryUrl = itineraryEndpoint.toString();
+  console.info("[AKBAR itinerary] Request endpoint:", {
+    host: itineraryEndpoint.host,
+    path: itineraryEndpoint.pathname,
+  });
 
   const token = await getAKBARToken();
   const response = await axios.post(itineraryUrl, payload, {
