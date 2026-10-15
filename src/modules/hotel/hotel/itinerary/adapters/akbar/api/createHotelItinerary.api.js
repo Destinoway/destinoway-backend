@@ -1,8 +1,24 @@
 import axios from "axios";
 import { getAKBARToken } from "../../../../../supplier/akbar/akbarAuth.service.js";
 
-const summarizeItineraryResponse = (responseData) => {
+const summarizeItineraryResponse = (response) => {
+  const responseData = response.data;
+  const contentType = response.headers["content-type"];
+  const bodyType = Buffer.isBuffer(responseData)
+    ? "buffer"
+    : responseData === null
+      ? "null"
+      : Array.isArray(responseData)
+        ? "array"
+        : typeof responseData;
   const summary = {
+    httpStatus: response.status,
+    contentType,
+    bodyType,
+    bodyLength:
+      typeof responseData === "string" || Buffer.isBuffer(responseData)
+        ? responseData.length
+        : undefined,
     topLevelKeys:
       responseData && typeof responseData === "object"
         ? Object.keys(responseData)
@@ -65,7 +81,7 @@ export const createAkbarHotelItineraryAPI = async ({
 
   console.info(
     "[AKBAR itinerary] Supplier response summary:",
-    summarizeItineraryResponse(response.data),
+    summarizeItineraryResponse(response),
   );
 
   return response.data;
