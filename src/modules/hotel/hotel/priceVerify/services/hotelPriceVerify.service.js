@@ -79,6 +79,55 @@ export const verifyHotelPrice = async ({
   hotelId,
   recommendationId,
 }) => {
+  const { search, hotel, supplierHotel, pricing } =
+    await getHotelPriceVerificationContext({
+      searchId,
+      hotelId,
+      recommendationId,
+    });
+
+  const roomGroups = Array.isArray(pricing?.roomGroup)
+    ? pricing.roomGroup
+    : [];
+  const refundability = roomGroups.map(getRefundable);
+
+  return {
+    searchId: search.internalSearchId,
+    supplier: search.supplier,
+    hotel: {
+      hotelId: String(hotelId),
+      name: hotel.name ?? null,
+      address: formatHotelAddress(hotel.address),
+      starCategory: hotel.starRating ?? null,
+      facilities: [
+        ...new Set([
+          ...getNames(hotel.facilities),
+          ...getNames(supplierHotel.facilityGroups),
+        ]),
+      ],
+    },
+    stay: {
+      checkIn: search.checkIn,
+      checkOut: search.checkOut,
+    },
+    pricing: {
+      refundable:
+        roomGroups.length > 0 &&
+        refundability.every((value) => value !== null)
+        ? refundability.every(Boolean)
+        : null,
+      rooms: roomGroups.map((room) =>
+        mapVerifiedRoom(room, search.occupancies)
+      ),
+    },
+  };
+};
+
+export const getHotelPriceVerificationContext = async ({
+  searchId,
+  hotelId,
+  recommendationId,
+}) => {
   if (!hotelId) {
     const error = new Error("Hotel ID is required");
     error.statusCode = 400;
@@ -152,40 +201,10 @@ export const verifyHotelPrice = async ({
     throw error;
   }
 
-  const supplierHotel = hotel.rawSupplierData ?? {};
-  const roomGroups = Array.isArray(pricing?.roomGroup)
-    ? pricing.roomGroup
-    : [];
-  const refundability = roomGroups.map(getRefundable);
-
   return {
-    searchId: search.internalSearchId,
-    supplier: search.supplier,
-    hotel: {
-      hotelId: String(hotelId),
-      name: hotel.name ?? null,
-      address: formatHotelAddress(hotel.address),
-      starCategory: hotel.starRating ?? null,
-      facilities: [
-        ...new Set([
-          ...getNames(hotel.facilities),
-          ...getNames(supplierHotel.facilityGroups),
-        ]),
-      ],
-    },
-    stay: {
-      checkIn: search.checkIn,
-      checkOut: search.checkOut,
-    },
-    pricing: {
-      refundable:
-        roomGroups.length > 0 &&
-        refundability.every((value) => value !== null)
-        ? refundability.every(Boolean)
-        : null,
-      rooms: roomGroups.map((room) =>
-        mapVerifiedRoom(room, search.occupancies)
-      ),
-    },
+    search,
+    hotel,
+    supplierHotel: hotel.rawSupplierData ?? {},
+    pricing,
   };
 };
