@@ -3,6 +3,14 @@ import { getAKBARToken } from "../../../../../supplier/akbar/akbarAuth.service.j
 
 const summarizeItineraryResponse = (response) => {
   const responseData = response.data;
+  const supplierData =
+    responseData && typeof responseData === "object"
+      ? responseData.data ?? responseData
+      : {};
+  const message =
+    supplierData.Msg ?? supplierData.Message ?? supplierData.message;
+  const priceInfo = supplierData.priceInfo ?? supplierData.PriceInfo;
+  const tui = supplierData.TUI ?? supplierData.Tui;
   const contentType = response.headers["content-type"];
   const bodyType = Buffer.isBuffer(responseData)
     ? "buffer"
@@ -15,6 +23,30 @@ const summarizeItineraryResponse = (response) => {
     httpStatus: response.status,
     contentType,
     bodyType,
+    supplierCode: supplierData.Code ?? supplierData.code,
+    transactionId:
+      supplierData.TransactionID ??
+      supplierData.TransactionId ??
+      supplierData.transactionID ??
+      supplierData.transactionId,
+    netAmount: supplierData.NetAmount ?? supplierData.netAmount,
+    message: Array.isArray(message)
+      ? message.filter((item) => typeof item === "string").join("; ").slice(0, 300)
+      : typeof message === "string"
+        ? message.slice(0, 300)
+        : undefined,
+    priceInfo:
+      priceInfo && typeof priceInfo === "object"
+        ? {
+            priceCode: priceInfo.Pricecode ?? priceInfo.PriceCode,
+            priceMessage: priceInfo.Pricemessage ?? priceInfo.PriceMessage,
+            priceType: priceInfo.Pricetype ?? priceInfo.PriceType,
+          }
+        : undefined,
+    tui:
+      typeof tui === "string" && tui.length > 16
+        ? `${tui.slice(0, 8)}...${tui.slice(-4)}`
+        : undefined,
     bodyLength:
       typeof responseData === "string" || Buffer.isBuffer(responseData)
         ? responseData.length
