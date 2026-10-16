@@ -43,6 +43,7 @@ const getBookingBaseUrl = () => {
       hasQuery: Boolean(parsedUrl.search),
       hasFragment: Boolean(parsedUrl.hash),
     });
+    //chk
     return parsedUrl.origin;
   } catch (error) {
     logHotelEvent("error", "hotel.supplier_config.invalid", {
