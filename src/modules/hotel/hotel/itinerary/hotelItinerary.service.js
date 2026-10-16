@@ -477,7 +477,6 @@ export const createHotelItinerary = async ({
 
     return {
       bookingId: booking._id,
-      transactionId: booking.transactionId,
       itineraryStatus: booking.itineraryStatus,
       paymentStatus: booking.paymentStatus,
       amount: netAmount,
@@ -491,6 +490,17 @@ export const createHotelItinerary = async ({
       stay: {
         checkIn: booking.stay.checkIn,
         checkOut: booking.stay.checkOut,
+      },
+      contactInfo: {
+        title: booking.contactInfo.title,
+        firstName: booking.contactInfo.firstName,
+        lastName: booking.contactInfo.lastName,
+        mobile: booking.contactInfo.mobile,
+        email: booking.contactInfo.email,
+        address: booking.contactInfo.address,
+        state: booking.contactInfo.state,
+        city: booking.contactInfo.city,
+        pin: booking.contactInfo.pin,
       },
       rooms: booking.rooms.map((room) => ({
         occupancyId: room.occupancyId,
