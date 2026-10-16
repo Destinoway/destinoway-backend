@@ -7,11 +7,17 @@ import {
 } from "../../../utils/hotelObservability.js";
 
 const getBookingBaseUrl = () => {
-  const configuredUrl =
-    process.env.START_PAY_URL
+  const configuredUrl = process.env.START_PAY_URL;
   if (!configuredUrl) {
+    logHotelEvent("error", "hotel.supplier_config.invalid", {
+      supplier: "AKBAR",
+      operation: "start_payment",
+      variable: "START_PAY_URL",
+      configured: false,
+      reason: "missing",
+    });
     const error = new Error(
-      "AKBAR_HOTEL_BOOKING_URL or an existing AKBAR hotel URL must be configured"
+      "START_PAY_URL must be configured with the AKBAR StartPay base URL"
     );
     error.statusCode = 503;
     error.supplierRequestSent = false;
@@ -19,8 +25,39 @@ const getBookingBaseUrl = () => {
   }
 
   try {
-    return new URL(configuredUrl).origin;
+    const normalizedUrl = configuredUrl.trim();
+    const parsedUrl = new URL(normalizedUrl);
+    if (parsedUrl.protocol !== "https:" || !parsedUrl.hostname) {
+      throw new Error("START_PAY_URL must be a valid HTTPS URL");
+    }
+
+    logHotelEvent("info", "hotel.supplier_config.validated", {
+      supplier: "AKBAR",
+      operation: "start_payment",
+      variable: "START_PAY_URL",
+      configured: true,
+      protocol: parsedUrl.protocol,
+      host: parsedUrl.host,
+      path: parsedUrl.pathname,
+      trimmedWhitespace: configuredUrl !== normalizedUrl,
+      hasQuery: Boolean(parsedUrl.search),
+      hasFragment: Boolean(parsedUrl.hash),
+    });
+    return parsedUrl.origin;
   } catch (error) {
+    logHotelEvent("error", "hotel.supplier_config.invalid", {
+      supplier: "AKBAR",
+      operation: "start_payment",
+      variable: "START_PAY_URL",
+      configured: true,
+      valueLength: configuredUrl.length,
+      hasSurroundingQuotes:
+        (configuredUrl.startsWith('"') && configuredUrl.endsWith('"')) ||
+        (configuredUrl.startsWith("'") && configuredUrl.endsWith("'")),
+      containsWhitespace: /\s/.test(configuredUrl),
+      errorName: error.name,
+      errorMessage: error.message,
+    });
     error.supplierRequestSent = false;
     throw error;
   }
@@ -90,7 +127,22 @@ export const startAkbarHotelPay = async ({
     throw error;
   }
 
-  const endpoint = new URL("/Payment/StartPay", getBookingBaseUrl());
+  let endpoint;
+  try {
+    endpoint = new URL("/Payment/StartPay", getBookingBaseUrl());
+  } catch (error) {
+    error.supplierRequestSent = false;
+    logHotelEvent("error", "hotel.supplier_config.endpoint_build_failed", {
+      correlationId,
+      bookingId: String(booking._id),
+      supplier: "AKBAR",
+      operation: "start_payment",
+      variable: "START_PAY_URL",
+      errorName: error.name,
+      errorMessage: error.message,
+    });
+    throw error;
+  }
   const payload = {
     SID: itineraryResponse.SID ?? null,
     TUI: tui,
