@@ -143,6 +143,7 @@ export const getHotelPriceVerificationContext = async ({
 
   if (!providerName) {
     const rooms = await hotelRoomsAPI({
+      correlationId: search.internalSearchId,
       supplierSearchId: search.supplierSearchId,
       hotelId,
       searchTracingKey: search.searchTracingKey,

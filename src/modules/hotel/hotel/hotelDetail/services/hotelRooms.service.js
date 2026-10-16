@@ -18,6 +18,7 @@ export const getHotelRooms = async ({
   const search = await resolveSupplierSearch(searchId);
 
   const data = await hotelRoomsAPI({
+    correlationId: search.internalSearchId,
     supplierSearchId: search.supplierSearchId,
     hotelId,
     searchTracingKey: search.searchTracingKey,

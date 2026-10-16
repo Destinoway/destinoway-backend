@@ -2,7 +2,10 @@ import HotelItinerary from "./hotelItinerary.model.js";
 import { createAkbarHotelItineraryAPI } from "./adapters/akbar/api/createHotelItinerary.api.js";
 import { getHotelPriceVerificationContext } from "../priceVerify/services/hotelPriceVerify.service.js";
 import { randomUUID } from "node:crypto";
-import { logHotelEvent } from "../utils/hotelObservability.js";
+import {
+  logHotelEvent,
+  maskSupplierTracingKey,
+} from "../utils/hotelObservability.js";
 
 const getError = (message, statusCode = 400) => {
   const error = new Error(message);
@@ -216,6 +219,55 @@ const getSupplierMessage = (response) => {
       : "";
 };
 
+const summarizeItineraryRequest = (request) => ({
+  supplierSearchId: request.SearchId,
+  recommendationId: request.RecommendationId,
+  hotelCode: request.HotelCode,
+  checkInDate: request.CheckInDate,
+  checkOutDate: request.CheckOutDate,
+  travelingFor: request.TravelingFor,
+  netAmount: request.NetAmount,
+  tui: maskSupplierTracingKey(request.TUI),
+  contactFieldsPresent: Object.fromEntries(
+    [
+      "Title",
+      "FName",
+      "LName",
+      "Mobile",
+      "Email",
+      "Address",
+      "State",
+      "City",
+      "PIN",
+    ].map((field) => [
+      field,
+      typeof request.ContactInfo?.[field] === "string" &&
+        request.ContactInfo[field].trim().length > 0,
+    ])
+  ),
+  specialServiceRequestLength:
+    request.SpecialServiceRequest?.length ?? 0,
+  auxiliaries: (request.Auxiliaries ?? []).map((auxiliary) => ({
+    code: auxiliary.Code,
+    parameterTypes: (auxiliary.Parameters ?? []).map(
+      (parameter) => parameter.Type
+    ),
+  })),
+  rooms: (request.Rooms ?? []).map((room) => ({
+    roomId: room.RoomId,
+    roomGroupId: room.RoomGroupId,
+    supplierName: room.SupplierName,
+    guestCode: room.GuestCode,
+    guestCount: room.Guests?.length ?? 0,
+    adultCount:
+      room.Guests?.filter((guest) => guest.PaxType === "A").length ?? 0,
+    childAges:
+      room.Guests?.filter((guest) => guest.PaxType === "C").map(
+        (guest) => guest.Age
+      ) ?? [],
+  })),
+});
+
 export const createHotelItinerary = async ({
   searchId,
   hotelId,
@@ -357,6 +409,17 @@ export const createHotelItinerary = async ({
       searchId: search.internalSearchId,
       supplier: "AKBAR",
     });
+    logHotelEvent(
+      "info",
+      "hotel.booking.supplier_request_summary",
+      {
+        correlationId,
+        bookingId: correlationId,
+        searchId: search.internalSearchId,
+        supplier: "AKBAR",
+        ...summarizeItineraryRequest(supplierRequest),
+      }
+    );
     const supplierResponse = await createAkbarHotelItineraryAPI({
       payload: supplierRequest,
       searchTracingKey: search.searchTracingKey,
