@@ -2,7 +2,10 @@
 
 import axios from "axios";
 import { getAKBARToken } from "../../../../../../supplier/akbar/akbarAuth.service.js";
-import { logHotelEvent } from "../../../../../../hotel/utils/hotelObservability.js";
+import {
+  getSupplierResponseSummary,
+  logHotelEvent,
+} from "../../../../../../hotel/utils/hotelObservability.js";
 
 export const akbarInitAPI = async (payload, { correlationId } = {}) => {
   const token = await getAKBARToken();
