@@ -43,7 +43,6 @@ const getBookingBaseUrl = () => {
       hasQuery: Boolean(parsedUrl.search),
       hasFragment: Boolean(parsedUrl.hash),
     });
-    //chk
     return parsedUrl.origin;
   } catch (error) {
     logHotelEvent("error", "hotel.supplier_config.invalid", {
@@ -120,14 +119,6 @@ export const startAkbarHotelPay = async ({
     throw error;
   }
 
-  let token;
-  try {
-    token = await getAKBARToken();
-  } catch (error) {
-    error.supplierRequestSent = false;
-    throw error;
-  }
-
   let endpoint;
   try {
     endpoint = new URL("/Payment/StartPay", getBookingBaseUrl());
@@ -144,6 +135,33 @@ export const startAkbarHotelPay = async ({
     });
     throw error;
   }
+  let token;
+  try {
+    token = await getAKBARToken();
+  } catch (error) {
+    error.supplierRequestSent = false;
+    throw error;
+  }
+  if (typeof token !== "string" || !token.trim()) {
+    const error = new Error("AKBAR token is empty; StartPay request was not sent");
+    error.statusCode = 503;
+    error.supplierRequestSent = false;
+    logHotelEvent("error", "hotel.supplier_token.unavailable", {
+      correlationId,
+      bookingId: String(booking._id),
+      supplier: "AKBAR",
+      operation: "start_payment",
+      tokenPresent: false,
+    });
+    throw error;
+  }
+  logHotelEvent("info", "hotel.supplier_token.resolved", {
+    correlationId,
+    bookingId: String(booking._id),
+    supplier: "AKBAR",
+    operation: "start_payment",
+    tokenPresent: true,
+  });
   const payload = {
     SID: itineraryResponse.SID ?? null,
     TUI: tui,

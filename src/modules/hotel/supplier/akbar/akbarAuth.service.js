@@ -1,24 +1,56 @@
-import dotenv from "dotenv";
-dotenv.config();
+import "dotenv/config";
 import axios from "axios";
 import redisClient from "../../../../config/redis.js";
 import { logHotelEvent } from "../../hotel/utils/hotelObservability.js";
 
 const AKBAR_TOKEN_KEY = "AKBAR:hotel:token";
 const AKBAR_TOKEN_TTL = 10 * 24 * 60 * 60; // 10 days
+let tokenRefreshPromise;
 
 export const getAKBARToken = async () => {
-  // 1. Check Redis
-  const cachedToken = await redisClient.get(AKBAR_TOKEN_KEY);
+  let cachedToken;
+  try {
+    cachedToken = await redisClient.get(AKBAR_TOKEN_KEY);
+  } catch (error) {
+    logHotelEvent("error", "hotel.supplier_token.redis_read_failed", {
+      supplier: "AKBAR",
+      key: AKBAR_TOKEN_KEY,
+      redisReady: redisClient.isReady,
+      errorCode: error.code ?? null,
+      errorMessage: error.message,
+    });
+    throw error;
+  }
 
-  if (cachedToken) {
-    console.log("AKBAR token found in Redis");
+  if (typeof cachedToken === "string" && cachedToken.trim()) {
+    logHotelEvent("info", "hotel.supplier_token.cache_hit", {
+      supplier: "AKBAR",
+      key: AKBAR_TOKEN_KEY,
+      redisReady: redisClient.isReady,
+      tokenPresent: true,
+    });
     return cachedToken;
   }
 
-  // 2. Generate new token
-  console.log("AKBAR token not found. Calling Signature API...");
+  logHotelEvent("warn", "hotel.supplier_token.cache_miss", {
+    supplier: "AKBAR",
+    key: AKBAR_TOKEN_KEY,
+    redisReady: redisClient.isReady,
+  });
 
+  if (tokenRefreshPromise) {
+    return tokenRefreshPromise;
+  }
+
+  tokenRefreshPromise = createAndCacheToken();
+  try {
+    return await tokenRefreshPromise;
+  } finally {
+    tokenRefreshPromise = undefined;
+  }
+};
+
+const createAndCacheToken = async () => {
   const configuredUrl = process.env.AKBAR_SIGNATURE_URL;
   let signatureUrl;
   try {
@@ -90,7 +122,7 @@ export const getAKBARToken = async () => {
     throw error;
   }
 
-  if (data?.Code !== "200" || !data?.Token) {
+  if (String(data?.Code) !== "200" || typeof data?.Token !== "string" || !data.Token.trim()) {
     logHotelEvent("error", "hotel.supplier_request.rejected", {
       supplier: "AKBAR",
       operation: "signature",
@@ -118,7 +150,13 @@ export const getAKBARToken = async () => {
     supplierCode: data.Code,
     tokenCached: true,
   });
-  console.log("New AKBAR token saved in Redis");
+  logHotelEvent("info", "hotel.supplier_token.cache_write", {
+    supplier: "AKBAR",
+    key: AKBAR_TOKEN_KEY,
+    redisReady: redisClient.isReady,
+    ttlSeconds: AKBAR_TOKEN_TTL,
+    tokenPresent: true,
+  });
 
   return data.Token;
 };
