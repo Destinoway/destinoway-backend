@@ -6,7 +6,6 @@ import {
   logHotelEvent,
   maskSupplierTracingKey,
 } from "../utils/hotelObservability.js";
-import { formatAkbarHotelDate } from "../utils/hotelDate.js";
 
 const getError = (message, statusCode = 400) => {
   const error = new Error(message);
@@ -358,8 +357,8 @@ export const createHotelItinerary = async ({
     LocationName:
       hotel.locationName ?? hotel.rawSupplierData?.locationName ?? null,
     HotelCode: String(hotelId),
-    CheckInDate: formatAkbarHotelDate(search.checkIn),
-    CheckOutDate: formatAkbarHotelDate(search.checkOut),
+    CheckInDate: search.checkIn,
+    CheckOutDate: search.checkOut,
     TravelingFor: process.env.AKBAR_TRAVELING_FOR || "NTF",
   };
 
