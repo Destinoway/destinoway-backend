@@ -199,6 +199,22 @@ const getTransactionId = (response) =>
   response?.data?.transactionId ??
   null;
 
+const getSupplierMessage = (response) => {
+  const message =
+    response?.Msg ??
+    response?.Message ??
+    response?.message ??
+    response?.data?.Msg ??
+    response?.data?.Message ??
+    response?.data?.message;
+
+  return Array.isArray(message)
+    ? message.filter(Boolean).join("; ")
+    : typeof message === "string"
+      ? message.trim()
+      : "";
+};
+
 export const createHotelItinerary = async ({
   searchId,
   hotelId,
@@ -272,7 +288,7 @@ export const createHotelItinerary = async ({
       },
       {
         Code: "CUSTOMER DETAILS",
-        parameters: [
+        Parameters: [
           { Type: "Nationality", Value: countryCode },
           { Type: "Country of Residence", Value: countryCode },
         ],
@@ -338,17 +354,27 @@ export const createHotelItinerary = async ({
       searchTracingKey: search.searchTracingKey,
     });
     const transactionId = getTransactionId(supplierResponse);
+    const supplierCode = supplierResponse?.Code ?? supplierResponse?.code;
+    const supplierMessage = getSupplierMessage(supplierResponse);
+    const transactionIdValue = String(transactionId ?? "").trim();
+    const hasTransactionId =
+      transactionIdValue !== "" && !/^0+(?:\.0+)?$/.test(transactionIdValue);
+    const supplierRejected =
+      supplierCode !== undefined &&
+      supplierCode !== null &&
+      String(supplierCode) !== "200";
 
-    if (!transactionId) {
+    if (!hasTransactionId || supplierRejected) {
+      const itineraryError = supplierRejected
+        ? `Supplier rejected itinerary (Code ${supplierCode})${
+            supplierMessage ? `: ${supplierMessage}` : ""
+          }`
+        : "Supplier did not return a valid TransactionID";
       booking.itineraryStatus = "failed";
       booking.itineraryResponse = supplierResponse;
-      booking.itineraryError =
-        "Supplier response did not contain a TransactionID";
+      booking.itineraryError = itineraryError;
       await booking.save();
-      throw getError(
-        "Supplier did not return a TransactionID for this itinerary",
-        502
-      );
+      throw getError(itineraryError, 502);
     }
 
     booking.transactionId = String(transactionId);
