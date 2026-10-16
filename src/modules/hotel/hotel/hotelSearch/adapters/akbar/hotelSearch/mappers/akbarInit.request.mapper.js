@@ -1,3 +1,5 @@
+import { formatAkbarHotelDate } from "../../../../../utils/hotelDate.js";
+
 export const mapAkbarInitRequest = (payload) => {
   return {
     geoCode: {
@@ -11,9 +13,9 @@ export const mapAkbarInitRequest = (payload) => {
 
     culture: "en-US",
 
-    checkIn: formatAkbarDate(payload.checkIn),
+    checkIn: formatAkbarHotelDate(payload.checkIn),
 
-    checkOut: formatAkbarDate(payload.checkOut),
+    checkOut: formatAkbarHotelDate(payload.checkOut),
 
     rooms: (payload.rooms || []).map((room) => ({
       adults: String(room.adults || 0),
@@ -49,16 +51,4 @@ export const mapAkbarInitRequest = (payload) => {
     tdsPercentage:
       Number(process.env.AKBAR_TDS_PERCENTAGE || 0),
   };
-};
-
-const formatAkbarDate = (date) => {
-  if (!date) return "";
-
-  const d = new Date(date);
-
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const year = d.getFullYear();
-
-  return `${month}/${day}/${year}`;
 };

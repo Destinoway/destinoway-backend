@@ -153,6 +153,7 @@ import {
   getHotelSearchMeta,
 } from "./hotelSearch.redis.service.js";
 import { logHotelEvent } from "../../utils/hotelObservability.js";
+import { normalizeHotelDate } from "../../utils/hotelDate.js";
 
 // =========================================================
 // CONFIGURATION
@@ -213,6 +214,14 @@ export const searchHotels = async ({
 
   // 3. Generate internal search ID
   const searchId = crypto.randomUUID();
+  const checkIn = normalizeHotelDate(payload.checkIn);
+  const checkOut = normalizeHotelDate(payload.checkOut);
+  if (checkOut <= checkIn) {
+    const error = new Error("Check-out date must be after check-in date");
+    error.statusCode = 400;
+    throw error;
+  }
+
   logHotelEvent("info", "hotel.search.accepted", {
     correlationId: searchId,
     supplier,
@@ -223,8 +232,8 @@ export const searchHotels = async ({
     searchId,
     searchSessionId,
     supplier,
-    checkIn: payload.checkIn,
-    checkOut: payload.checkOut,
+    checkIn,
+    checkOut,
     occupancies: (payload.rooms ?? []).map((room, index) => ({
       occupancyId: index + 1,
       numOfAdults: Number(room.adults ?? 0),
