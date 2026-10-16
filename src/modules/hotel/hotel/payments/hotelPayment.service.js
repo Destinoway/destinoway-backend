@@ -157,7 +157,7 @@ export const createHotelPaymentOrder = async ({
         paymentGateway: gatewayName,
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   );
   if (!lock) {
     throw getError("A payment order is already being created for this booking", 409);
@@ -288,7 +288,7 @@ const startSupplierBooking = async ({ booking, transaction }) => {
       paymentTransactionId: transaction.transactionId,
     },
     { $set: { supplierBookingStatus: "processing" } },
-    { new: true }
+    { returnDocument: "after" }
   );
   if (!claimedBooking) {
     const latestBooking = await HotelItinerary.findById(booking._id);
