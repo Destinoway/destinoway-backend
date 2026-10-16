@@ -60,7 +60,6 @@ const mapAdditionalCharges = (items) =>
 
 const mapRoomGroup = (group) => ({
   ...pick(group, [
-    "id",
     "availability",
     "description",
     "needsPriceCheck",
@@ -88,6 +87,7 @@ const mapRoomGroup = (group) => ({
     "bookNowPayLaterDate",
     "ratePerNight",
   ]),
+  ...(group?.id !== undefined ? { recommendationId: group.id } : {}),
   taxes: mapRateComponents(group?.taxes),
   discounts: mapRateComponents(group?.discounts),
   otherRateComponents: mapRateComponents(group?.otherRateComponents),
