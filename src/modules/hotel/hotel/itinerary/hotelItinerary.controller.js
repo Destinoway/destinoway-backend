@@ -9,7 +9,7 @@ export const createHotelItineraryController = async (req, res, next) => {
       contactInfo: req.body.contactInfo,
       rooms: req.body.rooms,
       specialServiceRequest: req.body.specialServiceRequest ?? "",
-      userId: req.user?._id ?? null,
+      userId: req.user._id,
     });
 
     return res.status(201).json({

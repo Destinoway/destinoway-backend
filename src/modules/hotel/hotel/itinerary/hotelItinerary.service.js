@@ -275,8 +275,12 @@ export const createHotelItinerary = async ({
   contactInfo,
   rooms: submittedRooms,
   specialServiceRequest = "",
-  userId = null,
+  userId,
 }) => {
+  if (!userId) {
+    throw getError("Login is required to create a hotel itinerary", 401);
+  }
+
   const { search, hotel, pricing } =
     await getHotelPriceVerificationContext({
       searchId,
@@ -478,6 +482,34 @@ export const createHotelItinerary = async ({
       paymentStatus: booking.paymentStatus,
       amount: netAmount,
       currency: booking.price.currency,
+      hotel: {
+        hotelId: booking.hotel.hotelId,
+        name: booking.hotel.name,
+        address: booking.hotel.address,
+        starRating: booking.hotel.starRating,
+      },
+      stay: {
+        checkIn: booking.stay.checkIn,
+        checkOut: booking.stay.checkOut,
+      },
+      rooms: booking.rooms.map((room) => ({
+        occupancyId: room.occupancyId,
+        adults: room.adults.map(({ title, firstName, middleName, lastName }) => ({
+          title,
+          firstName,
+          middleName,
+          lastName,
+        })),
+        children: room.children.map(
+          ({ title, firstName, middleName, lastName, age }) => ({
+            title,
+            firstName,
+            middleName,
+            lastName,
+            age,
+          })
+        ),
+      })),
     };
   } catch (error) {
     if (booking.itineraryStatus !== "failed") {
