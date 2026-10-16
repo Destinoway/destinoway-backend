@@ -152,6 +152,7 @@ import {
   getHotelSearchResults,
   getHotelSearchMeta,
 } from "./hotelSearch.redis.service.js";
+import { logHotelEvent } from "../../utils/hotelObservability.js";
 
 // =========================================================
 // CONFIGURATION
@@ -212,6 +213,10 @@ export const searchHotels = async ({
 
   // 3. Generate internal search ID
   const searchId = crypto.randomUUID();
+  logHotelEvent("info", "hotel.search.accepted", {
+    correlationId: searchId,
+    supplier,
+  });
 
   // 4. Initialize Redis state
   await createHotelSearchState({
@@ -238,6 +243,13 @@ export const searchHotels = async ({
         searchSessionId,
       })
       .catch(async (error) => {
+        logHotelEvent("error", "hotel.search.failed", {
+          correlationId: searchId,
+          supplier,
+          finalState: "failed",
+          errorCode: error.code ?? null,
+          errorMessage: error.message,
+        });
         console.error(
           "❌ BACKGROUND HOTEL SEARCH FAILED:",
           error

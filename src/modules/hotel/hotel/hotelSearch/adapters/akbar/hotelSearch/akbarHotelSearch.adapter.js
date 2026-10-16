@@ -20,6 +20,10 @@ import {
   setHotelSearchResults,
   completeHotelSearch,
 } from "../../../service/hotelSearch.redis.service.js";
+import {
+  logHotelEvent,
+  maskSupplierTracingKey,
+} from "../../../../utils/hotelObservability.js";
 
 
 export const akbarHotelSearchAdapter = {
@@ -31,6 +35,10 @@ export const akbarHotelSearchAdapter = {
     } = {}
   ) {
     const totalStart = performance.now();
+    logHotelEvent("info", "hotel.search.started", {
+      correlationId: internalSearchId,
+      supplier: "AKBAR",
+    });
 
 
     // =========================================================
@@ -62,10 +70,10 @@ export const akbarHotelSearchAdapter = {
         );
 
       if (!active) {
-        console.log(
-          "🛑 AKBAR SEARCH CANCELLED:",
-          internalSearchId
-        );
+        logHotelEvent("info", "hotel.search.cancelled", {
+          correlationId: internalSearchId,
+          supplier: "AKBAR",
+        });
 
         return false;
       }
@@ -109,7 +117,8 @@ export const akbarHotelSearchAdapter = {
 
     const initResponse =
       await akbarInitAPI(
-        initPayload
+        initPayload,
+        { correlationId: internalSearchId }
       );
 
 
@@ -121,6 +130,7 @@ export const akbarHotelSearchAdapter = {
 
 
     const searchContext = {
+      correlationId: internalSearchId,
       searchId:
         initResponse.searchId,
 
@@ -129,19 +139,14 @@ export const akbarHotelSearchAdapter = {
     };
 
 
-    console.log(
-      "🔎 AKBAR SEARCH CONTEXT",
-      {
-        internalSearchId,
-        searchSessionId,
-
-        akbarSearchId:
-          searchContext.searchId,
-
-        searchTracingKey:
-          searchContext.searchTracingKey,
-      }
-    );
+    logHotelEvent("info", "hotel.search.supplier_context", {
+      correlationId: internalSearchId,
+      supplier: "AKBAR",
+      supplierSearchId: searchContext.searchId,
+      searchTracingKey: maskSupplierTracingKey(
+        searchContext.searchTracingKey
+      ),
+    });
 
 
     await updateHotelSearchMeta(
@@ -735,34 +740,6 @@ export const akbarHotelSearchAdapter = {
       buildMergedHotels();
 
 
-    console.log(
-      "=========================================="
-    );
-
-    console.log(
-      "✅ AKBAR HOTEL SEARCH COMPLETED"
-    );
-
-    console.log(
-      "CONTENT:",
-      contentMap.size
-    );
-
-    console.log(
-      "RATES:",
-      rateMap.size
-    );
-
-    console.log(
-      "MATCHED:",
-      finalHotels.length
-    );
-
-    console.log(
-      "=========================================="
-    );
-
-
     // =========================================================
     // FINAL REDIS SAVE
     // =========================================================
@@ -792,9 +769,15 @@ export const akbarHotelSearchAdapter = {
     );
 
 
-    console.log(
-      `⏱️ TOTAL AKBAR SEARCH TIME: ${(performance.now() - totalStart).toFixed(2)} ms`
-    );
+    logHotelEvent("info", "hotel.search.completed", {
+      correlationId: internalSearchId,
+      supplier: "AKBAR",
+      durationMs: Math.round(performance.now() - totalStart),
+      contentHotelCount: contentMap.size,
+      rateHotelCount: rateMap.size,
+      matchedHotelCount: finalHotels.length,
+      finalState: "completed",
+    });
 
 
     // =========================================================

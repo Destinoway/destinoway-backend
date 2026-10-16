@@ -1,5 +1,9 @@
 import axios from "axios";
 import { getAKBARToken } from "../../../../../../supplier/akbar/akbarAuth.service.js";
+import {
+  getSupplierResponseSummary,
+  logHotelEvent,
+} from "../../../../../../hotel/utils/hotelObservability.js";
 
 const sleep = (ms) =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -20,6 +24,7 @@ const isFailureResponse = (data) => {
 
 export const akbarHotelContentAPI = async ({
   searchId,
+  correlationId,
   searchTracingKey,
   limit,
   offset,
@@ -38,9 +43,12 @@ export const akbarHotelContentAPI = async ({
       const active = await shouldContinue();
 
       if (!active) {
-        console.log(
-          `🛑 AKBAR CONTENT STOPPED: SEARCH ${searchId}`
-        );
+        logHotelEvent("info", "hotel.search.cancelled", {
+          correlationId,
+          supplier: "AKBAR",
+          operation: "search_content",
+          attempt,
+        });
         return null;
       }
     }
@@ -48,11 +56,14 @@ export const akbarHotelContentAPI = async ({
     const token = await getAKBARToken();
     const apiStart = performance.now();
 
-    console.log("🏨 AKBAR CONTENT START");
-    console.log("Search ID:", searchId);
-    console.log("Limit:", limit);
-    console.log("Offset:", offset);
-    console.log("Attempt:", attempt);
+    logHotelEvent("info", "hotel.supplier_request.started", {
+      correlationId,
+      supplier: "AKBAR",
+      operation: "search_content",
+      attempt,
+      limit,
+      offset,
+    });
 
     try {
       const response = await axios.get(url, {
@@ -79,17 +90,20 @@ export const akbarHotelContentAPI = async ({
 
       const elapsed = performance.now() - apiStart;
 
-      console.log(
-        `⏱️ AKBAR CONTENT API TIME (${offset}): ${elapsed.toFixed(2)} ms`
-      );
-      console.log("✅ AKBAR CONTENT STATUS:", response.status);
-      console.log("📊 CONTENT SEARCH STATUS:", data?.searchStatus);
-      console.log("📦 CONTENT HOTELS RECEIVED:", hotels.length);
-      console.log("📊 CONTENT TOTAL:", total);
-      console.log(
-        "🔍 AKBAR RAW CONTENT RESPONSE:",
-        JSON.stringify(data, null, 2)
-      );
+      logHotelEvent("info", "hotel.supplier_request.completed", {
+        correlationId,
+        supplier: "AKBAR",
+        operation: "search_content",
+        attempt,
+        limit,
+        offset,
+        httpStatus: response.status,
+        durationMs: Math.round(elapsed),
+        supplierStatus: data?.searchStatus ?? data?.status ?? null,
+        hotelCount: hotels.length,
+        total,
+        ...getSupplierResponseSummary(data),
+      });
 
       if (isFailureResponse(data)) {
         throw new Error(
@@ -112,15 +126,19 @@ export const akbarHotelContentAPI = async ({
 
       await sleep(1000);
     } catch (error) {
-      console.error("❌ AKBAR CONTENT ERROR");
-      console.error("Message:", error.message);
-      console.error("Status:", error.response?.status);
-      console.error(
-        "Response:",
-        JSON.stringify(error.response?.data, null, 2)
-      );
-      console.error("URL:", error.config?.url);
-      console.error("Params:", error.config?.params);
+      logHotelEvent("error", "hotel.supplier_request.failed", {
+        correlationId,
+        supplier: "AKBAR",
+        operation: "search_content",
+        attempt,
+        limit,
+        offset,
+        httpStatus: error.response?.status ?? null,
+        durationMs: Math.round(performance.now() - apiStart),
+        errorCode: error.code ?? null,
+        errorMessage: error.message,
+        ...getSupplierResponseSummary(error.response?.data),
+      });
 
       throw error;
     }

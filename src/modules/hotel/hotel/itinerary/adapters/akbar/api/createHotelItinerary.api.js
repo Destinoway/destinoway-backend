@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getAKBARToken } from "../../../../../supplier/akbar/akbarAuth.service.js";
+import { logHotelEvent } from "../../../../utils/hotelObservability.js";
 
 const summarizeItineraryResponse = (response) => {
   const responseData = response.data;
@@ -84,6 +85,7 @@ const summarizeItineraryResponse = (response) => {
 export const createAkbarHotelItineraryAPI = async ({
   payload,
   searchTracingKey,
+  correlationId,
 }) => {
   const configuredItineraryUrl =
     process.env.AKBAR_HOTEL_ITINERARY_URL ||
@@ -105,27 +107,51 @@ export const createAkbarHotelItineraryAPI = async ({
   itineraryEndpoint.pathname = itineraryEndpoint.pathname.replace(/\/+$/, "");
 
   const itineraryUrl = itineraryEndpoint.toString();
-  console.info("[AKBAR itinerary] Request endpoint:", {
+  logHotelEvent("info", "hotel.supplier_request.started", {
+    correlationId,
+    supplier: "AKBAR",
+    operation: "create_itinerary",
     host: itineraryEndpoint.host,
     path: itineraryEndpoint.pathname,
   });
 
   const token = await getAKBARToken();
-  const response = await axios.post(itineraryUrl, payload, {
-    headers: {
-      "Content-Type": "application/json",
+  const startedAt = performance.now();
+  let response;
+  try {
+    response = await axios.post(itineraryUrl, payload, {
+      headers: {
+        "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
-      ...(searchTracingKey
-        ? { "search-tracing-key": searchTracingKey }
+        ...(searchTracingKey
+          ? { "search-tracing-key": searchTracingKey }
+          : {}),
+      },
+      timeout: 60000,
+    });
+  } catch (error) {
+    logHotelEvent("error", "hotel.supplier_request.failed", {
+      correlationId,
+      supplier: "AKBAR",
+      operation: "create_itinerary",
+      httpStatus: error.response?.status ?? null,
+      durationMs: Math.round(performance.now() - startedAt),
+      errorCode: error.code ?? null,
+      errorMessage: error.message,
+      ...(error.response
+        ? summarizeItineraryResponse(error.response)
         : {}),
-    },
-    timeout: 60000,
-  });
+    });
+    throw error;
+  }
 
-  console.info(
-    "[AKBAR itinerary] Supplier response summary:",
-    summarizeItineraryResponse(response),
-  );
+  logHotelEvent("info", "hotel.supplier_request.completed", {
+    correlationId,
+    supplier: "AKBAR",
+    operation: "create_itinerary",
+    durationMs: Math.round(performance.now() - startedAt),
+    ...summarizeItineraryResponse(response),
+  });
 
   return response.data;
 };

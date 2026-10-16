@@ -3,6 +3,10 @@ import axios from "axios";
 import {
   getAKBARToken,
 } from "../../../../../../supplier/akbar/akbarAuth.service.js";
+import {
+  getSupplierResponseSummary,
+  logHotelEvent,
+} from "../../../../../../hotel/utils/hotelObservability.js";
 
 
 // =========================================================
@@ -20,6 +24,7 @@ const sleep = (ms) =>
 export const akbarHotelRateAPIWithPolling = async (
   {
     searchId,
+    correlationId,
     searchTracingKey,
   },
   {
@@ -33,11 +38,12 @@ export const akbarHotelRateAPIWithPolling = async (
 
   let attempt = 0;
 
-  console.log("");
-  console.log("==========================================");
-  console.log("🚀 AKBAR RATE POLLING STARTED");
-  console.log("AKBAR SEARCH ID:", searchId);
-  console.log("==========================================");
+  logHotelEvent("info", "hotel.search.polling.started", {
+    correlationId,
+    supplier: "AKBAR",
+    operation: "search_rate",
+    supplierSearchId: searchId,
+  });
 
 
   // =========================================================
@@ -56,20 +62,13 @@ export const akbarHotelRateAPIWithPolling = async (
       const active = await shouldContinue();
 
       if (!active) {
-        console.log("");
-        console.log(
-          "=========================================="
-        );
-        console.log(
-          "🛑 AKBAR RATE STOPPED"
-        );
-        console.log(
-          "SEARCH ID:",
-          searchId
-        );
-        console.log(
-          "=========================================="
-        );
+        logHotelEvent("info", "hotel.search.polling.cancelled", {
+          correlationId,
+          supplier: "AKBAR",
+          operation: "search_rate",
+          supplierSearchId: searchId,
+          attempts: attempt,
+        });
 
         return null;
       }
@@ -92,22 +91,20 @@ export const akbarHotelRateAPIWithPolling = async (
       // POLLING ATTEMPT
       // =====================================================
 
-      console.log("");
-      console.log(
-        "=========================================="
-      );
-      console.log(
-        `🔄 AKBAR RATE POLLING ATTEMPT #${attempt}`
-      );
-      console.log(
-        "=========================================="
-      );
+      logHotelEvent("info", "hotel.supplier_request.started", {
+        correlationId,
+        supplier: "AKBAR",
+        operation: "search_rate",
+        supplierSearchId: searchId,
+        attempt,
+      });
 
 
       // =====================================================
       // CALL AKBAR RATE API
       // =====================================================
 
+      const requestStart = performance.now();
       const response = await axios.get(
         url,
         {
@@ -151,43 +148,20 @@ export const akbarHotelRateAPIWithPolling = async (
       // LOG RESPONSE SUMMARY
       // =====================================================
 
-      console.log(
-        `⏱️ AKBAR RATE API TIME: ${elapsed.toFixed(2)} ms`
-      );
-
-      console.log(
-        "📊 RATE SEARCH STATUS:",
-        data?.searchStatus
-      );
-
-      console.log(
-        "🏨 RATE HOTELS:",
-        data?.hotels?.length || 0
-      );
-
-      console.log(
-        "📦 RATE TOTAL:",
-        data?.total || 0
-      );
-
-      console.log(
-        "✅ RATE RESPONSE STATUS:",
-        data?.status
-      );
-
-
-      // =====================================================
-      // RAW RESPONSE
-      // =====================================================
-
-      console.log(
-        "🔍 AKBAR RAW RATE RESPONSE:",
-        JSON.stringify(
-          data,
-          null,
-          2
-        )
-      );
+      logHotelEvent("info", "hotel.supplier_request.completed", {
+        correlationId,
+        supplier: "AKBAR",
+        operation: "search_rate",
+        supplierSearchId: searchId,
+        attempt,
+        httpStatus: response.status,
+        durationMs: Math.round(performance.now() - requestStart),
+        attemptDurationMs: Math.round(elapsed),
+        supplierStatus: data?.searchStatus ?? data?.status ?? null,
+        hotelCount: data?.hotels?.length ?? 0,
+        total: data?.total ?? 0,
+        ...getSupplierResponseSummary(data),
+      });
 
 
       // =====================================================
@@ -230,39 +204,16 @@ export const akbarHotelRateAPIWithPolling = async (
         searchStatus === "completed"
       ) {
 
-        console.log("");
-        console.log(
-          "=========================================="
-        );
-
-        console.log(
-          "✅ AKBAR RATE SEARCH COMPLETED"
-        );
-
-        console.log(
-          "SEARCH ID:",
-          searchId
-        );
-
-        console.log(
-          "TOTAL RATE HOTELS:",
-          data?.hotels?.length || 0
-        );
-
-        console.log(
-          "RATE TOTAL:",
-          data?.total || 0
-        );
-
-        console.log(
-          "TOTAL ATTEMPTS:",
-          attempt
-        );
-
-        console.log(
-          "=========================================="
-        );
-
+        logHotelEvent("info", "hotel.search.polling.completed", {
+          correlationId,
+          supplier: "AKBAR",
+          operation: "search_rate",
+          supplierSearchId: searchId,
+          attempts: attempt,
+          supplierStatus: data?.searchStatus ?? data?.status ?? null,
+          hotelCount: data?.hotels?.length ?? 0,
+          total: data?.total ?? 0,
+        });
 
         return data;
       }
@@ -302,34 +253,15 @@ export const akbarHotelRateAPIWithPolling = async (
         responseStatus === "error"
       ) {
 
-        console.error("");
-        console.error(
-          "=========================================="
-        );
-
-        console.error(
-          "❌ AKBAR RATE SEARCH FAILED"
-        );
-
-        console.error(
-          "SEARCH ID:",
-          searchId
-        );
-
-        console.error(
-          "SEARCH STATUS:",
-          data?.searchStatus
-        );
-
-        console.error(
-          "RESPONSE STATUS:",
-          data?.status
-        );
-
-        console.error(
-          "=========================================="
-        );
-
+        logHotelEvent("error", "hotel.search.polling.failed", {
+          correlationId,
+          supplier: "AKBAR",
+          operation: "search_rate",
+          supplierSearchId: searchId,
+          attempts: attempt,
+          supplierStatus: data?.searchStatus ?? data?.status ?? null,
+          ...getSupplierResponseSummary(data),
+        });
 
         throw new Error(
           `AKBAR rate search failed: ${
@@ -368,56 +300,18 @@ export const akbarHotelRateAPIWithPolling = async (
       // AXIOS / TOKEN / API ERROR
       // =====================================================
 
-      console.error("");
-      console.error(
-        "=========================================="
-      );
-
-      console.error(
-        `❌ AKBAR RATE ATTEMPT #${attempt} ERROR`
-      );
-
-      console.error(
-        "=========================================="
-      );
-
-      console.error(
-        "Message:",
-        error.message
-      );
-
-      console.error(
-        "Status:",
-        error.response?.status
-      );
-
-      console.error(
-        "Response:",
-        JSON.stringify(
-          error.response?.data,
-          null,
-          2
-        )
-      );
-
-      console.error(
-        "URL:",
-        url
-      );
-
-      console.error(
-        "Search ID:",
-        searchId
-      );
-
-      console.error(
-        "Attempt:",
-        attempt
-      );
-
-      console.error(
-        "=========================================="
-      );
+      logHotelEvent("error", "hotel.supplier_request.failed", {
+        correlationId,
+        supplier: "AKBAR",
+        operation: "search_rate",
+        supplierSearchId: searchId,
+        attempt,
+        httpStatus: error.response?.status ?? null,
+        durationMs: Math.round(performance.now() - start),
+        errorCode: error.code ?? null,
+        errorMessage: error.message,
+        ...getSupplierResponseSummary(error.response?.data),
+      });
 
 
       // =====================================================
