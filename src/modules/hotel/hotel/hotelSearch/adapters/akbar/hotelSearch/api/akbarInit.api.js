@@ -3,6 +3,7 @@
 import axios from "axios";
 import { getAKBARToken } from "../../../../../../supplier/akbar/akbarAuth.service.js";
 import {
+  getResponseShape,
   getSupplierResponseSummary,
   logHotelEvent,
 } from "../../../../../../hotel/utils/hotelObservability.js";
@@ -35,6 +36,10 @@ export const akbarInitAPI = async (payload, { correlationId } = {}) => {
     );
 
     const apiEnd = performance.now();
+    const initData =
+      response.data?.data && typeof response.data.data === "object"
+        ? response.data.data
+        : response.data;
 
     console.log(
       `⏱️ AKBAR INIT API TIME: ${(apiEnd - apiStart).toFixed(2)} ms`
@@ -46,10 +51,19 @@ export const akbarInitAPI = async (payload, { correlationId } = {}) => {
       operation: "search_init",
       httpStatus: response.status,
       durationMs: Math.round(performance.now() - startedAt),
-      supplierSearchId: response.data?.searchId ?? null,
-      searchTracingKey: response.data?.searchTracingKey
+      supplierSearchId:
+        initData?.searchId ??
+        initData?.searchID ??
+        initData?.SearchId ??
+        initData?.SearchID ??
+        null,
+      searchTracingKey:
+        initData?.searchTracingKey ??
+        initData?.SearchTracingKey ??
+        initData?.searchTracingID
         ? "present"
         : "missing",
+      ...getResponseShape(response.data),
       ...getSupplierResponseSummary(response.data),
     });
 

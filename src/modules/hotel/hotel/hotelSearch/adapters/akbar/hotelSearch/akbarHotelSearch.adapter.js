@@ -21,6 +21,8 @@ import {
   completeHotelSearch,
 } from "../../../service/hotelSearch.redis.service.js";
 import {
+  getResponseShape,
+  getSupplierResponseSummary,
   logHotelEvent,
   maskSupplierTracingKey,
 } from "../../../../utils/hotelObservability.js";
@@ -121,21 +123,53 @@ export const akbarHotelSearchAdapter = {
         { correlationId: internalSearchId }
       );
 
+    const initData =
+      initResponse?.data && typeof initResponse.data === "object"
+        ? initResponse.data
+        : initResponse;
+    const supplierSearchId =
+      initData?.searchId ??
+      initData?.searchID ??
+      initData?.SearchId ??
+      initData?.SearchID ??
+      null;
 
-    if (!initResponse?.searchId) {
+    if (
+      supplierSearchId === null ||
+      supplierSearchId === undefined ||
+      String(supplierSearchId).trim() === ""
+    ) {
+      const responseSummary =
+        getSupplierResponseSummary(initResponse);
+      logHotelEvent("error", "hotel.search.init_invalid_response", {
+        correlationId: internalSearchId,
+        supplier: "AKBAR",
+        ...getResponseShape(initResponse),
+        ...responseSummary,
+      });
       throw new Error(
-        "AKBAR Init failed: searchId not received"
+        `AKBAR Init failed: searchId not received${
+          responseSummary.supplierCode
+            ? ` (Code ${responseSummary.supplierCode})`
+            : ""
+        }${
+          responseSummary.supplierMessage
+            ? `: ${responseSummary.supplierMessage}`
+            : ""
+        }`
       );
     }
-
 
     const searchContext = {
       correlationId: internalSearchId,
       searchId:
-        initResponse.searchId,
+        String(supplierSearchId),
 
       searchTracingKey:
-        initResponse.searchTracingKey,
+        initData?.searchTracingKey ??
+        initData?.SearchTracingKey ??
+        initData?.searchTracingID ??
+        null,
     };
 
 

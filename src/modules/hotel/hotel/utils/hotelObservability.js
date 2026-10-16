@@ -40,3 +40,30 @@ export const getSupplierResponseSummary = (data) => {
         : null,
   };
 };
+
+export const getResponseShape = (data) => {
+  if (data === null) {
+    return { responseType: "null", responseKeys: [] };
+  }
+
+  if (Array.isArray(data)) {
+    return { responseType: "array", responseKeys: [] };
+  }
+
+  if (typeof data !== "object") {
+    return {
+      responseType: typeof data,
+      responseKeys: [],
+    };
+  }
+
+  const nestedData = data.data;
+  return {
+    responseType: "object",
+    responseKeys: Object.keys(data),
+    nestedDataKeys:
+      nestedData && typeof nestedData === "object"
+        ? Object.keys(nestedData)
+        : [],
+  };
+};
