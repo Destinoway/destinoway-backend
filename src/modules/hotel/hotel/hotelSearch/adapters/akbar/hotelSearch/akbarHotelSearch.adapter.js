@@ -189,6 +189,9 @@ export const akbarHotelSearchAdapter = {
         akbarSearchId:
           searchContext.searchId,
 
+        searchTracingKey:
+          searchContext.searchTracingKey,
+
         contentStatus:
           "processing",
 
