@@ -3,174 +3,252 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pan Journey Razorpay Test</title>
+    <title>Hotel Payment Test</title>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <style>
       body {
-        font-family: Arial;
-        padding: 40px;
+        font-family: Arial, sans-serif;
+        padding: 32px;
         background: #f4f4f4;
       }
 
       .container {
-        width: 500px;
+        max-width: 560px;
         margin: auto;
         background: white;
-        padding: 25px;
+        padding: 24px;
         border-radius: 10px;
       }
 
-      input {
+      label {
+        display: block;
+        margin-top: 14px;
+        font-weight: 600;
+      }
+
+      input,
+      select {
+        box-sizing: border-box;
         width: 100%;
         padding: 10px;
-        margin: 10px 0;
+        margin-top: 6px;
       }
 
       button {
-        padding: 12px 25px;
+        padding: 12px 20px;
+        margin: 16px 8px 0 0;
         cursor: pointer;
+      }
+
+      #stripe-card {
+        padding: 12px;
+        border: 1px solid #bbb;
+        border-radius: 4px;
+        margin-top: 8px;
+      }
+
+      #stripe-card-field[hidden] {
+        display: none;
       }
 
       pre {
         background: #eee;
-        padding: 15px;
+        padding: 14px;
         overflow: auto;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
       }
     </style>
   </head>
-
   <body>
-    <div class="container">
-      <h2>Pan Journey Payment Test</h2>
-
-      <input id="bookingId" placeholder="Temp Booking Id" />
-
-      <button onclick="startPayment()">Pay Now</button>
-
-      <hr />
-
-      <pre id="result"></pre>
-    </div>
-
+    <main class="container">
+      <h2>Hotel Payment Test</h2>
+      <label for="api-url">Backend URL</label>
+      <input id="api-url" value="http://localhost:8000" />
+      <label for="token">Customer access token</label>
+      <input id="token" type="password" autocomplete="off" />
+      <label for="booking-id">Hotel itinerary booking ID</label>
+      <input id="booking-id" placeholder="MongoDB booking ID" />
+      <label for="gateway">Payment gateway</label>
+      <select id="gateway">
+        <option value="razorpay">Razorpay</option>
+        <option value="stripe">Stripe</option>
+      </select>
+      <div id="stripe-card-field" hidden>
+        <label>Card details (Stripe test card)</label>
+        <div id="stripe-card"></div>
+      </div>
+      <button id="pay-button" type="button">Create order and pay</button>
+      <button id="status-button" type="button">Refresh booking status</button>
+      <pre id="result">Ready.</pre>
+    </main>
     <script>
-      async function startPayment() {
+      const gatewayInput = document.getElementById("gateway");
+      const stripeCardField = document.getElementById("stripe-card-field");
+      let stripeCard;
+      let stripeElements;
+      let stripeClient;
+
+      gatewayInput.addEventListener("change", () => {
+        stripeCardField.hidden = gatewayInput.value !== "stripe";
+      });
+
+      const showResult = (result) => {
+        document.getElementById("result").textContent =
+          typeof result === "string" ? result : JSON.stringify(result, null, 2);
+      };
+
+      const getApiRoot = () =>
+        document.getElementById("api-url").value.replace(/\/+$/, "");
+
+      const request = async (path, options = {}) => {
+        const token = document.getElementById("token").value.trim();
+        const response = await fetch(`${getApiRoot()}${path}`, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            ...(options.headers ?? {}),
+          },
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.message ?? `Request failed (${response.status})`);
+        }
+        return result.data;
+      };
+
+      const verifyPayment = async (details) => {
+        const result = await request("/api/v1/hotel-payments/verify", {
+          method: "POST",
+          body: JSON.stringify(details),
+        });
+        showResult(result);
+      };
+
+      const startRazorpay = (order) =>
+        new Promise((resolve, reject) => {
+          const checkout = new Razorpay({
+            key: order.paymentData.keyId,
+            amount: order.paymentData.amount,
+            currency: order.paymentData.currency,
+            order_id: order.paymentData.orderId,
+            name: "Destinoway",
+            description: "Hotel booking",
+            handler: async (response) => {
+              try {
+                const result = await request("/api/v1/hotel-payments/verify", {
+                  method: "POST",
+                  body: JSON.stringify({
+                    transactionId: order.transactionId,
+                    gateway: "razorpay",
+                    gatewayOrderId: response.razorpay_order_id,
+                    paymentId: response.razorpay_payment_id,
+                    signature: response.razorpay_signature,
+                  }),
+                });
+                showResult(result);
+                resolve(result);
+              } catch (error) {
+                showResult(error.message);
+                reject(error);
+              }
+            },
+            modal: {
+              ondismiss: () => resolve(null),
+            },
+          });
+          checkout.on("payment.failed", (event) => {
+            const message = event.error?.description ?? "Razorpay payment failed";
+            showResult(message);
+            reject(new Error(message));
+          });
+          checkout.open();
+        });
+
+      const startStripe = async (order) => {
+        if (!order.paymentData.publishableKey) {
+          throw new Error("Set STRIPE_PUBLISHABLE_KEY to use Stripe Checkout testing");
+        }
+        if (!window.Stripe) {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement("script");
+            script.src = "https://js.stripe.com/v3/";
+            script.onload = resolve;
+            script.onerror = () => reject(new Error("Could not load Stripe.js"));
+            document.head.appendChild(script);
+          });
+        }
+        stripeClient = window.Stripe(order.paymentData.publishableKey);
+        stripeElements = stripeClient.elements();
+        if (stripeCard) stripeCard.unmount();
+        stripeCard = stripeElements.create("card");
+        stripeCard.mount("#stripe-card");
+
+        const result = await stripeClient.confirmCardPayment(
+          order.paymentData.clientSecret,
+          {
+            payment_method: {
+              card: stripeCard,
+            },
+          },
+        );
+        if (result.error) throw new Error(result.error.message);
+        if (result.paymentIntent?.status !== "succeeded") {
+          throw new Error("Stripe payment has not succeeded");
+        }
+        await verifyPayment({
+          transactionId: order.transactionId,
+          gateway: "stripe",
+          gatewayOrderId: result.paymentIntent.id,
+          paymentIntentId: result.paymentIntent.id,
+        });
+      };
+
+      document.getElementById("pay-button").addEventListener("click", async () => {
+        const bookingId = document.getElementById("booking-id").value.trim();
+        if (!bookingId || !document.getElementById("token").value.trim()) {
+          showResult("Enter the booking ID and a logged-in customer's access token.");
+          return;
+        }
+        const button = document.getElementById("pay-button");
+        button.disabled = true;
         try {
-          const tempBookingId = document.getElementById("bookingId").value;
-
-          if (!tempBookingId) {
-            alert("Enter Temp Booking Id");
-
-            return;
-          }
-
-          // -----------------------
-          // Create Order
-          // -----------------------
-          const token =
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDU3M2JiNjIwY2U1MTdlMzBiMDc4YyIsImlhdCI6MTc4MzY2OTI0NSwiZXhwIjoxNzgzNjcyODQ1fQ.SVtM3HhxrcW3KG0aJBF33w4enRQBjY7Zq1xEsN5AAvg";
-
-          const orderResponse = await fetch(
-            "http://localhost:8000/api/v1/payment/create-booking",
+          const order = await request(
+            `/api/v1/hotel-payments/bookings/${encodeURIComponent(bookingId)}/order`,
             {
               method: "POST",
-
-             headers: {
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${token}`,
-  currency: "AED", // Test ke liye
-},
-
-              body: JSON.stringify({
-                tempBookingId,
-              }),
+              body: JSON.stringify({ gateway: gatewayInput.value }),
             },
           );
-
-          const orderData = await orderResponse.json();
-
-          console.log(orderData);
-
-          document.getElementById("result").innerHTML = JSON.stringify(
-            orderData,
-            null,
-            2,
-          );
-
-          if (!orderData.success) {
-            alert(orderData.message);
-
-            return;
+          showResult(order);
+          if (order.gateway === "razorpay") {
+            await startRazorpay(order);
+          } else {
+            await startStripe(order);
           }
-
-          // ---/e```
-          // -------------------
-          // Razorpay
-          // -----------------------
-
-          const options = {
-            key: orderData.data.key,
-
-            amount: orderData.data.amount,
-
-            currency: orderData.data.currency,
-
-            order_id: orderData.data.orderId,
-
-            name: "Pan Journey",
-
-            description: "Hotel Booking",
-
-            handler: async function (response) {
-              console.log(response);
-
-              // -----------------------
-              // Verify Payment
-              // -----------------------
-
-              const verifyResponse = await fetch(
-                "http://localhost:8000/api/v1/payment/booking-payment-verify",
-                {
-                  method: "POST",
-
-                  headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                    currency: "AED", // Test ke liye
-                  },
-
-                  body: JSON.stringify({
-                    tempBookingId,
-
-                    razorpay_order_id: response.razorpay_order_id,
-
-                    razorpay_payment_id: response.razorpay_payment_id,
-
-                    razorpay_signature: response.razorpay_signature,
-                  }),
-                },
-              );
-
-              const verifyData = await verifyResponse.json();
-
-              console.log(verifyData);
-
-              document.getElementById("result").innerHTML = JSON.stringify(
-                verifyData,
-                null,
-                2,
-              );
-            },
-          };
-
-          const rzp = new Razorpay(options);
-
-          rzp.open();
-        } catch (err) {
-          console.log(err);
-
-          alert(err.message);
+        } catch (error) {
+          showResult(error.message);
+        } finally {
+          button.disabled = false;
         }
-      }
+      });
+
+      document.getElementById("status-button").addEventListener("click", async () => {
+        const bookingId = document.getElementById("booking-id").value.trim();
+        if (!bookingId) {
+          showResult("Enter the hotel itinerary booking ID.");
+          return;
+        }
+        try {
+          const status = await request(
+            `/api/v1/hotel-payments/bookings/${encodeURIComponent(bookingId)}/status`,
+          );
+          showResult(status);
+        } catch (error) {
+          showResult(error.message);
+        }
+      });
     </script>
   </body>
 </html>

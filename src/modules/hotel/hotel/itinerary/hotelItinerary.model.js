@@ -78,9 +78,39 @@ const hotelItinerarySchema = new mongoose.Schema(
     },
     paymentStatus: {
       type: String,
-      enum: ["pending", "paid", "failed"],
+      enum: ["pending", "paid", "failed", "refund_pending", "refunded"],
       default: "pending",
       index: true,
+    },
+    paymentOrderStatus: {
+      type: String,
+      enum: ["idle", "creating", "created", "failed"],
+      default: "idle",
+      index: true,
+    },
+    paymentGateway: {
+      type: String,
+      enum: ["razorpay", "stripe", null],
+      default: null,
+    },
+    paymentTransactionId: {
+      type: String,
+      default: null,
+      index: true,
+    },
+    supplierBookingStatus: {
+      type: String,
+      enum: ["awaiting_payment", "processing", "confirmed", "failed", "unknown"],
+      default: "awaiting_payment",
+      index: true,
+    },
+    supplierBookingResponse: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    supplierBookingError: {
+      type: String,
+      default: null,
     },
   },
   { timestamps: true }

@@ -24,6 +24,7 @@ import masterRoutes from "./modules/master-data/masterData.routes.js";
 import hotelDetailsRoutes from "./modules/hotel/hotel/hotelDetail/routes/hotelDetails.routes.js";
 import hotelPriceVerifyRoutes from "./modules/hotel/hotel/priceVerify/routes/hotelPriceVerify.routes.js";
 import hotelItineraryRoutes from "./modules/hotel/hotel/itinerary/hotelItinerary.routes.js";
+import hotelPaymentRoutes from "./modules/hotel/hotel/payments/hotelPayment.routes.js";
 import gatewayroutewebhook from "./modules/gateways/routes/webhook.routes.js";
 import homecontent from "./modules/HomeContent/homeContent.route.js";
 import mediaRoutes from "./modules/media/media.routes.js";
@@ -67,7 +68,15 @@ app.use(cookieParser());
 //   "/api/v1/payment/webhook",
 //   express.raw({ type: "application/json" })
 // );
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, res, body) => {
+      if (req.path.startsWith("/api/v1/hotel-payments/webhooks/")) {
+        req.rawBody = Buffer.from(body);
+      }
+    },
+  })
+);
 app.use(express.static("public"));
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/media", mediaRoutes);
@@ -95,6 +104,7 @@ app.use("/api/v1/newsletter", newsletter);
 app.use("/api/v1/hotelDetails", hotelDetailsRoutes);
 app.use("/api/v1/hotelDetails", hotelPriceVerifyRoutes);
 app.use("/api/v1/hoteltempBooking", hotelItineraryRoutes);
+app.use("/api/v1/hotel-payments", hotelPaymentRoutes);
 
 app.use("/api/v1/masterData", masterRoutes);
 app.use("/api/v1/customer", customerProfileRoutes);
