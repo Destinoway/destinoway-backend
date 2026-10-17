@@ -4,7 +4,6 @@ import PaymentGateway from "../../../gateways/models/paymentGateway.model.js";
 import HotelPaymentTransaction from "./models/hotelPaymentTransaction.model.js";
 import { createHotelPaymentGateway } from "./paymentGateway.factory.js";
 import { getAkbarStartPayResponseData, startAkbarHotelPay } from "./adapters/akbar/startPay.api.js";
-import { getAKBARToken } from "../../supplier/akbar/akbarAuth.service.js";
 import { logHotelEvent } from "../utils/hotelObservability.js";
 
 const supportedGateways = new Set(["razorpay", "stripe"]);
@@ -119,41 +118,6 @@ export const createHotelPaymentOrder = async ({
   }
 
   const correlationId = String(booking._id);
-  logGatewayEvent("info", "supplier_preflight.started", {
-    correlationId,
-    bookingId: correlationId,
-    supplier: "AKBAR",
-  });
-  try {
-    const token = await getAKBARToken({
-      operation: "payment_order_preflight",
-      correlationId,
-    });
-    if (typeof token !== "string" || !token.trim()) {
-      throw getError("AKBAR authentication token is unavailable", 503);
-    }
-    logGatewayEvent("info", "supplier_preflight.completed", {
-      correlationId,
-      bookingId: correlationId,
-      supplier: "AKBAR",
-      tokenAvailable: true,
-    });
-  } catch (error) {
-    const preflightError =
-      error instanceof Error
-        ? error
-        : getError("AKBAR authentication preflight failed", 503);
-    logGatewayEvent("error", "supplier_preflight.failed", {
-      correlationId,
-      bookingId: correlationId,
-      supplier: "AKBAR",
-      errorCode: preflightError.code ?? null,
-      errorMessage: preflightError.message,
-    });
-    preflightError.statusCode = preflightError.statusCode ?? 503;
-    throw preflightError;
-  }
-
   const existing = await HotelPaymentTransaction.findOne({
     bookingId: booking._id,
     userId,
