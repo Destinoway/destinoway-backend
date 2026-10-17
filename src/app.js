@@ -56,6 +56,7 @@ app.use(
       "https://www.panjourney.com",
       "https://panjourney.com",
       "https://dev.destinoway.com",
+      "https://dev-admin.destinoway.com",
       "https://develop.d1kvqncg9r5rhb.amplifyapp.com"
     ],
     credentials: true,
