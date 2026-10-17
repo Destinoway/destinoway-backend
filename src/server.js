@@ -25,6 +25,7 @@ import { connectDB } from "./config/db.js";
 
 import "./modules/priceMarkup/markup/cron/markup.cron.js";
 import "./modules/promotionEngine/couponExpiry.job.js";
+import "./modules/hotel/supplier/akbar/akbarTokenRefresh.cron.js";
 
 const PORT = process.env.PORT || 8000;
 
