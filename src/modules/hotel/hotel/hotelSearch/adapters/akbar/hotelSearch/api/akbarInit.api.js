@@ -9,7 +9,10 @@ import {
 } from "../../../../../../hotel/utils/hotelObservability.js";
 
 export const akbarInitAPI = async (payload, { correlationId } = {}) => {
-  const token = await getAKBARToken();
+  const token = await getAKBARToken({
+    operation: "search_init",
+    correlationId,
+  });
 
   const url = `${process.env.AKBAR_HOTEL_API_URL}/api/hotels/search/init`;
 

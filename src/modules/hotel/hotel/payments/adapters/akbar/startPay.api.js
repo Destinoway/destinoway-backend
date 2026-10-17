@@ -137,7 +137,10 @@ export const startAkbarHotelPay = async ({
   }
   let token;
   try {
-    token = await getAKBARToken();
+    token = await getAKBARToken({
+      operation: "start_payment",
+      correlationId,
+    });
   } catch (error) {
     error.supplierRequestSent = false;
     throw error;

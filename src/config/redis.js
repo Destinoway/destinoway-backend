@@ -1,12 +1,62 @@
 import "dotenv/config";
 import { createClient } from "redis";
 
-const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
-const parsedRedisUrl = new URL(redisUrl);
+const redisUrl = process.env.REDIS_URL?.trim();
+let redisOptions;
+let redisConnectionInfo;
+let authenticationConfigured;
 
-const redisClient = createClient({
-  url: redisUrl,
-});
+if (redisUrl) {
+  const parsedRedisUrl = new URL(redisUrl);
+  redisOptions = { url: redisUrl };
+  authenticationConfigured = Boolean(
+    parsedRedisUrl.username || parsedRedisUrl.password
+  );
+  redisConnectionInfo = {
+    configurationSource: "REDIS_URL",
+    host: parsedRedisUrl.hostname,
+    port:
+      parsedRedisUrl.port ||
+      (parsedRedisUrl.protocol === "rediss:" ? "6380" : "6379"),
+    database:
+      parsedRedisUrl.pathname && parsedRedisUrl.pathname !== "/"
+        ? parsedRedisUrl.pathname
+        : "/0",
+  };
+} else {
+  const host = process.env.REDIS_HOST?.trim() || "localhost";
+  const port = Number(process.env.REDIS_PORT || 6379);
+  const database = Number(process.env.REDIS_DB || 0);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("REDIS_PORT must be an integer between 1 and 65535");
+  }
+  if (!Number.isInteger(database) || database < 0) {
+    throw new Error("REDIS_DB must be a non-negative integer");
+  }
+  redisOptions = {
+    socket: { host, port },
+    database,
+    ...(process.env.REDIS_USERNAME
+      ? { username: process.env.REDIS_USERNAME }
+      : {}),
+    ...(process.env.REDIS_PASSWORD
+      ? { password: process.env.REDIS_PASSWORD }
+      : {}),
+  };
+  authenticationConfigured = Boolean(
+    process.env.REDIS_USERNAME || process.env.REDIS_PASSWORD
+  );
+  redisConnectionInfo = {
+    configurationSource: "REDIS_HOST",
+    host,
+    port: String(port),
+    database: `/${database}`,
+  };
+}
+
+export { redisConnectionInfo };
+
+const redisClient = createClient(redisOptions);
 
 redisClient.on("error", (err) => {
   console.log("Redis Error:", err);
@@ -17,32 +67,13 @@ console.info(
     timestamp: new Date().toISOString(),
     level: "info",
     event: "redis.connection.configured",
-    host: parsedRedisUrl.hostname,
-    port: parsedRedisUrl.port || "6379",
-    database: parsedRedisUrl.pathname || "/0",
-    authenticationConfigured: Boolean(
-      parsedRedisUrl.username || parsedRedisUrl.password
-    ),
+    processId: process.pid,
+    nodeEnv: process.env.NODE_ENV ?? null,
+    ...redisConnectionInfo,
+    authenticationConfigured,
   })
 );
 
 await redisClient.connect();
 
 export default redisClient;
-
-
-// import { createClient } from "redis";
-
-// const redisClient = createClient({
-//   url: process.env.REDIS_URL,
-// });
-
-// redisClient.on("error", (err) => {
-//   console.log("Redis Error:", err.message);
-// });
-
-// if (process.env.REDIS_ENABLED === "true") {
-//   await redisClient.connect();
-// }
-
-// export default redisClient;
