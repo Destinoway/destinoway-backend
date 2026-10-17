@@ -1,35 +1,19 @@
-import {asyncHandler}  from "../../../../../middleware/asyncHandler.js";
+import { asyncHandler } from "../../../../../middleware/asyncHandler.js";
 import {
-  sendSuccess,
   sendError,
+  sendSuccess,
 } from "../../../../../utils/response/ApiResponse.js";
 
 import { searchHotels } from "../service/hotelSearch.service.js";
 
-export const searchHotelsController = asyncHandler(
-  async (req, res) => {
+export const searchHotelsController = asyncHandler(async (req, res) => {
+  try {
+    const result = await searchHotels(req.body);
 
-    try {
+    return sendSuccess(res, "Hotels fetched successfully", result);
+  } catch (error) {
+    console.error("❌ HOTEL SEARCH ERROR:", error);
 
-      const result = await searchHotels(req.body);
-
-      return sendSuccess(
-        res,
-        result,
-        "Hotels fetched successfully"
-      );
-
-    } catch (error) {
-
-      console.error(
-        "❌ HOTEL SEARCH ERROR:",
-        error
-      );
-
-      return sendError(
-        res,
-        error.message || "Hotel search failed"
-      );
-    }
+    return sendError(res, error.message || "Hotel search failed");
   }
-);
+});
