@@ -68,6 +68,7 @@ export const getHotelSearchResultsController = asyncHandler(
       const {
         page = 1,
         limit = 20,
+        hotelId,
         hotelName,
         minPrice,
         maxPrice,
@@ -88,6 +89,7 @@ export const getHotelSearchResultsController = asyncHandler(
         searchId,
         page,
         limit,
+        hotelId,
         hotelName,
         minPrice,
         maxPrice,

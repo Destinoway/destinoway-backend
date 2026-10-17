@@ -100,6 +100,7 @@ export const getHotelSearchResults = async ({
   limit = 20,
 
   // Search
+  hotelId,
   hotelName,
 
   // Price
@@ -170,11 +171,25 @@ export const getHotelSearchResults = async ({
     .map(normalizeText);
 
   const normalizedHotelName = normalizeText(hotelName);
+  const requestedHotelId = String(hotelId ?? "").trim();
 
   // 4. Filter hotels
   const filteredHotels = allHotels.filter((hotel) => {
     const price = getHotelPrice(hotel);
     const rating = Number(hotel.starRating ?? 0);
+    const hotelSupplierId =
+      hotel.supplierHotelId ??
+      hotel.supplierHotelID ??
+      hotel.hotelId ??
+      hotel.HotelId ??
+      hotel.id;
+
+    if (
+      requestedHotelId &&
+      String(hotelSupplierId ?? "").trim() !== requestedHotelId
+    ) {
+      return false;
+    }
 
     // Hotel name search
     if (
@@ -354,4 +369,3 @@ export const getHotelSearchResults = async ({
   // 8. Return frontend-safe response
   return mapHotelSearchResponse(response);
 };
-
