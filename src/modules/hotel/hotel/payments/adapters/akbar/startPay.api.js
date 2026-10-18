@@ -273,7 +273,7 @@
 // export const getAkbarStartPayResponseData = unwrapSupplierResponse;
 
 
-
+import "dotenv/config";
 import axios from "axios";
 import { getAKBARToken } from "../../../../supplier/akbar/akbarAuth.service.js";
 import {
