@@ -491,15 +491,18 @@ import "dotenv/config";
 import os from "node:os";
 import dns from "node:dns/promises";
 import axios from "axios";
-
-import redisClient, {
-  redisConnectionInfo,
-} from "../../../../config/redis.js";
+import {
+  createCipheriv,
+  createDecipheriv,
+  randomBytes,
+} from "node:crypto";
+import AkbarToken from "./akbarToken.model.js";
 
 import { logHotelEvent } from "../../hotel/utils/hotelObservability.js";
 
-const AKBAR_TOKEN_KEY = "AKBAR:hotel:token";
+const AKBAR_TOKEN_DOCUMENT_ID = "hotel";
 const AKBAR_TOKEN_TTL = 10 * 24 * 60 * 60;
+const AKBAR_TOKEN_REFRESH_WINDOW_SECONDS = 60 * 60;
 const AKBAR_SIGNATURE_TIMEOUT_MS = 30000;
 
 let tokenRefreshPromise;
@@ -592,82 +595,135 @@ const getSafeUrlContext = (url) => ({
   // Never log query-string values, credentials, or tokens.
 });
 
-const readRedisToken = async (context = {}) => {
+const getTokenEncryptionKey = () => {
+  const configuredKey = process.env.AKBAR_TOKEN_ENCRYPTION_KEY;
+  if (!configuredKey) {
+    const error = new Error(
+      "AKBAR_TOKEN_ENCRYPTION_KEY must be configured to store AKBAR tokens in MongoDB"
+    );
+    error.statusCode = 503;
+    throw error;
+  }
+
+  let encryptionKey;
+  try {
+    encryptionKey = Buffer.from(configuredKey, "base64");
+  } catch {
+    encryptionKey = null;
+  }
+  if (
+    !encryptionKey ||
+    encryptionKey.length !== 32 ||
+    encryptionKey.toString("base64") !== configuredKey
+  ) {
+    const error = new Error(
+      "AKBAR_TOKEN_ENCRYPTION_KEY must be a base64-encoded 32-byte key"
+    );
+    error.statusCode = 503;
+    throw error;
+  }
+  return encryptionKey;
+};
+
+const encryptToken = (token, encryptionKey) => {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", encryptionKey, iv);
+  const encryptedToken = Buffer.concat([
+    cipher.update(token, "utf8"),
+    cipher.final(),
+  ]);
+
+  return {
+    encryptedToken: encryptedToken.toString("base64"),
+    iv: iv.toString("base64"),
+    authTag: cipher.getAuthTag().toString("base64"),
+  };
+};
+
+const decryptToken = (record, encryptionKey) => {
+  const decipher = createDecipheriv(
+    "aes-256-gcm",
+    encryptionKey,
+    Buffer.from(record.iv, "base64")
+  );
+  decipher.setAuthTag(Buffer.from(record.authTag, "base64"));
+  return Buffer.concat([
+    decipher.update(Buffer.from(record.encryptedToken, "base64")),
+    decipher.final(),
+  ]).toString("utf8");
+};
+
+const readMongoToken = async (context = {}, encryptionKey) => {
   const startedAt = performance.now();
 
-  logHotelEvent("info", "hotel.supplier_token.redis_read_started", {
+  logHotelEvent("info", "hotel.supplier_token.database_read_started", {
     ...context,
     supplier: "AKBAR",
-    key: AKBAR_TOKEN_KEY,
+    storage: "mongodb",
+    documentId: AKBAR_TOKEN_DOCUMENT_ID,
     processId: process.pid,
-    redisReady: redisClient.isReady,
-    ...redisConnectionInfo,
   });
 
   try {
-    const token = await redisClient.get(AKBAR_TOKEN_KEY);
-
-    if (typeof token === "string" && token.trim()) {
-      let ttlSeconds;
-
-      try {
-        ttlSeconds = await redisClient.ttl(AKBAR_TOKEN_KEY);
-      } catch (error) {
-        logHotelEvent("error", "hotel.supplier_token.redis_ttl_failed", {
-          ...context,
-          supplier: "AKBAR",
-          key: AKBAR_TOKEN_KEY,
-          durationMs: Math.round(performance.now() - startedAt),
-          ...redisConnectionInfo,
-          ...getErrorDetails(error),
-        });
-
-        error.statusCode = error.statusCode ?? 503;
-        throw error;
-      }
-
-      logHotelEvent("info", "hotel.supplier_token.cache_hit", {
+    const record = await AkbarToken.findById(AKBAR_TOKEN_DOCUMENT_ID);
+    if (!record || record.expiresAt <= new Date()) {
+      logHotelEvent("warn", "hotel.supplier_token.database_miss", {
         ...context,
         supplier: "AKBAR",
-        operation: context.operation ?? context.tokenRequestedBy ?? null,
-        processId: process.pid,
-        key: AKBAR_TOKEN_KEY,
-        redisReady: redisClient.isReady,
+        storage: "mongodb",
+        documentId: AKBAR_TOKEN_DOCUMENT_ID,
+        recordFound: Boolean(record),
         durationMs: Math.round(performance.now() - startedAt),
-        ttlSeconds,
-        tokenPresent: true,
-        ...redisConnectionInfo,
       });
-
-      return {
-        token,
-        ttlSeconds: Number.isInteger(ttlSeconds) ? ttlSeconds : null,
-      };
+      return null;
     }
 
-    logHotelEvent("warn", "hotel.supplier_token.cache_miss", {
+    let token;
+    try {
+      token = decryptToken(record, encryptionKey);
+    } catch (cause) {
+      logHotelEvent("error", "hotel.supplier_token.database_decryption_failed", {
+        ...context,
+        supplier: "AKBAR",
+        storage: "mongodb",
+        documentId: AKBAR_TOKEN_DOCUMENT_ID,
+        durationMs: Math.round(performance.now() - startedAt),
+        errorName: cause.name,
+      });
+      const error = new Error(
+        "Unable to decrypt the AKBAR token stored in MongoDB"
+      );
+      error.statusCode = 503;
+      throw error;
+    }
+
+    const ttlSeconds = Math.max(
+      0,
+      Math.floor((record.expiresAt.getTime() - Date.now()) / 1000)
+    );
+    logHotelEvent("info", "hotel.supplier_token.database_hit", {
       ...context,
       supplier: "AKBAR",
       operation: context.operation ?? context.tokenRequestedBy ?? null,
-      processId: process.pid,
-      key: AKBAR_TOKEN_KEY,
-      redisReady: redisClient.isReady,
+      storage: "mongodb",
+      documentId: AKBAR_TOKEN_DOCUMENT_ID,
       durationMs: Math.round(performance.now() - startedAt),
-      tokenPresent: false,
-      ...redisConnectionInfo,
+      ttlSeconds,
+      tokenPresent: true,
+      tokenDecrypted: true,
     });
 
-    return null;
+    return { token, ttlSeconds };
   } catch (error) {
-    logHotelEvent("error", "hotel.supplier_token.redis_read_failed", {
+    if (error.statusCode) throw error;
+    logHotelEvent("error", "hotel.supplier_token.database_read_failed", {
       ...context,
       supplier: "AKBAR",
       operation: context.operation ?? context.tokenRequestedBy ?? null,
       processId: process.pid,
-      key: AKBAR_TOKEN_KEY,
-      redisReady: redisClient.isReady,
+      storage: "mongodb",
+      documentId: AKBAR_TOKEN_DOCUMENT_ID,
       durationMs: Math.round(performance.now() - startedAt),
-      ...redisConnectionInfo,
       ...getErrorDetails(error),
     });
 
@@ -676,7 +732,49 @@ const readRedisToken = async (context = {}) => {
   }
 };
 
-const createAndCacheToken = async (context = {}) => {
+const saveMongoToken = async (token, context = {}, encryptionKey) => {
+  const startedAt = performance.now();
+  const expiresAt = new Date(Date.now() + AKBAR_TOKEN_TTL * 1000);
+
+  logHotelEvent("info", "hotel.supplier_token.database_write_started", {
+    ...context,
+    supplier: "AKBAR",
+    storage: "mongodb",
+    documentId: AKBAR_TOKEN_DOCUMENT_ID,
+    ttlSeconds: AKBAR_TOKEN_TTL,
+  });
+
+  try {
+    const encrypted = encryptToken(token, encryptionKey);
+    await AkbarToken.findByIdAndUpdate(
+      AKBAR_TOKEN_DOCUMENT_ID,
+      { $set: { ...encrypted, expiresAt } },
+      { upsert: true, returnDocument: "after", runValidators: true }
+    );
+    logHotelEvent("info", "hotel.supplier_token.database_write_completed", {
+      ...context,
+      supplier: "AKBAR",
+      storage: "mongodb",
+      documentId: AKBAR_TOKEN_DOCUMENT_ID,
+      tokenEncrypted: true,
+      durationMs: Math.round(performance.now() - startedAt),
+      expiresAt: expiresAt.toISOString(),
+    });
+  } catch (error) {
+    logHotelEvent("error", "hotel.supplier_token.database_write_failed", {
+      ...context,
+      supplier: "AKBAR",
+      storage: "mongodb",
+      documentId: AKBAR_TOKEN_DOCUMENT_ID,
+      durationMs: Math.round(performance.now() - startedAt),
+      ...getErrorDetails(error),
+    });
+    error.statusCode = error.statusCode ?? 503;
+    throw error;
+  }
+};
+
+const createAndCacheToken = async (context = {}, encryptionKey) => {
   const signatureStartedAt = performance.now();
   const configuredUrl = process.env.AKBAR_SIGNATURE_URL;
 
@@ -823,49 +921,7 @@ const createAndCacheToken = async (context = {}) => {
     throw error;
   }
 
-  const redisWriteStartedAt = performance.now();
-
-  logHotelEvent("info", "hotel.supplier_token.redis_write_started", {
-    ...context,
-    supplier: "AKBAR",
-    key: AKBAR_TOKEN_KEY,
-    processId: process.pid,
-    ttlSeconds: AKBAR_TOKEN_TTL,
-    ...redisConnectionInfo,
-  });
-
-  try {
-    await redisClient.set(AKBAR_TOKEN_KEY, data.Token, {
-      EX: AKBAR_TOKEN_TTL,
-    });
-
-    const savedTtl = await redisClient.ttl(AKBAR_TOKEN_KEY);
-
-    logHotelEvent("info", "hotel.supplier_token.cache_write", {
-      ...context,
-      supplier: "AKBAR",
-      processId: process.pid,
-      key: AKBAR_TOKEN_KEY,
-      redisReady: redisClient.isReady,
-      durationMs: Math.round(performance.now() - redisWriteStartedAt),
-      ttlSeconds: savedTtl,
-      tokenPresent: true,
-      ...redisConnectionInfo,
-    });
-  } catch (error) {
-    logHotelEvent("error", "hotel.supplier_token.redis_write_failed", {
-      ...context,
-      supplier: "AKBAR",
-      processId: process.pid,
-      key: AKBAR_TOKEN_KEY,
-      durationMs: Math.round(performance.now() - redisWriteStartedAt),
-      ...redisConnectionInfo,
-      ...getErrorDetails(error),
-    });
-
-    error.statusCode = error.statusCode ?? 503;
-    throw error;
-  }
+  await saveMongoToken(data.Token, context, encryptionKey);
 
   logHotelEvent("info", "hotel.supplier_request.completed", {
     ...context,
@@ -874,7 +930,8 @@ const createAndCacheToken = async (context = {}) => {
     ...urlContext,
     durationMs: Math.round(performance.now() - signatureStartedAt),
     supplierCode: data.Code,
-    tokenCached: true,
+    tokenStored: true,
+    storage: "mongodb",
   });
 
   return data.Token;
@@ -884,6 +941,7 @@ export const getAKBARToken = async ({
   operation = "unspecified",
   correlationId,
 } = {}) => {
+  const encryptionKey = getTokenEncryptionKey();
   const context = {
     tokenRequestedBy: operation,
     correlationId,
@@ -896,35 +954,24 @@ export const getAKBARToken = async ({
     ...context,
     supplier: "AKBAR",
     operation: "token_lookup",
-    key: AKBAR_TOKEN_KEY,
-    redisReady: redisClient.isReady,
-    ...redisConnectionInfo,
+    storage: "mongodb",
+    documentId: AKBAR_TOKEN_DOCUMENT_ID,
   });
 
-  const redisToken = await readRedisToken(context);
+  const storedToken = await readMongoToken(context, encryptionKey);
 
-  if (redisToken?.ttlSeconds > 0) {
+  if (storedToken?.ttlSeconds > 0) {
     logHotelEvent("info", "hotel.supplier_token.resolved", {
       ...context,
       supplier: "AKBAR",
       operation: "token_lookup",
-      source: "redis",
+      source: "mongodb",
       tokenPresent: true,
-      ttlSeconds: redisToken.ttlSeconds,
+      ttlSeconds: storedToken.ttlSeconds,
       durationMs: Math.round(performance.now() - lookupStartedAt),
     });
 
-    return redisToken.token;
-  }
-
-  if (redisToken) {
-    logHotelEvent("warn", "hotel.supplier_token.cache_entry_without_ttl", {
-      ...context,
-      supplier: "AKBAR",
-      key: AKBAR_TOKEN_KEY,
-      ttlSeconds: redisToken.ttlSeconds,
-      ...redisConnectionInfo,
-    });
+    return storedToken.token;
   }
 
   if (tokenRefreshPromise) {
@@ -961,14 +1008,14 @@ export const getAKBARToken = async ({
     }
   }
 
-  logHotelEvent("warn", "hotel.supplier_token.signature_fallback_started", {
+  logHotelEvent("warn", "hotel.supplier_token.signature_refresh_started", {
     ...context,
     supplier: "AKBAR",
     operation: "token_lookup",
-    reason: redisToken ? "token_without_positive_ttl" : "cache_miss",
+    reason: storedToken ? "token_expired" : "document_missing",
   });
 
-  tokenRefreshPromise = createAndCacheToken(context);
+  tokenRefreshPromise = createAndCacheToken(context, encryptionKey);
 
   try {
     const token = await tokenRefreshPromise;
@@ -977,14 +1024,14 @@ export const getAKBARToken = async ({
       ...context,
       supplier: "AKBAR",
       operation: "token_lookup",
-      source: "signature",
+      source: "signature_mongodb",
       tokenPresent: true,
       durationMs: Math.round(performance.now() - lookupStartedAt),
     });
 
     return token;
   } catch (error) {
-    logHotelEvent("error", "hotel.supplier_token.signature_fallback_failed", {
+    logHotelEvent("error", "hotel.supplier_token.signature_refresh_failed", {
       ...context,
       supplier: "AKBAR",
       operation: "token_lookup",
@@ -999,6 +1046,7 @@ export const getAKBARToken = async ({
 };
 
 export const refreshAKBARTokenIfDue = async () => {
+  const encryptionKey = getTokenEncryptionKey();
   const context = {
     tokenRequestedBy: "scheduled_refresh",
     processId: process.pid,
@@ -1007,21 +1055,19 @@ export const refreshAKBARTokenIfDue = async () => {
   logHotelEvent("info", "hotel.supplier_token.scheduled_refresh_check_started", {
     ...context,
     supplier: "AKBAR",
-    key: AKBAR_TOKEN_KEY,
-    redisReady: redisClient.isReady,
-    ...redisConnectionInfo,
+    storage: "mongodb",
+    documentId: AKBAR_TOKEN_DOCUMENT_ID,
   });
 
-  const redisToken = await readRedisToken(context);
-  const refreshWindowMs = 60 * 60 * 1000;
-  const remainingMs = (redisToken?.ttlSeconds ?? 0) * 1000;
+  const storedToken = await readMongoToken(context, encryptionKey);
+  const remainingSeconds = storedToken?.ttlSeconds ?? 0;
 
-  if (remainingMs > refreshWindowMs) {
+  if (remainingSeconds > AKBAR_TOKEN_REFRESH_WINDOW_SECONDS) {
     logHotelEvent("info", "hotel.supplier_token.scheduled_refresh_skipped", {
       ...context,
       supplier: "AKBAR",
       reason: "token_ttl_above_refresh_window",
-      remainingSeconds: Math.floor(remainingMs / 1000),
+      remainingSeconds,
     });
 
     return null;
@@ -1038,19 +1084,18 @@ export const refreshAKBARTokenIfDue = async () => {
   }
 
   logHotelEvent(
-    redisToken ? "info" : "warn",
+    storedToken ? "info" : "warn",
     "hotel.supplier_token.scheduled_refresh_started",
     {
       ...context,
       supplier: "AKBAR",
-      reason: redisToken ? "token_near_expiry" : "token_missing",
-      redisEntryPresent: Boolean(redisToken),
-      ...redisConnectionInfo,
-      remainingSeconds: Math.max(0, Math.floor(remainingMs / 1000)),
+      reason: storedToken ? "token_near_expiry" : "token_missing",
+      databaseRecordPresent: Boolean(storedToken),
+      remainingSeconds,
     }
   );
 
-  tokenRefreshPromise = createAndCacheToken(context);
+  tokenRefreshPromise = createAndCacheToken(context, encryptionKey);
 
   try {
     return await tokenRefreshPromise;
