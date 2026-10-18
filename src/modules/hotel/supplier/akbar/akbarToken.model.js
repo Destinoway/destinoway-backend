@@ -6,15 +6,7 @@ const akbarTokenSchema = new mongoose.Schema(
       type: String,
       default: "hotel",
     },
-    encryptedToken: {
-      type: String,
-      required: true,
-    },
-    iv: {
-      type: String,
-      required: true,
-    },
-    authTag: {
+    token: {
       type: String,
       required: true,
     },

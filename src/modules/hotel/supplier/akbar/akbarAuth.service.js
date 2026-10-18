@@ -491,11 +491,6 @@ import "dotenv/config";
 import os from "node:os";
 import dns from "node:dns/promises";
 import axios from "axios";
-import {
-  createCipheriv,
-  createDecipheriv,
-  randomBytes,
-} from "node:crypto";
 import AkbarToken from "./akbarToken.model.js";
 
 import { logHotelEvent } from "../../hotel/utils/hotelObservability.js";
@@ -595,73 +590,7 @@ const getSafeUrlContext = (url) => ({
   // Never log query-string values, credentials, or tokens.
 });
 
-const getTokenEncryptionKey = () => {
-  const configuredKey = process.env.AKBAR_TOKEN_ENCRYPTION_KEY;
-  if (!configuredKey) {
-    const error = new Error(
-      "AKBAR_TOKEN_ENCRYPTION_KEY must be configured to store AKBAR tokens in MongoDB"
-    );
-    error.statusCode = 503;
-    throw error;
-  }
-
-  let encryptionKey;
-  try {
-    encryptionKey = Buffer.from(configuredKey, "base64");
-  } catch {
-    encryptionKey = null;
-  }
-  if (
-    !encryptionKey ||
-    encryptionKey.length !== 32 ||
-    encryptionKey.toString("base64") !== configuredKey
-  ) {
-    const error = new Error(
-      "AKBAR_TOKEN_ENCRYPTION_KEY must be a base64-encoded 32-byte key"
-    );
-    error.statusCode = 503;
-    throw error;
-  }
-  console.log("[AKBAR KEY DIAGNOSTIC]", {
-  configured: Boolean(configuredKey),
-  length: configuredKey?.length,
-  decodedBytes: encryptionKey?.length,
-  base64Canonical:
-    Boolean(configuredKey) &&
-    encryptionKey?.toString("base64") === configuredKey,
-});
-  return encryptionKey;
-};
-
-const encryptToken = (token, encryptionKey) => {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", encryptionKey, iv);
-  const encryptedToken = Buffer.concat([
-    cipher.update(token, "utf8"),
-    cipher.final(),
-  ]);
-
-  return {
-    encryptedToken: encryptedToken.toString("base64"),
-    iv: iv.toString("base64"),
-    authTag: cipher.getAuthTag().toString("base64"),
-  };
-};
-
-const decryptToken = (record, encryptionKey) => {
-  const decipher = createDecipheriv(
-    "aes-256-gcm",
-    encryptionKey,
-    Buffer.from(record.iv, "base64")
-  );
-  decipher.setAuthTag(Buffer.from(record.authTag, "base64"));
-  return Buffer.concat([
-    decipher.update(Buffer.from(record.encryptedToken, "base64")),
-    decipher.final(),
-  ]).toString("utf8");
-};
-
-const readMongoToken = async (context = {}, encryptionKey) => {
+const readMongoToken = async (context = {}) => {
   const startedAt = performance.now();
 
   logHotelEvent("info", "hotel.supplier_token.database_read_started", {
@@ -674,35 +603,24 @@ const readMongoToken = async (context = {}, encryptionKey) => {
 
   try {
     const record = await AkbarToken.findById(AKBAR_TOKEN_DOCUMENT_ID);
-    if (!record || record.expiresAt <= new Date()) {
+    if (
+      !record ||
+      typeof record.token !== "string" ||
+      !record.token.trim() ||
+      record.expiresAt <= new Date()
+    ) {
       logHotelEvent("warn", "hotel.supplier_token.database_miss", {
         ...context,
         supplier: "AKBAR",
         storage: "mongodb",
         documentId: AKBAR_TOKEN_DOCUMENT_ID,
         recordFound: Boolean(record),
+        legacyEncryptedRecord: Boolean(
+          record?.encryptedToken && !record?.token
+        ),
         durationMs: Math.round(performance.now() - startedAt),
       });
       return null;
-    }
-
-    let token;
-    try {
-      token = decryptToken(record, encryptionKey);
-    } catch (cause) {
-      logHotelEvent("error", "hotel.supplier_token.database_decryption_failed", {
-        ...context,
-        supplier: "AKBAR",
-        storage: "mongodb",
-        documentId: AKBAR_TOKEN_DOCUMENT_ID,
-        durationMs: Math.round(performance.now() - startedAt),
-        errorName: cause.name,
-      });
-      const error = new Error(
-        "Unable to decrypt the AKBAR token stored in MongoDB"
-      );
-      error.statusCode = 503;
-      throw error;
     }
 
     const ttlSeconds = Math.max(
@@ -718,10 +636,9 @@ const readMongoToken = async (context = {}, encryptionKey) => {
       durationMs: Math.round(performance.now() - startedAt),
       ttlSeconds,
       tokenPresent: true,
-      tokenDecrypted: true,
     });
 
-    return { token, ttlSeconds };
+    return { token: record.token, ttlSeconds };
   } catch (error) {
     if (error.statusCode) throw error;
     logHotelEvent("error", "hotel.supplier_token.database_read_failed", {
@@ -740,7 +657,7 @@ const readMongoToken = async (context = {}, encryptionKey) => {
   }
 };
 
-const saveMongoToken = async (token, context = {}, encryptionKey) => {
+const saveMongoToken = async (token, context = {}) => {
   const startedAt = performance.now();
   const expiresAt = new Date(Date.now() + AKBAR_TOKEN_TTL * 1000);
 
@@ -753,18 +670,24 @@ const saveMongoToken = async (token, context = {}, encryptionKey) => {
   });
 
   try {
-    const encrypted = encryptToken(token, encryptionKey);
-    await AkbarToken.findByIdAndUpdate(
-      AKBAR_TOKEN_DOCUMENT_ID,
-      { $set: { ...encrypted, expiresAt } },
-      { upsert: true, returnDocument: "after", runValidators: true }
+    await AkbarToken.collection.updateOne(
+      { _id: AKBAR_TOKEN_DOCUMENT_ID },
+      {
+        $set: { token, expiresAt },
+        $unset: {
+          encryptedToken: "",
+          iv: "",
+          authTag: "",
+        },
+      },
+      { upsert: true }
     );
     logHotelEvent("info", "hotel.supplier_token.database_write_completed", {
       ...context,
       supplier: "AKBAR",
       storage: "mongodb",
       documentId: AKBAR_TOKEN_DOCUMENT_ID,
-      tokenEncrypted: true,
+      tokenStoredPlaintext: true,
       durationMs: Math.round(performance.now() - startedAt),
       expiresAt: expiresAt.toISOString(),
     });
@@ -782,7 +705,7 @@ const saveMongoToken = async (token, context = {}, encryptionKey) => {
   }
 };
 
-const createAndCacheToken = async (context = {}, encryptionKey) => {
+const createAndCacheToken = async (context = {}) => {
   const signatureStartedAt = performance.now();
   const configuredUrl = process.env.AKBAR_SIGNATURE_URL;
 
@@ -929,7 +852,7 @@ const createAndCacheToken = async (context = {}, encryptionKey) => {
     throw error;
   }
 
-  await saveMongoToken(data.Token, context, encryptionKey);
+  await saveMongoToken(data.Token, context);
 
   logHotelEvent("info", "hotel.supplier_request.completed", {
     ...context,
@@ -949,7 +872,6 @@ export const getAKBARToken = async ({
   operation = "unspecified",
   correlationId,
 } = {}) => {
-  const encryptionKey = getTokenEncryptionKey();
   const context = {
     tokenRequestedBy: operation,
     correlationId,
@@ -966,7 +888,7 @@ export const getAKBARToken = async ({
     documentId: AKBAR_TOKEN_DOCUMENT_ID,
   });
 
-  const storedToken = await readMongoToken(context, encryptionKey);
+  const storedToken = await readMongoToken(context);
 
   if (storedToken?.ttlSeconds > 0) {
     logHotelEvent("info", "hotel.supplier_token.resolved", {
@@ -1023,7 +945,7 @@ export const getAKBARToken = async ({
     reason: storedToken ? "token_expired" : "document_missing",
   });
 
-  tokenRefreshPromise = createAndCacheToken(context, encryptionKey);
+  tokenRefreshPromise = createAndCacheToken(context);
 
   try {
     const token = await tokenRefreshPromise;
@@ -1054,7 +976,6 @@ export const getAKBARToken = async ({
 };
 
 export const refreshAKBARTokenIfDue = async () => {
-  const encryptionKey = getTokenEncryptionKey();
   const context = {
     tokenRequestedBy: "scheduled_refresh",
     processId: process.pid,
@@ -1067,7 +988,7 @@ export const refreshAKBARTokenIfDue = async () => {
     documentId: AKBAR_TOKEN_DOCUMENT_ID,
   });
 
-  const storedToken = await readMongoToken(context, encryptionKey);
+  const storedToken = await readMongoToken(context);
   const remainingSeconds = storedToken?.ttlSeconds ?? 0;
 
   if (remainingSeconds > AKBAR_TOKEN_REFRESH_WINDOW_SECONDS) {
@@ -1103,7 +1024,7 @@ export const refreshAKBARTokenIfDue = async () => {
     }
   );
 
-  tokenRefreshPromise = createAndCacheToken(context, encryptionKey);
+  tokenRefreshPromise = createAndCacheToken(context);
 
   try {
     return await tokenRefreshPromise;
