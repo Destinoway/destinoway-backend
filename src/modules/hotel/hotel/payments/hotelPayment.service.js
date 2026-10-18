@@ -4,7 +4,10 @@ import PaymentGateway from "../../../gateways/models/paymentGateway.model.js";
 import HotelPaymentTransaction from "./models/hotelPaymentTransaction.model.js";
 import { createHotelPaymentGateway } from "./paymentGateway.factory.js";
 import { getAkbarStartPayResponseData, startAkbarHotelPay } from "./adapters/akbar/startPay.api.js";
-import { logHotelEvent } from "../utils/hotelObservability.js";
+import {
+  getSupplierResponseSummary,
+  logHotelEvent,
+} from "../utils/hotelObservability.js";
 
 const supportedGateways = new Set(["razorpay", "stripe"]);
 
@@ -323,6 +326,25 @@ const startSupplierBooking = async ({ booking, transaction }) => {
         ? rawMessage.slice(0, 300)
         : null;
     claimedBooking.supplierBookingResponse = supplierResponse;
+
+    if (supplierCode === undefined || supplierCode === null) {
+      claimedBooking.supplierBookingStatus = "unknown";
+      claimedBooking.supplierBookingError =
+        "AKBAR StartPay returned a response without a status code";
+      transaction.supplierBookingStatus = "unknown";
+      transaction.lastError = claimedBooking.supplierBookingError;
+      await Promise.all([claimedBooking.save(), transaction.save()]);
+      logGatewayEvent("error", "supplier_booking.response_unrecognized", {
+        correlationId,
+        bookingId: String(booking._id),
+        transactionId: transaction.transactionId,
+        gateway: transaction.gateway,
+        supplier: "AKBAR",
+        durationMs: Math.round(performance.now() - startedAt),
+        ...getSupplierResponseSummary(supplierResponse),
+      });
+      return getPaymentState(claimedBooking, transaction);
+    }
 
     if (String(supplierCode) !== "200") {
       claimedBooking.supplierBookingStatus = "failed";
