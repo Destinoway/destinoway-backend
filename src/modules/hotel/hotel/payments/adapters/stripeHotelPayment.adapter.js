@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import BaseHotelPaymentAdapter from "./baseHotelPayment.adapter.js";
+import { traceHotelPaymentStep } from "../../utils/hotelObservability.js";
 
 const toMinorUnits = (amount) => {
   const value = Number(amount);
@@ -20,11 +21,17 @@ class StripeHotelPaymentAdapter extends BaseHotelPaymentAdapter {
     this.client = new Stripe(process.env.STRIPE_SECRET_KEY);
   }
 
-  async createOrder({ amount, currency, bookingId }) {
-    const intent = await this.client.paymentIntents.create({
-      amount: toMinorUnits(amount),
-      currency: currency.toLowerCase(),
-      metadata: { hotelBookingId: String(bookingId) },
+  async createOrder({ amount, currency, bookingId, correlationId }) {
+    const intent = await traceHotelPaymentStep({
+      correlationId,
+      step: "gateway.stripe.create_payment_intent",
+      fields: { bookingId: String(bookingId), gateway: "stripe" },
+      operation: () =>
+        this.client.paymentIntents.create({
+          amount: toMinorUnits(amount),
+          currency: currency.toLowerCase(),
+          metadata: { hotelBookingId: String(bookingId) },
+        }),
     });
     if (!intent.client_secret) {
       throw new Error("Stripe did not return a PaymentIntent client secret");
@@ -41,8 +48,19 @@ class StripeHotelPaymentAdapter extends BaseHotelPaymentAdapter {
     };
   }
 
-  async verifyPayment({ gatewayOrderId, expectedAmount, expectedCurrency }) {
-    const intent = await this.client.paymentIntents.retrieve(gatewayOrderId);
+  async verifyPayment({
+    gatewayOrderId,
+    expectedAmount,
+    expectedCurrency,
+    correlationId,
+  }) {
+    const intent = await traceHotelPaymentStep({
+      correlationId,
+      step: "gateway.stripe.retrieve_payment_intent",
+      fields: { gateway: "stripe" },
+      operation: () =>
+        this.client.paymentIntents.retrieve(gatewayOrderId),
+    });
     if (
       intent.id !== gatewayOrderId ||
       intent.status !== "succeeded" ||
@@ -57,10 +75,18 @@ class StripeHotelPaymentAdapter extends BaseHotelPaymentAdapter {
     return { success: true, gatewayPaymentId: intent.id };
   }
 
-  async getCheckoutDetails(transaction) {
-    const intent = await this.client.paymentIntents.retrieve(
-      transaction.gatewayOrderId
-    );
+  async getCheckoutDetails(transaction, { correlationId } = {}) {
+    const intent = await traceHotelPaymentStep({
+      correlationId,
+      step: "gateway.stripe.retrieve_checkout_intent",
+      fields: {
+        bookingId: String(transaction.bookingId),
+        transactionId: transaction.transactionId,
+        gateway: "stripe",
+      },
+      operation: () =>
+        this.client.paymentIntents.retrieve(transaction.gatewayOrderId),
+    });
     if (!intent.client_secret) {
       throw new Error("Stripe did not return a PaymentIntent client secret");
     }
@@ -73,10 +99,16 @@ class StripeHotelPaymentAdapter extends BaseHotelPaymentAdapter {
     };
   }
 
-  async refundPayment({ paymentId, amount }) {
-    return this.client.refunds.create({
-      payment_intent: paymentId,
-      amount: toMinorUnits(amount),
+  async refundPayment({ paymentId, amount, correlationId }) {
+    return traceHotelPaymentStep({
+      correlationId,
+      step: "gateway.stripe.create_refund",
+      fields: { gateway: "stripe" },
+      operation: () =>
+        this.client.refunds.create({
+          payment_intent: paymentId,
+          amount: toMinorUnits(amount),
+        }),
     });
   }
 }

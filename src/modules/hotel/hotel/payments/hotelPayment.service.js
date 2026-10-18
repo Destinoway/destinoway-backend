@@ -7,6 +7,7 @@ import { getAkbarStartPayResponseData, startAkbarHotelPay } from "./adapters/akb
 import {
   getSupplierResponseSummary,
   logHotelEvent,
+  traceHotelPaymentStep,
 } from "../utils/hotelObservability.js";
 
 const supportedGateways = new Set(["razorpay", "stripe"]);
@@ -19,6 +20,9 @@ const getError = (message, statusCode = 400) => {
 
 const logGatewayEvent = (level, event, fields) =>
   logHotelEvent(level, `hotel.payment.${event}`, fields);
+
+const tracePaymentStep = (correlationId, step, fields, operation) =>
+  traceHotelPaymentStep({ correlationId, step, fields, operation });
 
 const getOwnedBooking = async (bookingId, userId) => {
   const booking = await HotelItinerary.findById(bookingId);
@@ -85,9 +89,18 @@ const getConfiguredGateway = async ({ gatewayName, currency }) => {
   return gateway.name;
 };
 
-const getOrderResponse = async (transaction) => {
+const getOrderResponse = async (transaction, correlationId) => {
   const gateway = createHotelPaymentGateway(transaction.gateway);
-  const checkout = await gateway.getCheckoutDetails(transaction);
+  const checkout = await tracePaymentStep(
+    correlationId,
+    "order.load_gateway_checkout_details",
+    {
+      bookingId: String(transaction.bookingId),
+      transactionId: transaction.transactionId,
+      gateway: transaction.gateway,
+    },
+    () => gateway.getCheckoutDetails(transaction, { correlationId })
+  );
   return {
     transactionId: transaction.transactionId,
     gateway: transaction.gateway,
@@ -99,8 +112,14 @@ export const createHotelPaymentOrder = async ({
   bookingId,
   userId,
   gateway: requestedGateway,
+  correlationId = String(bookingId),
 }) => {
-  const booking = await getOwnedBooking(bookingId, userId);
+  const booking = await tracePaymentStep(
+    correlationId,
+    "order.load_booking",
+    { bookingId: correlationId },
+    () => getOwnedBooking(bookingId, userId)
+  );
   if (booking.itineraryStatus !== "created") {
     throw getError("Hotel itinerary must be created before payment", 409);
   }
@@ -120,12 +139,17 @@ export const createHotelPaymentOrder = async ({
     throw getError("Hotel booking amount is invalid", 409);
   }
 
-  const correlationId = String(booking._id);
-  const existing = await HotelPaymentTransaction.findOne({
-    bookingId: booking._id,
-    userId,
-    status: "pending",
-  }).sort({ createdAt: -1 });
+  const existing = await tracePaymentStep(
+    correlationId,
+    "order.find_pending_transaction",
+    { bookingId: correlationId },
+    () =>
+      HotelPaymentTransaction.findOne({
+        bookingId: booking._id,
+        userId,
+        status: "pending",
+      }).sort({ createdAt: -1 })
+  );
   if (existing) {
     if (requestedGateway && existing.gateway !== requestedGateway) {
       throw getError(
@@ -139,28 +163,45 @@ export const createHotelPaymentOrder = async ({
       transactionId: existing.transactionId,
       gateway: existing.gateway,
     });
-    return getOrderResponse(existing);
+    return tracePaymentStep(
+      correlationId,
+      "order.rebuild_checkout_response",
+      { bookingId: correlationId, gateway: existing.gateway },
+      () => getOrderResponse(existing, correlationId)
+    );
   }
 
-  const gatewayName = await getConfiguredGateway({
-    gatewayName: requestedGateway,
-    currency,
-  });
-  const lock = await HotelItinerary.findOneAndUpdate(
-    {
-      _id: booking._id,
-      userId,
-      paymentStatus: "pending",
-      supplierBookingStatus: { $in: ["awaiting_payment", null] },
-      paymentOrderStatus: { $in: ["idle", "failed", null] },
-    },
-    {
-      $set: {
-        paymentOrderStatus: "creating",
-        paymentGateway: gatewayName,
-      },
-    },
-    { returnDocument: "after" }
+  const gatewayName = await tracePaymentStep(
+    correlationId,
+    "order.select_gateway",
+    { bookingId: correlationId, currency },
+    () =>
+      getConfiguredGateway({
+        gatewayName: requestedGateway,
+        currency,
+      })
+  );
+  const lock = await tracePaymentStep(
+    correlationId,
+    "order.acquire_booking_lock",
+    { bookingId: correlationId, gateway: gatewayName },
+    () =>
+      HotelItinerary.findOneAndUpdate(
+        {
+          _id: booking._id,
+          userId,
+          paymentStatus: "pending",
+          supplierBookingStatus: { $in: ["awaiting_payment", null] },
+          paymentOrderStatus: { $in: ["idle", "failed", null] },
+        },
+        {
+          $set: {
+            paymentOrderStatus: "creating",
+            paymentGateway: gatewayName,
+          },
+        },
+        { returnDocument: "after" }
+      )
   );
   if (!lock) {
     throw getError("A payment order is already being created for this booking", 409);
@@ -179,24 +220,42 @@ export const createHotelPaymentOrder = async ({
 
   try {
     const gateway = createHotelPaymentGateway(gatewayName);
-    const order = await gateway.createOrder({
-      amount,
-      currency,
-      bookingId: String(booking._id),
-    });
-    const transaction = await HotelPaymentTransaction.create({
-      transactionId,
-      bookingId: booking._id,
-      userId,
-      gateway: gatewayName,
-      amount,
-      currency,
-      gatewayOrderId: order.gatewayOrderId,
-      status: "pending",
-    });
+    const order = await tracePaymentStep(
+      correlationId,
+      "order.call_gateway_create",
+      { bookingId: correlationId, gateway: gatewayName, transactionId },
+      () =>
+        gateway.createOrder({
+          amount,
+          currency,
+          bookingId: String(booking._id),
+          correlationId,
+        })
+    );
+    const transaction = await tracePaymentStep(
+      correlationId,
+      "order.persist_transaction",
+      { bookingId: correlationId, gateway: gatewayName, transactionId },
+      () =>
+        HotelPaymentTransaction.create({
+          transactionId,
+          bookingId: booking._id,
+          userId,
+          gateway: gatewayName,
+          amount,
+          currency,
+          gatewayOrderId: order.gatewayOrderId,
+          status: "pending",
+        })
+    );
     lock.paymentOrderStatus = "created";
     lock.paymentTransactionId = transaction.transactionId;
-    await lock.save();
+    await tracePaymentStep(
+      correlationId,
+      "order.persist_booking_order_status",
+      { bookingId: correlationId, gateway: gatewayName, transactionId },
+      () => lock.save()
+    );
 
     logGatewayEvent("info", "order.completed", {
       correlationId,
@@ -216,7 +275,12 @@ export const createHotelPaymentOrder = async ({
   } catch (error) {
     lock.paymentOrderStatus = "failed";
     lock.paymentGateway = null;
-    await lock.save();
+    await tracePaymentStep(
+      correlationId,
+      "order.release_booking_lock_after_failure",
+      { bookingId: correlationId, gateway: gatewayName, transactionId },
+      () => lock.save()
+    );
     logGatewayEvent("error", "order.failed", {
       correlationId,
       bookingId: String(booking._id),
@@ -236,15 +300,35 @@ const issueCustomerRefund = async ({ booking, transaction, correlationId }) => {
   booking.paymentStatus = "refund_pending";
   transaction.status = "refund_pending";
   transaction.lastError = booking.supplierBookingError;
-  await Promise.all([booking.save(), transaction.save()]);
+  await tracePaymentStep(
+    correlationId,
+    "refund.persist_pending_state",
+    {
+      bookingId: String(booking._id),
+      transactionId: transaction.transactionId,
+      gateway: transaction.gateway,
+    },
+    () => Promise.all([booking.save(), transaction.save()])
+  );
 
   const startedAt = performance.now();
   try {
     const gateway = createHotelPaymentGateway(transaction.gateway);
-    const refund = await gateway.refundPayment({
-      paymentId: transaction.gatewayPaymentId,
-      amount: transaction.amount,
-    });
+    const refund = await tracePaymentStep(
+      correlationId,
+      "refund.call_gateway",
+      {
+        bookingId: String(booking._id),
+        transactionId: transaction.transactionId,
+        gateway: transaction.gateway,
+      },
+      () =>
+        gateway.refundPayment({
+          paymentId: transaction.gatewayPaymentId,
+          amount: transaction.amount,
+          correlationId,
+        })
+    );
     transaction.refundId = refund.id ?? refund.refundId ?? null;
     transaction.refundAmount = transaction.amount;
     const refundComplete =
@@ -256,7 +340,17 @@ const issueCustomerRefund = async ({ booking, transaction, correlationId }) => {
       transaction.refundedAt = new Date();
       booking.paymentStatus = "refunded";
     }
-    await Promise.all([booking.save(), transaction.save()]);
+    await tracePaymentStep(
+      correlationId,
+      "refund.persist_result",
+      {
+        bookingId: String(booking._id),
+        transactionId: transaction.transactionId,
+        gateway: transaction.gateway,
+        refundStatus: refund.status ?? "pending",
+      },
+      () => Promise.all([booking.save(), transaction.save()])
+    );
     logGatewayEvent("info", "refund.completed", {
       correlationId,
       bookingId: String(booking._id),
@@ -267,8 +361,16 @@ const issueCustomerRefund = async ({ booking, transaction, correlationId }) => {
     });
   } catch (error) {
     transaction.lastError = error.message;
-    await transaction.save();
-    await booking.save();
+    await tracePaymentStep(
+      correlationId,
+      "refund.persist_failure_state",
+      {
+        bookingId: String(booking._id),
+        transactionId: transaction.transactionId,
+        gateway: transaction.gateway,
+      },
+      () => Promise.all([transaction.save(), booking.save()])
+    );
     logGatewayEvent("error", "refund.failed", {
       correlationId,
       bookingId: String(booking._id),
@@ -281,20 +383,39 @@ const issueCustomerRefund = async ({ booking, transaction, correlationId }) => {
   }
 };
 
-const startSupplierBooking = async ({ booking, transaction }) => {
-  const correlationId = String(booking._id);
-  const claimedBooking = await HotelItinerary.findOneAndUpdate(
+const startSupplierBooking = async ({
+  booking,
+  transaction,
+  correlationId = String(booking._id),
+}) => {
+  const claimedBooking = await tracePaymentStep(
+    correlationId,
+    "supplier.claim_booking",
     {
-      _id: booking._id,
-      paymentStatus: "paid",
-      supplierBookingStatus: { $in: ["awaiting_payment", null] },
-      paymentTransactionId: transaction.transactionId,
+      bookingId: String(booking._id),
+      transactionId: transaction.transactionId,
+      gateway: transaction.gateway,
+      supplier: "AKBAR",
     },
-    { $set: { supplierBookingStatus: "processing" } },
-    { returnDocument: "after" }
+    () =>
+      HotelItinerary.findOneAndUpdate(
+        {
+          _id: booking._id,
+          paymentStatus: "paid",
+          supplierBookingStatus: { $in: ["awaiting_payment", null] },
+          paymentTransactionId: transaction.transactionId,
+        },
+        { $set: { supplierBookingStatus: "processing" } },
+        { returnDocument: "after" }
+      )
   );
   if (!claimedBooking) {
-    const latestBooking = await HotelItinerary.findById(booking._id);
+    const latestBooking = await tracePaymentStep(
+      correlationId,
+      "supplier.load_latest_booking_after_claim_miss",
+      { bookingId: String(booking._id), transactionId: transaction.transactionId },
+      () => HotelItinerary.findById(booking._id)
+    );
     if (!latestBooking) {
       throw getError("Hotel booking was not found", 404);
     }
@@ -302,7 +423,15 @@ const startSupplierBooking = async ({ booking, transaction }) => {
   }
 
   transaction.supplierBookingStatus = "processing";
-  await transaction.save();
+  await tracePaymentStep(
+    correlationId,
+    "supplier.persist_processing_state",
+    {
+      bookingId: String(booking._id),
+      transactionId: transaction.transactionId,
+    },
+    () => transaction.save()
+  );
   logGatewayEvent("info", "supplier_booking.started", {
     correlationId,
     bookingId: String(booking._id),
@@ -313,10 +442,20 @@ const startSupplierBooking = async ({ booking, transaction }) => {
 
   const startedAt = performance.now();
   try {
-    const supplierResponse = await startAkbarHotelPay({
-      booking: claimedBooking,
+    const supplierResponse = await tracePaymentStep(
       correlationId,
-    });
+      "supplier.startpay",
+      {
+        bookingId: String(booking._id),
+        transactionId: transaction.transactionId,
+        supplier: "AKBAR",
+      },
+      () =>
+        startAkbarHotelPay({
+          booking: claimedBooking,
+          correlationId,
+        })
+    );
     const supplierData = getAkbarStartPayResponseData(supplierResponse);
     const supplierCode = supplierData.Code ?? supplierData.code;
     const rawMessage = supplierData.Msg ?? supplierData.Message ?? supplierData.message;
@@ -333,7 +472,15 @@ const startSupplierBooking = async ({ booking, transaction }) => {
         "AKBAR StartPay returned a response without a status code";
       transaction.supplierBookingStatus = "unknown";
       transaction.lastError = claimedBooking.supplierBookingError;
-      await Promise.all([claimedBooking.save(), transaction.save()]);
+      await tracePaymentStep(
+        correlationId,
+        "supplier.persist_unrecognized_response",
+        {
+          bookingId: String(booking._id),
+          transactionId: transaction.transactionId,
+        },
+        () => Promise.all([claimedBooking.save(), transaction.save()])
+      );
       logGatewayEvent("error", "supplier_booking.response_unrecognized", {
         correlationId,
         bookingId: String(booking._id),
@@ -352,7 +499,16 @@ const startSupplierBooking = async ({ booking, transaction }) => {
         supplierMessage ?? "AKBAR rejected the booking payment";
       transaction.supplierBookingStatus = "failed";
       transaction.lastError = claimedBooking.supplierBookingError;
-      await Promise.all([claimedBooking.save(), transaction.save()]);
+      await tracePaymentStep(
+        correlationId,
+        "supplier.persist_rejected_response",
+        {
+          bookingId: String(booking._id),
+          transactionId: transaction.transactionId,
+          supplierCode,
+        },
+        () => Promise.all([claimedBooking.save(), transaction.save()])
+      );
       logGatewayEvent("error", "supplier_booking.rejected", {
         correlationId,
         bookingId: String(booking._id),
@@ -370,7 +526,15 @@ const startSupplierBooking = async ({ booking, transaction }) => {
     claimedBooking.supplierBookingStatus = "confirmed";
     claimedBooking.paymentStatus = "paid";
     transaction.supplierBookingStatus = "confirmed";
-    await Promise.all([claimedBooking.save(), transaction.save()]);
+    await tracePaymentStep(
+      correlationId,
+      "supplier.persist_confirmation",
+      {
+        bookingId: String(booking._id),
+        transactionId: transaction.transactionId,
+      },
+      () => Promise.all([claimedBooking.save(), transaction.save()])
+    );
     logGatewayEvent("info", "supplier_booking.confirmed", {
       correlationId,
       bookingId: String(booking._id),
@@ -393,7 +557,16 @@ const startSupplierBooking = async ({ booking, transaction }) => {
     claimedBooking.supplierBookingError = error.message;
     transaction.supplierBookingStatus = claimedBooking.supplierBookingStatus;
     transaction.lastError = error.message;
-    await Promise.all([claimedBooking.save(), transaction.save()]);
+    await tracePaymentStep(
+      correlationId,
+      "supplier.persist_failure_state",
+      {
+        bookingId: String(booking._id),
+        transactionId: transaction.transactionId,
+        finalState: claimedBooking.supplierBookingStatus,
+      },
+      () => Promise.all([claimedBooking.save(), transaction.save()])
+    );
     logGatewayEvent("error", "supplier_booking.failed", {
       correlationId,
       bookingId: String(booking._id),
@@ -413,17 +586,46 @@ const startSupplierBooking = async ({ booking, transaction }) => {
   }
 };
 
-const recordCapturedPayment = async ({ transaction, gatewayPaymentId }) => {
+const recordCapturedPayment = async ({
+  transaction,
+  gatewayPaymentId,
+  correlationId = String(transaction.bookingId),
+}) => {
   if (transaction.status === "refunded" || transaction.status === "refund_pending") {
-    const booking = await HotelItinerary.findById(transaction.bookingId);
+    const booking = await tracePaymentStep(
+      correlationId,
+      "payment.load_booking_for_refund_state",
+      {
+        bookingId: String(transaction.bookingId),
+        transactionId: transaction.transactionId,
+      },
+      () => HotelItinerary.findById(transaction.bookingId)
+    );
     if (!booking) throw getError("Hotel booking was not found", 404);
     return getPaymentState(booking, transaction);
   }
 
   transaction.status = "success";
   transaction.gatewayPaymentId = gatewayPaymentId;
-  await transaction.save();
-  const booking = await HotelItinerary.findById(transaction.bookingId);
+  await tracePaymentStep(
+    correlationId,
+    "payment.persist_captured_transaction",
+    {
+      bookingId: String(transaction.bookingId),
+      transactionId: transaction.transactionId,
+      gateway: transaction.gateway,
+    },
+    () => transaction.save()
+  );
+  const booking = await tracePaymentStep(
+    correlationId,
+    "payment.load_booking_after_capture",
+    {
+      bookingId: String(transaction.bookingId),
+      transactionId: transaction.transactionId,
+    },
+    () => HotelItinerary.findById(transaction.bookingId)
+  );
   if (!booking || String(booking.userId) !== String(transaction.userId)) {
     throw getError("Hotel booking for this payment was not found", 404);
   }
@@ -437,9 +639,26 @@ const recordCapturedPayment = async ({ transaction, gatewayPaymentId }) => {
     booking.paymentStatus = "paid";
     booking.paymentTransactionId = transaction.transactionId;
     booking.supplierBookingStatus = "awaiting_payment";
-    await booking.save();
+    await tracePaymentStep(
+      correlationId,
+      "payment.persist_booking_paid_state",
+      {
+        bookingId: String(transaction.bookingId),
+        transactionId: transaction.transactionId,
+      },
+      () => booking.save()
+    );
   }
-  return startSupplierBooking({ booking, transaction });
+  return tracePaymentStep(
+    correlationId,
+    "payment.confirm_supplier_booking",
+    {
+      bookingId: String(transaction.bookingId),
+      transactionId: transaction.transactionId,
+      gateway: transaction.gateway,
+    },
+    () => startSupplierBooking({ booking, transaction, correlationId })
+  );
 };
 
 export const verifyHotelPayment = async ({
@@ -449,11 +668,14 @@ export const verifyHotelPayment = async ({
   signature,
   gatewayName,
   userId,
+  correlationId = randomUUID(),
 }) => {
-  const transaction = await HotelPaymentTransaction.findOne({
-    transactionId,
-    userId,
-  });
+  const transaction = await tracePaymentStep(
+    correlationId,
+    "verification.load_transaction",
+    { transactionId },
+    () => HotelPaymentTransaction.findOne({ transactionId, userId })
+  );
   if (!transaction) throw getError("Payment transaction was not found", 404);
   if (gatewayName && gatewayName !== transaction.gateway) {
     throw getError("Payment gateway does not match this transaction", 400);
@@ -470,7 +692,6 @@ export const verifyHotelPayment = async ({
     throw getError("Payment order does not match this transaction", 400);
   }
 
-  const correlationId = String(transaction.bookingId);
   logGatewayEvent("info", "verification.started", {
     correlationId,
     bookingId: String(transaction.bookingId),
@@ -481,13 +702,24 @@ export const verifyHotelPayment = async ({
   const startedAt = performance.now();
   try {
     const gateway = createHotelPaymentGateway(transaction.gateway);
-    const verification = await gateway.verifyPayment({
-      gatewayOrderId: transaction.gatewayOrderId,
-      paymentId,
-      signature,
-      expectedAmount: transaction.amount,
-      expectedCurrency: transaction.currency,
-    });
+    const verification = await tracePaymentStep(
+      correlationId,
+      "verification.call_gateway",
+      {
+        bookingId: String(transaction.bookingId),
+        transactionId,
+        gateway: transaction.gateway,
+      },
+      () =>
+        gateway.verifyPayment({
+          gatewayOrderId: transaction.gatewayOrderId,
+          paymentId,
+          signature,
+          expectedAmount: transaction.amount,
+          expectedCurrency: transaction.currency,
+          correlationId,
+        })
+    );
     if (!verification.success) {
       logGatewayEvent("error", "verification.rejected", {
         correlationId,
@@ -510,6 +742,7 @@ export const verifyHotelPayment = async ({
     return recordCapturedPayment({
       transaction,
       gatewayPaymentId: verification.gatewayPaymentId,
+      correlationId,
     });
   } catch (error) {
     if (error.statusCode === 400) throw error;
@@ -526,12 +759,30 @@ export const verifyHotelPayment = async ({
   }
 };
 
-export const getHotelPaymentStatus = async ({ bookingId, userId }) => {
-  const booking = await getOwnedBooking(bookingId, userId);
+export const getHotelPaymentStatus = async ({
+  bookingId,
+  userId,
+  correlationId = randomUUID(),
+}) => {
+  const booking = await tracePaymentStep(
+    correlationId,
+    "status.load_booking",
+    { bookingId: String(bookingId) },
+    () => getOwnedBooking(bookingId, userId)
+  );
   const transaction = booking.paymentTransactionId
-    ? await HotelPaymentTransaction.findOne({
-        transactionId: booking.paymentTransactionId,
-      })
+    ? await tracePaymentStep(
+        correlationId,
+        "status.load_transaction",
+        {
+          bookingId: String(booking._id),
+          transactionId: booking.paymentTransactionId,
+        },
+        () =>
+          HotelPaymentTransaction.findOne({
+            transactionId: booking.paymentTransactionId,
+          })
+      )
     : null;
   return getPaymentState(booking, transaction);
 };
@@ -542,11 +793,18 @@ export const handleHotelPaymentWebhook = async ({
   gatewayPaymentId,
   gatewayAmount,
   gatewayCurrency,
+  correlationId = randomUUID(),
 }) => {
-  const transaction = await HotelPaymentTransaction.findOne({
-    gateway: gatewayName,
-    gatewayOrderId,
-  });
+  const transaction = await tracePaymentStep(
+    correlationId,
+    "webhook.load_transaction",
+    { gateway: gatewayName },
+    () =>
+      HotelPaymentTransaction.findOne({
+        gateway: gatewayName,
+        gatewayOrderId,
+      })
+  );
   if (!transaction) {
     throw getError("Hotel payment transaction for gateway order was not found", 404);
   }
@@ -556,7 +814,11 @@ export const handleHotelPaymentWebhook = async ({
   ) {
     throw getError("Webhook payment amount or currency does not match the order", 400);
   }
-  return recordCapturedPayment({ transaction, gatewayPaymentId });
+  return recordCapturedPayment({
+    transaction,
+    gatewayPaymentId,
+    correlationId,
+  });
 };
 
 export const handleHotelPaymentRefundWebhook = async ({
@@ -565,11 +827,18 @@ export const handleHotelPaymentRefundWebhook = async ({
   refundId,
   refundStatus,
   refundAmount,
+  correlationId = randomUUID(),
 }) => {
-  const transaction = await HotelPaymentTransaction.findOne({
-    gateway: gatewayName,
-    gatewayPaymentId,
-  });
+  const transaction = await tracePaymentStep(
+    correlationId,
+    "refund_webhook.load_transaction",
+    { gateway: gatewayName },
+    () =>
+      HotelPaymentTransaction.findOne({
+        gateway: gatewayName,
+        gatewayPaymentId,
+      })
+  );
   if (!transaction) {
     throw getError("Hotel payment transaction for gateway refund was not found", 404);
   }
@@ -584,12 +853,23 @@ export const handleHotelPaymentRefundWebhook = async ({
   transaction.refundId = refundId;
   transaction.refundAmount = transaction.amount;
   transaction.refundedAt = new Date();
-  await transaction.save();
-  await HotelItinerary.findByIdAndUpdate(transaction.bookingId, {
-    $set: { paymentStatus: "refunded" },
-  });
+  await tracePaymentStep(
+    correlationId,
+    "refund_webhook.persist_refunded_state",
+    {
+      bookingId: String(transaction.bookingId),
+      transactionId: transaction.transactionId,
+      gateway: gatewayName,
+    },
+    async () => {
+      await transaction.save();
+      await HotelItinerary.findByIdAndUpdate(transaction.bookingId, {
+        $set: { paymentStatus: "refunded" },
+      });
+    }
+  );
   logGatewayEvent("info", "refund.webhook_processed", {
-    correlationId: String(transaction.bookingId),
+    correlationId,
     bookingId: String(transaction.bookingId),
     transactionId: transaction.transactionId,
     gateway: gatewayName,

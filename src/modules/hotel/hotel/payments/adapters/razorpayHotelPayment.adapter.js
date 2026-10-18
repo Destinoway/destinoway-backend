@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import Razorpay from "razorpay";
 import BaseHotelPaymentAdapter from "./baseHotelPayment.adapter.js";
+import { traceHotelPaymentStep } from "../../utils/hotelObservability.js";
 
 const toMinorUnits = (amount) => {
   const value = Number(amount);
@@ -27,12 +28,18 @@ class RazorpayHotelPaymentAdapter extends BaseHotelPaymentAdapter {
     this.client = new Razorpay({ key_id: keyId, key_secret: keySecret });
   }
 
-  async createOrder({ amount, currency, bookingId }) {
-    const order = await this.client.orders.create({
-      amount: toMinorUnits(amount),
-      currency,
-      receipt: String(bookingId).slice(0, 40),
-      notes: { hotelBookingId: String(bookingId) },
+  async createOrder({ amount, currency, bookingId, correlationId }) {
+    const order = await traceHotelPaymentStep({
+      correlationId,
+      step: "gateway.razorpay.create_order",
+      fields: { bookingId: String(bookingId), gateway: "razorpay" },
+      operation: () =>
+        this.client.orders.create({
+          amount: toMinorUnits(amount),
+          currency,
+          receipt: String(bookingId).slice(0, 40),
+          notes: { hotelBookingId: String(bookingId) },
+        }),
     });
     return {
       gatewayOrderId: order.id,
@@ -51,6 +58,7 @@ class RazorpayHotelPaymentAdapter extends BaseHotelPaymentAdapter {
     signature,
     expectedAmount,
     expectedCurrency,
+    correlationId,
   }) {
     if (
       typeof gatewayOrderId !== "string" ||
@@ -72,7 +80,12 @@ class RazorpayHotelPaymentAdapter extends BaseHotelPaymentAdapter {
       return { success: false, reason: "Invalid Razorpay payment signature" };
     }
 
-    const payment = await this.client.payments.fetch(paymentId);
+    const payment = await traceHotelPaymentStep({
+      correlationId,
+      step: "gateway.razorpay.fetch_payment",
+      fields: { gateway: "razorpay" },
+      operation: () => this.client.payments.fetch(paymentId),
+    });
     if (
       payment.order_id !== gatewayOrderId ||
       payment.status !== "captured" ||
@@ -88,8 +101,18 @@ class RazorpayHotelPaymentAdapter extends BaseHotelPaymentAdapter {
     return { success: true, gatewayPaymentId: payment.id };
   }
 
-  async getCheckoutDetails(transaction) {
-    const order = await this.client.orders.fetch(transaction.gatewayOrderId);
+  async getCheckoutDetails(transaction, { correlationId } = {}) {
+    const order = await traceHotelPaymentStep({
+      correlationId,
+      step: "gateway.razorpay.fetch_order",
+      fields: {
+        bookingId: String(transaction.bookingId),
+        transactionId: transaction.transactionId,
+        gateway: "razorpay",
+      },
+      operation: () =>
+        this.client.orders.fetch(transaction.gatewayOrderId),
+    });
     return {
       keyId: this.keyId,
       orderId: order.id,
@@ -98,9 +121,15 @@ class RazorpayHotelPaymentAdapter extends BaseHotelPaymentAdapter {
     };
   }
 
-  async refundPayment({ paymentId, amount }) {
-    return this.client.payments.refund(paymentId, {
-      amount: toMinorUnits(amount),
+  async refundPayment({ paymentId, amount, correlationId }) {
+    return traceHotelPaymentStep({
+      correlationId,
+      step: "gateway.razorpay.refund_payment",
+      fields: { gateway: "razorpay" },
+      operation: () =>
+        this.client.payments.refund(paymentId, {
+          amount: toMinorUnits(amount),
+        }),
     });
   }
 }
