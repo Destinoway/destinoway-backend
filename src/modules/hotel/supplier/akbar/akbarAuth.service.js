@@ -622,6 +622,14 @@ const getTokenEncryptionKey = () => {
     error.statusCode = 503;
     throw error;
   }
+  console.log("[AKBAR KEY DIAGNOSTIC]", {
+  configured: Boolean(configuredKey),
+  length: configuredKey?.length,
+  decodedBytes: encryptionKey?.length,
+  base64Canonical:
+    Boolean(configuredKey) &&
+    encryptionKey?.toString("base64") === configuredKey,
+});
   return encryptionKey;
 };
 
