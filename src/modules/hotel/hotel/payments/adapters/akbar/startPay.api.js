@@ -283,7 +283,7 @@ import "dotenv/config";
 import os from "node:os";
 import axios from "axios";
 
-import { getAKBARToken } from "../../../../supplier/akbar/akbarAuth.service.js";
+import AkbarToken from "../../../../supplier/akbar/akbarToken.model.js";
 
 import {
   getSupplierResponseSummary,
@@ -372,6 +372,66 @@ const unwrapSupplierResponse = (response) =>
   response && typeof response === "object"
     ? response.data ?? response
     : {};
+
+const getStoredAkbarToken = async ({ correlationId, bookingId }) => {
+  const startedAt = performance.now();
+
+  try {
+    const record = await AkbarToken.findOne({
+      _id: "hotel",
+      expiresAt: { $gt: new Date() },
+    })
+      .select("token")
+      .lean();
+
+    if (typeof record?.token !== "string" || !record.token.trim()) {
+      logHotelEvent("error", "hotel.supplier_booking.startpay_token_missing", {
+        correlationId,
+        bookingId,
+        supplier: "AKBAR",
+        operation: "start_payment",
+        storage: "mongodb",
+        recordFound: Boolean(record),
+        tokenPresent: false,
+        durationMs: Math.round(performance.now() - startedAt),
+      });
+      const error = new Error(
+        "No valid AKBAR token was found in MongoDB; refresh the Signature token before StartPay"
+      );
+      error.statusCode = 503;
+      error.supplierRequestSent = false;
+      throw error;
+    }
+
+    logHotelEvent("info", "hotel.supplier_booking.startpay_token_loaded", {
+      correlationId,
+      bookingId,
+      supplier: "AKBAR",
+      operation: "start_payment",
+      storage: "mongodb",
+      tokenPresent: true,
+      durationMs: Math.round(performance.now() - startedAt),
+    });
+    return record.token;
+  } catch (error) {
+    if (!error.statusCode) {
+      logHotelEvent("error", "hotel.supplier_booking.startpay_token_db_failed", {
+        correlationId,
+        bookingId,
+        supplier: "AKBAR",
+        operation: "start_payment",
+        storage: "mongodb",
+        durationMs: Math.round(performance.now() - startedAt),
+        errorName: error.name,
+        errorCode: error.code ?? null,
+        errorMessage: error.message,
+      });
+      error.statusCode = 503;
+      error.supplierRequestSent = false;
+    }
+    throw error;
+  }
+};
 
 const getStartPayConfig = () => {
   const browserKey = process.env.AKBAR_BROWSER_KEY;
@@ -576,9 +636,8 @@ export const startAkbarHotelPay = async ({
         path: endpoint.pathname,
         protocol: endpoint.protocol,
         tui: tuiForLogging,
-        tokenProvider: "getAKBARToken",
-        note:
-          "Token source (Redis cache or Signature API) is logged by akbarAuth.service.js",
+        tokenProvider: "AkbarToken MongoDB model",
+        storage: "mongodb",
       }
     );
 
@@ -587,9 +646,9 @@ export const startAkbarHotelPay = async ({
     let token;
 
     try {
-      token = await getAKBARToken({
-        operation: "start_payment",
+      token = await getStoredAkbarToken({
         correlationId,
+        bookingId,
       });
     } catch (error) {
       logHotelEvent(
