@@ -3,7 +3,7 @@
 import {
   sendError,
   sendSuccess,
-} from "../../../utils/response/ApiResponse.js";
+} from "../../../../utils/response/ApiResponse.js";
  import { getHotelRequeryByUserService } from "./requery.service.js";
 
 
@@ -26,6 +26,6 @@ const data = await getHotelRequeryByUserService(
       200
     );
   } catch (error) {
-    return sendError(res, error.message, 404);
+    return sendError(res, error.message, error.statusCode ?? 500);
   }
 };

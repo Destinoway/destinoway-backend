@@ -1,102 +1,106 @@
-
-import HotelCart from "../hotelTempBooking/hotelCart.model.js";
+import HotelItinerary from "../itinerary/hotelItinerary.model.js";
 
 export const getHotelRequeryByUserService = async (
   userId,
   bookingRefNo,
-  status,
+  status
 ) => {
-  // ===================================
-  // Base Query
-  // ===================================
-
-  const query = {
-    userId,
-    "supplierResponse.hotelRequeryResponse": { $exists: true },
-  };
+  const query = { userId };
 
   if (bookingRefNo) {
-    query["supplierResponse.hotelRequeryResponse.BookingRefNo"] = bookingRefNo;
+    query.transactionId = bookingRefNo;
   }
 
   if (status) {
-    query["supplierResponse.hotelRequeryResponse.TicketStatusDesc"] = status;
+    query.supplierBookingStatus = status;
   }
 
-  const bookings = await HotelCart.find(query).sort({
-    createdAt: -1,
-  });
-console.log("Booking =",bookings)
+  const bookings = await HotelItinerary.find(query)
+    .sort({ createdAt: -1 })
+    .lean();
+
   if (!bookings.length) {
-    throw new Error("Booking not found");
+    const error = new Error("Booking not found");
+    error.statusCode = 404;
+    throw error;
   }
 
   const response = bookings.map((booking) => {
-    const requery = booking.supplierResponse?.hotelRequeryResponse || {};
+    const contactInfo = booking.contactInfo ?? {};
+    const total = booking.price?.total ?? null;
+    const rooms = (booking.rooms ?? []).map((room) => ({
+      occupancyId: room.occupancyId,
+      adults: (room.adults ?? []).map((guest) => ({
+        title: guest.title,
+        firstName: guest.firstName,
+        middleName: guest.middleName,
+        lastName: guest.lastName,
+      })),
+      children: (room.children ?? []).map((guest) => ({
+        title: guest.title,
+        firstName: guest.firstName,
+        middleName: guest.middleName,
+        lastName: guest.lastName,
+        age: guest.age,
+      })),
+    }));
 
     return {
       _id: booking._id,
-
-      pricing: {
-        baseAmount:
-          (booking.pricing?.finalPrice || 0) -
-          (booking.pricing?.platformFeeAndTax || 0),
-
-        serviceCharge: booking.pricing?.serviceCharge,
-
-        platformFeeAndTax: booking.pricing?.platformFeeAndTax,
-
-        finalPrice: booking.pricing?.finalPrice,
-      },
-   guestDetails:{
-    customerName:booking.supplierData?.customerName,
-       customerMobile:booking.supplierData?.customerMobile,
-          customerAddress:booking.supplierData?.customerAddress,
-           customerPostalCode:booking.supplierData?.customerPostalCode,
-        occupants:
-    booking.supplierData?.occupantDetails?.map((guest) => ({
-      title: guest.Title,
-      firstName: guest.FirstName,
-      lastName: guest.LastName,
-      occupantType: guest.OccupantType,
-      OccupantID: guest.OccupantID,
-      RoomNo: guest.RoomNo,
-    })) || [],
-
-
-   },
-      offer: booking.offer,
-
-      payableAmount: booking.payableAmount,
-      bookingRefNo: booking.supplierResponse?.bookingRefNo,
-
+      bookingRefNo: booking.transactionId,
+      itineraryStatus: booking.itineraryStatus,
       paymentStatus: booking.paymentStatus,
-
+      supplierBookingStatus: booking.supplierBookingStatus,
       createdAt: booking.createdAt,
-
-      ticketStatusDesc: requery.TicketStatusDesc,
-
-      checkInDate: requery.CheckInDate,
-
-      checkOutDate: requery.CheckOutDate,
-
-      voucherNumber: requery.VoucherNumber,
-
+      pricing: {
+        baseAmount: total,
+        serviceCharge: null,
+        platformFeeAndTax: null,
+        finalPrice: total,
+        currency: booking.price?.currency ?? null,
+      },
+      guestDetails: {
+        customerName: [contactInfo.firstName, contactInfo.lastName]
+          .filter(Boolean)
+          .join(" "),
+        customerMobile: contactInfo.mobile ?? null,
+        customerAddress: contactInfo.address ?? null,
+        customerPostalCode: contactInfo.pin ?? null,
+        occupants: [
+          ...rooms.flatMap((room) =>
+            room.adults.map((guest) => ({
+              title: guest.title,
+              firstName: guest.firstName,
+              lastName: guest.lastName,
+              occupantType: "adult",
+            }))
+          ),
+          ...rooms.flatMap((room) =>
+            room.children.map((guest) => ({
+              title: guest.title,
+              firstName: guest.firstName,
+              lastName: guest.lastName,
+              occupantType: "child",
+            }))
+          ),
+        ],
+      },
+      payableAmount: total,
+      ticketStatusDesc:
+        booking.supplierBookingDetails?.bookingStatus ??
+        booking.supplierBookingStatus ??
+        null,
+      checkInDate: booking.stay?.checkIn ?? null,
+      checkOutDate: booking.stay?.checkOut ?? null,
+      voucherNumber: booking.supplierBookingDetails?.voucherNumber ?? null,
+      supplierBookingDetails: booking.supplierBookingDetails ?? null,
       supplierResponse: {
-        CancellationPolicy: requery.CancellationPolicy,
-
-        HotelDetails: requery.HotelDetails,
-
-        HotelRoomDetail: requery.HotelRoomDetail,
+        CancellationPolicy: null,
+        HotelDetails: booking.hotel,
+        HotelRoomDetail: rooms,
       },
     };
   });
 
-  // Single Booking
-  if (bookingRefNo) {
-    return response[0];
-  }
-
-  // Booking List
-  return response;
+  return bookingRefNo ? response[0] : response;
 };
