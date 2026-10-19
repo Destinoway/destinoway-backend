@@ -6,8 +6,16 @@ webhook handlers do the same. Each asynchronous payment step emits
 `hotel.payment.trace` with `phase` set to `started`, `completed`, or `failed`.
 
 Trace points cover booking and transaction database reads/writes, gateway order,
-verification and refund calls, supplier booking claims, AKBAR StartPay, and
-webhook processing. If a step stalls, its last `started` event has no matching
+verification and refund calls, supplier booking claims, AKBAR StartPay and
+RetrieveBooking, and webhook processing. After StartPay confirms a booking, the
+backend retrieves AKBAR booking details using the itinerary `TransactionID` as
+`ReferenceNumber` (`ReferenceType: "T"`, `RequestMode: "RB"`). Only recognized
+PNR, booking status, confirmation number, and voucher number fields are saved
+under `supplierBookingDetails`; the full RetrieveBooking response is not
+persisted. A RetrieveBooking failure is logged but does not undo the supplier
+booking confirmation.
+
+If a step stalls, its last `started` event has no matching
 `completed` or `failed` event; filter by that event's `correlationId` to see
 where execution stopped. The service also emits higher-level
 `hotel.payment.*` events for outcomes such as `order.completed`,

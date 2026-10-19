@@ -5,6 +5,10 @@ import HotelPaymentTransaction from "./models/hotelPaymentTransaction.model.js";
 import { createHotelPaymentGateway } from "./paymentGateway.factory.js";
 import { getAkbarStartPayResponseData, startAkbarHotelPay } from "./adapters/akbar/startPay.api.js";
 import {
+  getAkbarRetrievedBookingFields,
+  retrieveAkbarHotelBooking,
+} from "./adapters/akbar/retrieveBooking.api.js";
+import {
   getSupplierResponseSummary,
   logHotelEvent,
   traceHotelPaymentStep,
@@ -62,9 +66,11 @@ const getPaymentState = (booking, transaction = null) => ({
   amount: booking.price?.total ?? null,
   currency: booking.price?.currency ?? null,
   crsPnr:
+    booking.supplierBookingDetails?.crsPnr ??
     booking.supplierBookingResponse?.CRSPNR ??
     booking.supplierBookingResponse?.data?.CRSPNR ??
     null,
+  supplierBookingDetails: booking.supplierBookingDetails ?? null,
 });
 
 const getConfiguredGateway = async ({ gatewayName, currency }) => {
@@ -383,6 +389,87 @@ const issueCustomerRefund = async ({ booking, transaction, correlationId }) => {
   }
 };
 
+const retrieveAndSaveAkbarBookingDetails = async ({
+  booking,
+  correlationId,
+}) => {
+  try {
+    const response = await tracePaymentStep(
+      correlationId,
+      "supplier.retrieve_booking",
+      {
+        bookingId: String(booking._id),
+        transactionId: String(booking.transactionId),
+        supplier: "AKBAR",
+      },
+      () =>
+        retrieveAkbarHotelBooking({
+          transactionId: booking.transactionId,
+          bookingId: booking._id,
+          correlationId,
+        })
+    );
+    const supplierData = getAkbarStartPayResponseData(response);
+    const supplierCode = supplierData.Code ?? supplierData.code;
+    if (supplierCode !== undefined && String(supplierCode) !== "200") {
+      const message = supplierData.Msg ?? supplierData.Message ?? supplierData.message;
+      throw new Error(
+        Array.isArray(message)
+          ? message.filter(Boolean).join("; ").slice(0, 300)
+          : typeof message === "string" && message.trim()
+            ? message.slice(0, 300)
+            : `AKBAR RetrieveBooking returned code ${supplierCode}`
+      );
+    }
+
+    const retrievedFields = getAkbarRetrievedBookingFields(response);
+    if (Object.keys(retrievedFields).length === 0) {
+      logGatewayEvent("error", "supplier_booking.retrieve_details_unrecognized", {
+        correlationId,
+        bookingId: String(booking._id),
+        transactionId: String(booking.transactionId),
+        supplier: "AKBAR",
+        ...getSupplierResponseSummary(response),
+      });
+      return;
+    }
+
+    booking.supplierBookingDetails = {
+      ...booking.supplierBookingDetails?.toObject?.(),
+      ...retrievedFields,
+      retrievedAt: new Date(),
+    };
+    await tracePaymentStep(
+      correlationId,
+      "supplier.persist_retrieved_booking_details",
+      {
+        bookingId: String(booking._id),
+        transactionId: String(booking.transactionId),
+        fieldsSaved: Object.keys(retrievedFields),
+      },
+      () => booking.save()
+    );
+    logGatewayEvent("info", "supplier_booking.details_retrieved", {
+      correlationId,
+      bookingId: String(booking._id),
+      transactionId: String(booking.transactionId),
+      supplier: "AKBAR",
+      fieldsSaved: Object.keys(retrievedFields),
+    });
+  } catch (error) {
+    logGatewayEvent("error", "supplier_booking.retrieve_details_failed", {
+      correlationId,
+      bookingId: String(booking._id),
+      transactionId: String(booking.transactionId),
+      supplier: "AKBAR",
+      bookingRemainsConfirmed: booking.supplierBookingStatus === "confirmed",
+      httpStatus: error.response?.status ?? null,
+      errorCode: error.code ?? null,
+      errorMessage: error.message,
+    });
+  }
+};
+
 const startSupplierBooking = async ({
   booking,
   transaction,
@@ -464,8 +551,6 @@ const startSupplierBooking = async ({
       : typeof rawMessage === "string"
         ? rawMessage.slice(0, 300)
         : null;
-    claimedBooking.supplierBookingResponse = supplierResponse;
-
     if (supplierCode === undefined || supplierCode === null) {
       claimedBooking.supplierBookingStatus = "unknown";
       claimedBooking.supplierBookingError =
@@ -526,6 +611,16 @@ const startSupplierBooking = async ({
     claimedBooking.supplierBookingStatus = "confirmed";
     claimedBooking.paymentStatus = "paid";
     transaction.supplierBookingStatus = "confirmed";
+    const startPayDetails = {
+      ...(supplierData.CRSPNR == null
+        ? {}
+        : { crsPnr: String(supplierData.CRSPNR) }),
+      ...(supplierData.BookStatus == null
+        ? {}
+        : { bookingStatus: String(supplierData.BookStatus) }),
+    };
+    claimedBooking.supplierBookingDetails =
+      Object.keys(startPayDetails).length > 0 ? startPayDetails : undefined;
     await tracePaymentStep(
       correlationId,
       "supplier.persist_confirmation",
@@ -535,6 +630,10 @@ const startSupplierBooking = async ({
       },
       () => Promise.all([claimedBooking.save(), transaction.save()])
     );
+    await retrieveAndSaveAkbarBookingDetails({
+      booking: claimedBooking,
+      correlationId,
+    });
     logGatewayEvent("info", "supplier_booking.confirmed", {
       correlationId,
       bookingId: String(booking._id),

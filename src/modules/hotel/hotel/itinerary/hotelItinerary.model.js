@@ -108,6 +108,13 @@ const hotelItinerarySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: null,
     },
+    supplierBookingDetails: {
+      crsPnr: { type: String },
+      bookingStatus: { type: String },
+      confirmationNumber: { type: String },
+      voucherNumber: { type: String },
+      retrievedAt: { type: Date },
+    },
     supplierBookingError: {
       type: String,
       default: null,

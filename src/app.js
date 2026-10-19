@@ -16,11 +16,7 @@ import currencyRoutes from "./modules/currencyConverter/currency.route.js";
 import hotelSearch from "./modules/hotel/hotel/hotelSearch/routes/hotelSearch.routes.js";
 //import dashboardhotelsearch from "./modules/dashboardHotels/hotel.routes.js";
 import masterRoutes from "./modules/master-data/masterData.routes.js";
-// import grievanceRedressal from "./modules/grievanceRedressal/grievanceRedressal.routes.js";
-// import hotelSearch from "./modules/hotel/hotel.route.js";
-//import hotelDetails from "./modules/hotel/hotelDetails/hotel.routes.js";
-// import invoiceRoutes from "./modules/hotel/invoice/invoice.route.js";
-// import paymentRoutes from "./modules/payments/payment.routes.js";
+
 import hotelDetailsRoutes from "./modules/hotel/hotel/hotelDetail/routes/hotelDetails.routes.js";
 import hotelPriceVerifyRoutes from "./modules/hotel/hotel/priceVerify/routes/hotelPriceVerify.routes.js";
 import hotelItineraryRoutes from "./modules/hotel/hotel/itinerary/hotelItinerary.routes.js";
