@@ -111,6 +111,7 @@ const hotelItinerarySchema = new mongoose.Schema(
     supplierBookingDetails: {
       crsPnr: { type: String },
       bookingStatus: { type: String },
+      bookingConfirmationId: { type: String },
       confirmationNumber: { type: String },
       voucherNumber: { type: String },
       retrievedAt: { type: Date },

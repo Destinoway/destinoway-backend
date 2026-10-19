@@ -130,8 +130,13 @@ export const getAkbarRetrievedBookingFields = (response) => {
   const root = unwrapSupplierResponse(response);
   const fields = {
     crsPnr: ["CRSPNR", "CRSPnr", "CRS_PNR"],
-    bookingStatus: ["BookStatus", "BookingStatus"],
-    confirmationNumber: ["ConfirmationNumber", "ConfirmationNo"],
+    bookingStatus: ["BookStatus", "BookingStatus", "CurrentStatus"],
+    bookingConfirmationId: ["BookingConfirmationId"],
+    confirmationNumber: [
+      "HotelConfirmationNumber",
+      "ConfirmationNumber",
+      "ConfirmationNo",
+    ],
     voucherNumber: ["VoucherNumber", "VoucherNo"],
   };
   const found = {};
