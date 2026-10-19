@@ -48,11 +48,7 @@ export const getHotelRequeryByUserService = async (
       status:
         details.bookingStatus ?? booking.supplierBookingStatus ?? null,
       starRating: booking.hotel?.starRating ?? null,
-      bookingRefNo:
-        details.bookingConfirmationId ??
-        details.confirmationNumber ??
-        booking.transactionId ??
-        null,
+      bookingRefNo: String(booking._id),
       checkInDate: booking.stay?.checkIn ?? null,
       checkOutDate: booking.stay?.checkOut ?? null,
       address: booking.hotel?.address ?? null,
