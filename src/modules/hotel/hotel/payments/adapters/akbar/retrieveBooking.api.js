@@ -6,36 +6,27 @@ import {
 } from "../../../utils/hotelObservability.js";
 
 const getRetrieveBookingEndpoint = () => {
-  const configuredUrl =
-    process.env.AKBAR_HOTEL_ITINERARY_URL ||
-    process.env.AKBAR_HOTEL_API_URL;
+  const configuredUrl = process.env.START_PAY_URL;
 
   if (!configuredUrl?.trim()) {
-    const error = new Error(
-      "AKBAR_HOTEL_ITINERARY_URL or AKBAR_HOTEL_API_URL must be configured"
-    );
+    const error = new Error("START_PAY_URL is not configured");
     error.statusCode = 503;
     throw error;
   }
 
   let endpoint;
   try {
-    endpoint = new URL(configuredUrl.trim());
+    const startPayUrl = new URL(configuredUrl.trim());
+    if (startPayUrl.protocol !== "https:" || !startPayUrl.hostname) {
+      throw new Error("START_PAY_URL must use HTTPS");
+    }
+    endpoint = new URL("/Utils/RetrieveBooking", startPayUrl.origin);
   } catch {
-    const error = new Error("AKBAR hotel booking URL is invalid");
+    const error = new Error("START_PAY_URL is invalid");
     error.statusCode = 503;
     throw error;
   }
 
-  if (endpoint.protocol !== "https:" || !endpoint.hostname) {
-    const error = new Error("AKBAR hotel booking URL must use HTTPS");
-    error.statusCode = 503;
-    throw error;
-  }
-
-  endpoint.pathname = "/Utils/RetrieveBooking";
-  endpoint.search = "";
-  endpoint.hash = "";
   return endpoint;
 };
 
