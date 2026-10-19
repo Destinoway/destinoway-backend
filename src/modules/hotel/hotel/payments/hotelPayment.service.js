@@ -434,10 +434,14 @@ const retrieveAndSaveAkbarBookingDetails = async ({
       return;
     }
 
-    booking.supplierBookingDetails = {
-      ...booking.supplierBookingDetails?.toObject?.(),
-      ...retrievedFields,
-      retrievedAt: new Date(),
+    const fieldsToPersist = {
+      ...Object.fromEntries(
+        Object.entries(retrievedFields).map(([field, value]) => [
+          `supplierBookingDetails.${field}`,
+          value,
+        ])
+      ),
+      "supplierBookingDetails.retrievedAt": new Date(),
     };
     await tracePaymentStep(
       correlationId,
@@ -447,7 +451,34 @@ const retrieveAndSaveAkbarBookingDetails = async ({
         transactionId: String(booking.transactionId),
         fieldsSaved: Object.keys(retrievedFields),
       },
-      () => booking.save()
+      async () => {
+        const savedBooking = await HotelItinerary.findOneAndUpdate(
+          { _id: booking._id },
+          { $set: fieldsToPersist },
+          { new: true, runValidators: true }
+        )
+          .select("_id supplierBookingDetails")
+          .lean();
+
+        if (!savedBooking) {
+          throw getError(
+            "Hotel booking disappeared before retrieved details could be saved",
+            404
+          );
+        }
+
+        const fieldsPresent = Object.keys(retrievedFields).filter(
+          (field) =>
+            savedBooking.supplierBookingDetails?.[field] !== undefined
+        );
+        if (fieldsPresent.length !== Object.keys(retrievedFields).length) {
+          throw new Error(
+            "MongoDB did not persist all mapped AKBAR booking detail fields"
+          );
+        }
+
+        return fieldsPresent;
+      }
     );
     logGatewayEvent("info", "supplier_booking.details_retrieved", {
       correlationId,
