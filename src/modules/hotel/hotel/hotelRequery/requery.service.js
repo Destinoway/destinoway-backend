@@ -115,3 +115,51 @@ export const getHotelRequeryByUserService = async (
 
   return bookingId || bookingRefNo ? response[0] : response;
 };
+
+export const getHotelBookingDetailsByUserService = async (
+  userId,
+  bookingId
+) => {
+  if (!mongoose.isValidObjectId(bookingId)) {
+    const error = new Error("Valid bookingId is required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const booking = await HotelItinerary.findOne({
+    _id: bookingId,
+    userId,
+  })
+    .select(
+      "hotel stay transactionId supplierBookingStatus supplierBookingDetails"
+    )
+    .lean();
+
+  if (!booking) {
+    const error = new Error("Booking not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const supplierBookingDetails = booking.supplierBookingDetails ?? {};
+  const supplierStatus =
+    supplierBookingDetails.bookingStatus ?? booking.supplierBookingStatus;
+
+  return {
+    hotelName: booking.hotel?.name ?? null,
+    status:
+      supplierStatus === "confirmed"
+        ? "Confirmed"
+        : supplierStatus ?? null,
+    starRating: booking.hotel?.starRating ?? null,
+    bookingRefNo:
+      supplierBookingDetails.bookingConfirmationId ??
+      booking.transactionId ??
+      null,
+    checkInDate: booking.stay?.checkIn ?? null,
+    checkOutDate: booking.stay?.checkOut ?? null,
+    address: booking.hotel?.address ?? null,
+    confirmationNumber:
+      supplierBookingDetails.confirmationNumber ?? null,
+  };
+};
