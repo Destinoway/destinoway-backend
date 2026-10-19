@@ -15,7 +15,8 @@ export const getHotelRequeryByUserController = async (req, res) => {
 const data = await getHotelRequeryByUserService(
   req.user._id,
   bookingRefNo,
-  status
+  status,
+  req.params.bookingId
 );
 
     return sendSuccess(

@@ -5,6 +5,12 @@ import { getHotelRequeryByUserController } from "./requery.controller.js";
 const router = express.Router();
 
 router.get(
+  "/hotel/mybookings/:bookingId",
+  protectCustomer,
+  getHotelRequeryByUserController,
+);
+
+router.get(
   "/hotel/mybookings",
   protectCustomer,
   getHotelRequeryByUserController,

@@ -1,11 +1,22 @@
+import mongoose from "mongoose";
 import HotelItinerary from "../itinerary/hotelItinerary.model.js";
 
 export const getHotelRequeryByUserService = async (
   userId,
   bookingRefNo,
-  status
+  status,
+  bookingId
 ) => {
   const query = { userId };
+
+  if (bookingId) {
+    if (!mongoose.isValidObjectId(bookingId)) {
+      const error = new Error("Invalid booking ID");
+      error.statusCode = 400;
+      throw error;
+    }
+    query._id = bookingId;
+  }
 
   if (bookingRefNo) {
     query.transactionId = bookingRefNo;
@@ -102,5 +113,5 @@ export const getHotelRequeryByUserService = async (
     };
   });
 
-  return bookingRefNo ? response[0] : response;
+  return bookingId || bookingRefNo ? response[0] : response;
 };
