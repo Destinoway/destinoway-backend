@@ -12,10 +12,21 @@ backend retrieves AKBAR booking details using the itinerary `TransactionID` as
 `ReferenceNumber` (`ReferenceType: "T"`, `RequestMode: "RB"`). It uses the same
 HTTPS host configured by `START_PAY_URL`, with the path `/Utils/RetrieveBooking`.
 Only recognized PNR, booking status, booking confirmation ID, hotel
-confirmation number, and voucher number fields are saved under
+confirmation number, voucher number, TUI, and `FinYearID` fields are saved under
 `supplierBookingDetails`; the full RetrieveBooking response is not persisted.
 A RetrieveBooking failure is logged but does not undo the supplier booking
 confirmation.
+
+Customers can request cancellation with
+`POST /api/v1/cancel-booking/:bookingId` using
+`{ "confirmCancellation": true, "remarks": "Customer requested cancellation" }`.
+The API uses the saved AKBAR `TUI`, itinerary `TransactionID`, and `FinYearID`
+as `TUI`, `TransactionID`, and `YearType` in `/Hotel/CancelHotelBooking`.
+For older bookings missing TUI or `FinYearID`, it retrieves and saves those
+references before requesting cancellation. A request that may have reached
+AKBAR is not automatically retried; its cancellation status is recorded as
+`unknown` for manual supplier verification. Customer payment refunds are not
+initiated by this endpoint.
 
 If a step stalls, its last `started` event has no matching
 `completed` or `failed` event; filter by that event's `correlationId` to see
