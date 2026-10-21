@@ -109,12 +109,40 @@ const hotelItinerarySchema = new mongoose.Schema(
       default: null,
     },
     supplierBookingDetails: {
+      tui: { type: String },
+      finYearId: { type: String },
       crsPnr: { type: String },
       bookingStatus: { type: String },
       bookingConfirmationId: { type: String },
       confirmationNumber: { type: String },
       voucherNumber: { type: String },
       retrievedAt: { type: Date },
+    },
+    cancellationStatus: {
+      type: String,
+      enum: ["not_requested", "processing", "cancelled", "failed", "unknown"],
+      default: "not_requested",
+      index: true,
+    },
+    cancellationRequestSent: {
+      type: Boolean,
+      default: false,
+    },
+    cancellationRemarks: {
+      type: String,
+      default: null,
+    },
+    cancellationId: {
+      type: String,
+      default: null,
+    },
+    cancellationError: {
+      type: String,
+      default: null,
+    },
+    cancelledAt: {
+      type: Date,
+      default: null,
     },
     supplierBookingError: {
       type: String,

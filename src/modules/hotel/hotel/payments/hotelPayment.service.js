@@ -9,6 +9,10 @@ import {
   retrieveAkbarHotelBooking,
 } from "./adapters/akbar/retrieveBooking.api.js";
 import {
+  cancelAkbarHotelBooking,
+  getAkbarCancelBookingResponseData,
+} from "./adapters/akbar/cancelBooking.api.js";
+import {
   getSupplierResponseSummary,
   logHotelEvent,
   traceHotelPaymentStep,
@@ -71,6 +75,8 @@ const getPaymentState = (booking, transaction = null) => ({
     booking.supplierBookingResponse?.data?.CRSPNR ??
     null,
   supplierBookingDetails: booking.supplierBookingDetails ?? null,
+  cancellationStatus: booking.cancellationStatus ?? "not_requested",
+  cancellationId: booking.cancellationId ?? null,
 });
 
 const getConfiguredGateway = async ({ gatewayName, currency }) => {
@@ -498,6 +504,279 @@ const retrieveAndSaveAkbarBookingDetails = async ({
       errorCode: error.code ?? null,
       errorMessage: error.message,
     });
+  }
+};
+
+const getAkbarCancellationReference = async ({ booking, correlationId }) => {
+  let details = booking.supplierBookingDetails ?? {};
+  if (details.tui && details.finYearId) return details;
+
+  const response = await tracePaymentStep(
+    correlationId,
+    "cancellation.retrieve_booking",
+    {
+      bookingId: String(booking._id),
+      transactionId: String(booking.transactionId),
+      supplier: "AKBAR",
+    },
+    () =>
+      retrieveAkbarHotelBooking({
+        transactionId: booking.transactionId,
+        bookingId: booking._id,
+        correlationId,
+      })
+  );
+  const supplierData = getAkbarStartPayResponseData(response);
+  const supplierCode = supplierData.Code ?? supplierData.code;
+  if (supplierCode !== undefined && String(supplierCode) !== "200") {
+    throw getError("AKBAR could not retrieve the booking for cancellation", 502);
+  }
+
+  const retrievedFields = getAkbarRetrievedBookingFields(response);
+  if (!retrievedFields.tui || !retrievedFields.finYearId) {
+    throw getError(
+      "AKBAR RetrieveBooking did not return TUI and FinYearID required for cancellation",
+      502
+    );
+  }
+
+  const fieldsToPersist = {
+    ...Object.fromEntries(
+      Object.entries(retrievedFields).map(([field, value]) => [
+        `supplierBookingDetails.${field}`,
+        value,
+      ])
+    ),
+    "supplierBookingDetails.retrievedAt": new Date(),
+  };
+  const savedBooking = await tracePaymentStep(
+    correlationId,
+    "cancellation.persist_retrieve_booking_details",
+    {
+      bookingId: String(booking._id),
+      transactionId: String(booking.transactionId),
+      fieldsSaved: Object.keys(retrievedFields),
+    },
+    () =>
+      HotelItinerary.findOneAndUpdate(
+        { _id: booking._id, userId: booking.userId },
+        { $set: fieldsToPersist },
+        { new: true, runValidators: true }
+      )
+        .select("supplierBookingDetails")
+        .lean()
+  );
+  if (!savedBooking?.supplierBookingDetails?.tui ||
+      !savedBooking.supplierBookingDetails?.finYearId) {
+    throw getError("Could not save AKBAR cancellation reference details", 500);
+  }
+
+  return savedBooking.supplierBookingDetails;
+};
+
+export const cancelHotelBooking = async ({
+  bookingId,
+  userId,
+  confirmCancellation,
+  remarks,
+  correlationId = randomUUID(),
+}) => {
+  if (confirmCancellation !== true) {
+    throw getError(
+      "Set confirmCancellation to true to confirm hotel cancellation",
+      400
+    );
+  }
+  const safeRemarks =
+    typeof remarks === "string" && remarks.trim()
+      ? remarks.trim().slice(0, 200)
+      : "Customer requested cancellation";
+
+  const booking = await tracePaymentStep(
+    correlationId,
+    "cancellation.load_booking",
+    { bookingId: String(bookingId) },
+    () => getOwnedBooking(bookingId, userId)
+  );
+  if (
+    booking.itineraryStatus !== "created" ||
+    booking.paymentStatus !== "paid" ||
+    booking.supplierBookingStatus !== "confirmed"
+  ) {
+    throw getError("Only a paid, confirmed hotel booking can be cancelled", 409);
+  }
+  if (booking.cancellationStatus === "cancelled") {
+    throw getError("This hotel booking is already cancelled", 409);
+  }
+
+  const claimedBooking = await tracePaymentStep(
+    correlationId,
+    "cancellation.claim_booking",
+    { bookingId: String(booking._id), supplier: "AKBAR" },
+    () =>
+      HotelItinerary.findOneAndUpdate(
+        {
+          _id: booking._id,
+          userId,
+          itineraryStatus: "created",
+          paymentStatus: "paid",
+          supplierBookingStatus: "confirmed",
+          cancellationStatus: {
+            $in: ["not_requested", "failed", null],
+          },
+          cancellationRequestSent: { $ne: true },
+        },
+        {
+          $set: {
+            cancellationStatus: "processing",
+            cancellationRemarks: safeRemarks,
+            cancellationError: null,
+          },
+        },
+        { new: true }
+      )
+  );
+  if (!claimedBooking) {
+    throw getError(
+      "Cancellation is already processing, completed, or has an uncertain supplier result",
+      409
+    );
+  }
+
+  try {
+    const supplierDetails = await getAkbarCancellationReference({
+      booking: claimedBooking,
+      correlationId,
+    });
+    const response = await tracePaymentStep(
+      correlationId,
+      "cancellation.call_supplier",
+      {
+        bookingId: String(claimedBooking._id),
+        transactionId: String(claimedBooking.transactionId),
+        supplier: "AKBAR",
+      },
+      () =>
+        cancelAkbarHotelBooking({
+          transactionId: claimedBooking.transactionId,
+          tui: supplierDetails.tui,
+          finYearId: supplierDetails.finYearId,
+          remarks: safeRemarks,
+          bookingId: claimedBooking._id,
+          correlationId,
+        })
+    );
+    const supplierData = getAkbarCancelBookingResponseData(response);
+    const supplierCode = supplierData.Code ?? supplierData.code;
+    const rawMessage = supplierData.Msg ?? supplierData.Message ?? supplierData.message;
+    const supplierMessage = Array.isArray(rawMessage)
+      ? rawMessage.filter(Boolean).join("; ").slice(0, 300)
+      : typeof rawMessage === "string"
+        ? rawMessage.slice(0, 300)
+        : null;
+    const cancellationId =
+      supplierData.CancellationID ??
+      supplierData.CancellationId ??
+      supplierData.CancelID ??
+      null;
+    const cancelled = String(supplierCode) === "200";
+    const finalStatus =
+      supplierCode === undefined || supplierCode === null
+        ? "unknown"
+        : cancelled
+          ? "cancelled"
+          : "failed";
+
+    await tracePaymentStep(
+      correlationId,
+      "cancellation.persist_supplier_result",
+      {
+        bookingId: String(claimedBooking._id),
+        transactionId: String(claimedBooking.transactionId),
+        supplierCode: supplierCode ?? null,
+        finalStatus,
+      },
+      () =>
+        HotelItinerary.findOneAndUpdate(
+          { _id: claimedBooking._id, userId },
+          {
+            $set: {
+              cancellationStatus: finalStatus,
+              cancellationRequestSent: true,
+              cancellationId: cancellationId
+                ? String(cancellationId)
+                : null,
+              cancellationError:
+                finalStatus === "failed"
+                  ? supplierMessage ?? "AKBAR rejected the cancellation"
+                  : null,
+              ...(cancelled ? { cancelledAt: new Date() } : {}),
+            },
+          },
+          { new: true, runValidators: true }
+        )
+    );
+    logGatewayEvent(
+      cancelled ? "info" : finalStatus === "failed" ? "error" : "warn",
+      `cancellation.${finalStatus}`,
+      {
+        correlationId,
+        bookingId: String(claimedBooking._id),
+        transactionId: String(claimedBooking.transactionId),
+        supplier: "AKBAR",
+        supplierCode: supplierCode ?? null,
+        supplierMessage,
+        cancellationId: cancellationId ? String(cancellationId) : null,
+      }
+    );
+    return {
+      bookingId: String(claimedBooking._id),
+      cancellationStatus: finalStatus,
+      cancellationId: cancellationId ? String(cancellationId) : null,
+      message:
+        supplierMessage ??
+        (cancelled
+          ? "Hotel booking cancellation confirmed"
+          : "AKBAR cancellation result requires checking"),
+    };
+  } catch (error) {
+    const requestMayHaveReachedSupplier =
+      error.supplierRequestSent === true ||
+      Boolean(error.response) ||
+      error.supplierRequestSent === undefined;
+    const finalStatus = requestMayHaveReachedSupplier ? "unknown" : "failed";
+    await tracePaymentStep(
+      correlationId,
+      "cancellation.persist_error_state",
+      {
+        bookingId: String(claimedBooking._id),
+        transactionId: String(claimedBooking.transactionId),
+        finalStatus,
+      },
+      () =>
+        HotelItinerary.findOneAndUpdate(
+          { _id: claimedBooking._id, userId },
+          {
+            $set: {
+              cancellationStatus: finalStatus,
+              cancellationRequestSent: requestMayHaveReachedSupplier,
+              cancellationError: error.message,
+            },
+          },
+          { runValidators: true }
+        )
+    );
+    logGatewayEvent("error", `cancellation.${finalStatus}`, {
+      correlationId,
+      bookingId: String(claimedBooking._id),
+      transactionId: String(claimedBooking.transactionId),
+      supplier: "AKBAR",
+      httpStatus: error.response?.status ?? null,
+      errorCode: error.code ?? null,
+      errorMessage: error.message,
+      requestMayHaveReachedSupplier,
+    });
+    throw error;
   }
 };
 

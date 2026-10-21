@@ -129,6 +129,8 @@ export const retrieveAkbarHotelBooking = async ({
 export const getAkbarRetrievedBookingFields = (response) => {
   const root = unwrapSupplierResponse(response);
   const fields = {
+    tui: ["TUI"],
+    finYearId: ["FinYearID"],
     crsPnr: ["CRSPNR", "CRSPnr", "CRS_PNR"],
     bookingStatus: ["BookStatus", "BookingStatus", "CurrentStatus"],
     bookingConfirmationId: ["BookingConfirmationId"],
