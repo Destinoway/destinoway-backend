@@ -21,11 +21,11 @@ export const createHotelPaymentOrderController = async (req, res, next) => {
   logHotelEvent("info", "hotel.payment.request.started", {
     correlationId,
     operation: "create_order",
-    bookingId: String(req.params.bookingId),
+    bookingRefNo: String(req.params.bookingRefNo),
   });
   try {
     const data = await createHotelPaymentOrder({
-      bookingId: req.params.bookingId,
+      bookingRefNo: req.params.bookingRefNo,
       gateway: req.body.gateway,
       userId: req.user._id ?? req.user.id,
       correlationId,
@@ -33,7 +33,7 @@ export const createHotelPaymentOrderController = async (req, res, next) => {
     logHotelEvent("info", "hotel.payment.request.completed", {
       correlationId,
       operation: "create_order",
-      bookingId: String(req.params.bookingId),
+      bookingRefNo: String(req.params.bookingRefNo),
       transactionId: data.transactionId,
       gateway: data.gateway,
     });
@@ -47,7 +47,7 @@ export const createHotelPaymentOrderController = async (req, res, next) => {
     logHotelEvent("error", "hotel.payment.request.failed", {
       correlationId,
       operation: "create_order",
-      bookingId: String(req.params.bookingId),
+      bookingRefNo: String(req.params.bookingRefNo),
       errorCode: error.code ?? null,
       statusCode: error.statusCode ?? null,
       errorMessage: error.message,
@@ -76,7 +76,7 @@ export const verifyHotelPaymentController = async (req, res, next) => {
     logHotelEvent("info", "hotel.payment.request.completed", {
       correlationId,
       operation: "verify_payment",
-      bookingId: data.bookingId,
+      bookingRefNo: data.bookingRefNo,
       transactionId: data.paymentTransactionId,
       gateway: data.gateway,
       supplierBookingStatus: data.supplierBookingStatus,
@@ -108,18 +108,18 @@ export const hotelPaymentStatusController = async (req, res, next) => {
   logHotelEvent("info", "hotel.payment.request.started", {
     correlationId,
     operation: "payment_status",
-    bookingId: String(req.params.bookingId),
+    bookingRefNo: String(req.params.bookingRefNo),
   });
   try {
     const data = await getHotelPaymentStatus({
-      bookingId: req.params.bookingId,
+      bookingRefNo: req.params.bookingRefNo,
       userId: req.user._id ?? req.user.id,
       correlationId,
     });
     logHotelEvent("info", "hotel.payment.request.completed", {
       correlationId,
       operation: "payment_status",
-      bookingId: data.bookingId,
+      bookingRefNo: data.bookingRefNo,
       transactionId: data.paymentTransactionId,
       paymentStatus: data.paymentStatus,
       supplierBookingStatus: data.supplierBookingStatus,
@@ -134,7 +134,7 @@ export const hotelPaymentStatusController = async (req, res, next) => {
     logHotelEvent("error", "hotel.payment.request.failed", {
       correlationId,
       operation: "payment_status",
-      bookingId: String(req.params.bookingId),
+      bookingRefNo: String(req.params.bookingRefNo),
       errorCode: error.code ?? null,
       statusCode: error.statusCode ?? null,
       errorMessage: error.message,

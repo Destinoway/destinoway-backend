@@ -32,8 +32,11 @@ const logGatewayEvent = (level, event, fields) =>
 const tracePaymentStep = (correlationId, step, fields, operation) =>
   traceHotelPaymentStep({ correlationId, step, fields, operation });
 
-const getOwnedBooking = async (bookingId, userId) => {
-  const booking = await HotelItinerary.findById(bookingId);
+const getOwnedBooking = async (bookingRefNo, userId) => {
+  if (!/^DW-\d{4}-(0[1-9]|1[0-2])-\d{8}$/.test(String(bookingRefNo))) {
+    throw getError("Valid bookingRefNo is required", 400);
+  }
+  const booking = await HotelItinerary.findOne({ bookingRefNo });
   if (!booking) {
     throw getError("Hotel booking was not found", 404);
   }
@@ -44,7 +47,6 @@ const getOwnedBooking = async (bookingId, userId) => {
 };
 
 const getPaymentState = (booking, transaction = null) => ({
-  bookingId: String(booking._id),
   bookingRefNo: booking.bookingRefNo ?? null,
   itineraryStatus: booking.itineraryStatus,
   paymentStatus: booking.paymentStatus,
@@ -102,7 +104,7 @@ const getConfiguredGateway = async ({ gatewayName, currency }) => {
   return gateway.name;
 };
 
-const getOrderResponse = async (transaction, correlationId) => {
+const getOrderResponse = async (transaction, correlationId, bookingRefNo) => {
   const gateway = createHotelPaymentGateway(transaction.gateway);
   const checkout = await tracePaymentStep(
     correlationId,
@@ -115,6 +117,7 @@ const getOrderResponse = async (transaction, correlationId) => {
     () => gateway.getCheckoutDetails(transaction, { correlationId })
   );
   return {
+    bookingRefNo,
     transactionId: transaction.transactionId,
     gateway: transaction.gateway,
     paymentData: checkout,
@@ -122,16 +125,16 @@ const getOrderResponse = async (transaction, correlationId) => {
 };
 
 export const createHotelPaymentOrder = async ({
-  bookingId,
+  bookingRefNo,
   userId,
   gateway: requestedGateway,
-  correlationId = String(bookingId),
+  correlationId = String(bookingRefNo),
 }) => {
   const booking = await tracePaymentStep(
     correlationId,
     "order.load_booking",
-    { bookingId: correlationId },
-    () => getOwnedBooking(bookingId, userId)
+    { bookingRefNo: correlationId },
+    () => getOwnedBooking(bookingRefNo, userId)
   );
   if (booking.itineraryStatus !== "created") {
     throw getError("Hotel itinerary must be created before payment", 409);
@@ -180,7 +183,7 @@ export const createHotelPaymentOrder = async ({
       correlationId,
       "order.rebuild_checkout_response",
       { bookingId: correlationId, gateway: existing.gateway },
-      () => getOrderResponse(existing, correlationId)
+      () => getOrderResponse(existing, correlationId, booking.bookingRefNo)
     );
   }
 
@@ -241,7 +244,7 @@ export const createHotelPaymentOrder = async ({
         gateway.createOrder({
           amount,
           currency,
-          bookingId: String(booking._id),
+          bookingRefNo: booking.bookingRefNo,
           correlationId,
         })
     );
@@ -281,6 +284,7 @@ export const createHotelPaymentOrder = async ({
       gatewayOrderId: order.gatewayOrderId,
     });
     return {
+      bookingRefNo: booking.bookingRefNo,
       transactionId,
       gateway: gatewayName,
       paymentData: order.checkout,
@@ -576,7 +580,7 @@ const getAkbarCancellationReference = async ({ booking, correlationId }) => {
 };
 
 export const cancelHotelBooking = async ({
-  bookingId,
+  bookingRefNo,
   userId,
   confirmCancellation,
   remarks,
@@ -596,8 +600,8 @@ export const cancelHotelBooking = async ({
   const booking = await tracePaymentStep(
     correlationId,
     "cancellation.load_booking",
-    { bookingId: String(bookingId) },
-    () => getOwnedBooking(bookingId, userId)
+    { bookingRefNo: String(bookingRefNo) },
+    () => getOwnedBooking(bookingRefNo, userId)
   );
   if (
     booking.itineraryStatus !== "created" ||
@@ -731,7 +735,6 @@ export const cancelHotelBooking = async ({
       }
     );
     return {
-      bookingId: String(claimedBooking._id),
       bookingRefNo: claimedBooking.bookingRefNo ?? null,
       cancellationStatus: finalStatus,
       cancellationId: cancellationId ? String(cancellationId) : null,
@@ -1171,15 +1174,15 @@ export const verifyHotelPayment = async ({
 };
 
 export const getHotelPaymentStatus = async ({
-  bookingId,
+  bookingRefNo,
   userId,
   correlationId = randomUUID(),
 }) => {
   const booking = await tracePaymentStep(
     correlationId,
     "status.load_booking",
-    { bookingId: String(bookingId) },
-    () => getOwnedBooking(bookingId, userId)
+    { bookingRefNo: String(bookingRefNo) },
+    () => getOwnedBooking(bookingRefNo, userId)
   );
   const transaction = booking.paymentTransactionId
     ? await tracePaymentStep(

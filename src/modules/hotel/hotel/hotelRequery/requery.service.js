@@ -1,22 +1,11 @@
-import mongoose from "mongoose";
 import HotelItinerary from "../itinerary/hotelItinerary.model.js";
 
 export const getHotelRequeryByUserService = async (
   userId,
   bookingRefNo,
-  status,
-  bookingId
+  status
 ) => {
   const query = { userId };
-
-  if (bookingId) {
-    if (!mongoose.isValidObjectId(bookingId)) {
-      const error = new Error("Invalid booking ID");
-      error.statusCode = 400;
-      throw error;
-    }
-    query._id = bookingId;
-  }
 
   if (bookingRefNo) {
     query.$or = [
@@ -49,7 +38,7 @@ export const getHotelRequeryByUserService = async (
       status:
         details.bookingStatus ?? booking.supplierBookingStatus ?? null,
       starRating: booking.hotel?.starRating ?? null,
-      bookingRefNo: booking.bookingRefNo ?? String(booking._id),
+      bookingRefNo: booking.bookingRefNo ?? null,
       checkInDate: booking.stay?.checkIn ?? null,
       checkOutDate: booking.stay?.checkOut ?? null,
       address: booking.hotel?.address ?? null,
@@ -57,21 +46,20 @@ export const getHotelRequeryByUserService = async (
     };
   });
 
-  return bookingId || bookingRefNo ? response[0] : response;
+  return bookingRefNo ? response[0] : response;
 };
 
-export const getHotelBookingByUserService = async (userId, bookingId) => {
-  const isMongoId = mongoose.isValidObjectId(bookingId);
-  const isBookingRefNo = /^DW-\d{4}-(0[1-9]|1[0-2])-\d{8}$/.test(bookingId);
-  if (!isMongoId && !isBookingRefNo) {
-    const error = new Error("Valid bookingId is required");
+export const getHotelBookingByUserService = async (userId, bookingRefNo) => {
+  const isBookingRefNo = /^DW-\d{4}-(0[1-9]|1[0-2])-\d{8}$/.test(bookingRefNo);
+  if (!isBookingRefNo) {
+    const error = new Error("Valid bookingRefNo is required");
     error.statusCode = 400;
     throw error;
   }
 
   const booking = await HotelItinerary.findOne({
     userId,
-    ...(isMongoId ? { _id: bookingId } : { bookingRefNo: bookingId }),
+    bookingRefNo,
   })
     .select("-__v -itineraryResponse -supplierBookingResponse")
     .lean();

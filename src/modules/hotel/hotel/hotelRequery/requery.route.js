@@ -8,7 +8,7 @@ import {
 const router = express.Router();
 
 router.get(
-  "/get-booking-details/:bookingId",
+  "/get-booking-details/:bookingRefNo",
   protectCustomer,
   getHotelRequeryByUserController,
 );
@@ -20,7 +20,7 @@ router.get(
 );
 
 router.post(
-  "/cancel-booking/:bookingId",
+  "/cancel-booking/:bookingRefNo",
   protectCustomer,
   cancelHotelBookingController,
 );

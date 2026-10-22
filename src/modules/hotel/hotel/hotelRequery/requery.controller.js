@@ -14,9 +14,9 @@ import { logHotelEvent } from "../utils/hotelObservability.js";
 
 export const getHotelRequeryByUserController = async (req, res) => {
   try {
-    const bookingId = req.params.bookingId ?? req.query.bookingId;
-    const data = bookingId
-      ? await getHotelBookingByUserService(req.user._id, bookingId)
+    const bookingRefNo = req.params.bookingRefNo ?? req.query.bookingRefNo;
+    const data = bookingRefNo
+      ? await getHotelBookingByUserService(req.user._id, bookingRefNo)
       : await getHotelRequeryByUserService(
           req.user._id,
           req.query.bookingRefNo,
@@ -37,14 +37,14 @@ export const getHotelRequeryByUserController = async (req, res) => {
 
 export const cancelHotelBookingController = async (req, res) => {
   const correlationId = randomUUID();
-  const bookingId = String(req.params.bookingId);
+  const bookingRefNo = String(req.params.bookingRefNo);
   try {
     logHotelEvent("info", "hotel.booking.cancellation.request_started", {
       correlationId,
-      bookingId,
+      bookingRefNo,
     });
     const data = await cancelHotelBooking({
-      bookingId,
+      bookingRefNo,
       userId: req.user._id,
       confirmCancellation: req.body?.confirmCancellation,
       remarks: req.body?.remarks,
@@ -60,7 +60,7 @@ export const cancelHotelBookingController = async (req, res) => {
   } catch (error) {
     logHotelEvent("error", "hotel.booking.cancellation.request_failed", {
       correlationId,
-      bookingId,
+      bookingRefNo,
       statusCode: error.statusCode ?? null,
       errorCode: error.code ?? null,
       errorMessage: error.message,

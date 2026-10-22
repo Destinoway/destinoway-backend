@@ -11,13 +11,13 @@ import {
 const router = Router();
 
 router.post(
-  "/bookings/:bookingId/order",
+  "/bookings/:bookingRefNo/order",
   protectCustomer,
   createHotelPaymentOrderController
 );
 router.post("/verify", protectCustomer, verifyHotelPaymentController);
 router.get(
-  "/bookings/:bookingId/status",
+  "/bookings/:bookingRefNo/status",
   protectCustomer,
   hotelPaymentStatusController
 );

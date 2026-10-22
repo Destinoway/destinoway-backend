@@ -6,7 +6,9 @@ webhook handlers do the same. Each asynchronous payment step emits
 `hotel.payment.trace` with `phase` set to `started`, `completed`, or `failed`.
 Each new hotel itinerary also receives a unique customer-facing `bookingRefNo`
 in the `DW-YYYY-MM-########` format. The MongoDB `_id` remains the internal
-`bookingId`; booking details can be fetched using either identifier.
+`bookingId`. Customer APIs use `bookingRefNo`; the MongoDB ID stays internal.
+Booking details, payment order/status, and cancellation requests require the
+customer-facing `bookingRefNo`.
 
 Trace points cover booking and transaction database reads/writes, gateway order,
 verification and refund calls, supplier booking claims, AKBAR StartPay and
@@ -21,7 +23,7 @@ A RetrieveBooking failure is logged but does not undo the supplier booking
 confirmation.
 
 Customers can request cancellation with
-`POST /api/v1/cancel-booking/:bookingId` using
+`POST /api/v1/cancel-booking/:bookingRefNo` using
 `{ "confirmCancellation": true, "remarks": "Customer requested cancellation" }`.
 The API uses the saved AKBAR `TUI`, itinerary `TransactionID`, and `FinYearID`
 as `TUI`, `TransactionID`, and `YearType` in `/Hotel/CancelHotelBooking`.
@@ -46,7 +48,7 @@ Example fields:
   "flow": "hotel_payment",
   "step": "gateway.razorpay.create_order",
   "phase": "started",
-  "bookingId": "booking-id",
+  "bookingRefNo": "DW-2026-10-12345678",
   "gateway": "razorpay"
 }
 ```

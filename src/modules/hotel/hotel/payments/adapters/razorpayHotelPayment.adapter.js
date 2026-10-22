@@ -28,17 +28,17 @@ class RazorpayHotelPaymentAdapter extends BaseHotelPaymentAdapter {
     this.client = new Razorpay({ key_id: keyId, key_secret: keySecret });
   }
 
-  async createOrder({ amount, currency, bookingId, correlationId }) {
+  async createOrder({ amount, currency, bookingRefNo, correlationId }) {
     const order = await traceHotelPaymentStep({
       correlationId,
       step: "gateway.razorpay.create_order",
-      fields: { bookingId: String(bookingId), gateway: "razorpay" },
+      fields: { bookingRefNo, gateway: "razorpay" },
       operation: () =>
         this.client.orders.create({
           amount: toMinorUnits(amount),
           currency,
-          receipt: String(bookingId).slice(0, 40),
-          notes: { hotelBookingId: String(bookingId) },
+          receipt: String(bookingRefNo).slice(0, 40),
+          notes: { hotelBookingRefNo: String(bookingRefNo) },
         }),
     });
     return {

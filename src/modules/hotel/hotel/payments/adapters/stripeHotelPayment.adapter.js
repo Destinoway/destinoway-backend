@@ -21,16 +21,16 @@ class StripeHotelPaymentAdapter extends BaseHotelPaymentAdapter {
     this.client = new Stripe(process.env.STRIPE_SECRET_KEY);
   }
 
-  async createOrder({ amount, currency, bookingId, correlationId }) {
+  async createOrder({ amount, currency, bookingRefNo, correlationId }) {
     const intent = await traceHotelPaymentStep({
       correlationId,
       step: "gateway.stripe.create_payment_intent",
-      fields: { bookingId: String(bookingId), gateway: "stripe" },
+      fields: { bookingRefNo, gateway: "stripe" },
       operation: () =>
         this.client.paymentIntents.create({
           amount: toMinorUnits(amount),
           currency: currency.toLowerCase(),
-          metadata: { hotelBookingId: String(bookingId) },
+          metadata: { hotelBookingRefNo: String(bookingRefNo) },
         }),
     });
     if (!intent.client_secret) {

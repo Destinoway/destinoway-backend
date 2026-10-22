@@ -495,7 +495,6 @@ export const createHotelItinerary = async ({
     });
 
     return {
-      bookingId: booking._id,
       bookingRefNo: booking.bookingRefNo,
       itineraryStatus: booking.itineraryStatus,
       paymentStatus: booking.paymentStatus,
