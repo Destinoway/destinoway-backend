@@ -45,6 +45,7 @@ const getOwnedBooking = async (bookingId, userId) => {
 
 const getPaymentState = (booking, transaction = null) => ({
   bookingId: String(booking._id),
+  bookingRefNo: booking.bookingRefNo ?? null,
   itineraryStatus: booking.itineraryStatus,
   paymentStatus: booking.paymentStatus,
   supplierBookingStatus: booking.supplierBookingStatus ?? "awaiting_payment",
@@ -731,6 +732,7 @@ export const cancelHotelBooking = async ({
     );
     return {
       bookingId: String(claimedBooking._id),
+      bookingRefNo: claimedBooking.bookingRefNo ?? null,
       cancellationStatus: finalStatus,
       cancellationId: cancellationId ? String(cancellationId) : null,
       message:

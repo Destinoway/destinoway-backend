@@ -4,6 +4,9 @@ Hotel payment operations emit structured JSON log entries with a request
 `correlationId`. Customer payment endpoints generate a new ID per request;
 webhook handlers do the same. Each asynchronous payment step emits
 `hotel.payment.trace` with `phase` set to `started`, `completed`, or `failed`.
+Each new hotel itinerary also receives a unique customer-facing `bookingRefNo`
+in the `DW-YYYY-MM-########` format. The MongoDB `_id` remains the internal
+`bookingId`; booking details can be fetched using either identifier.
 
 Trace points cover booking and transaction database reads/writes, gateway order,
 verification and refund calls, supplier booking claims, AKBAR StartPay and

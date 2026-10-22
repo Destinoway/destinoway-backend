@@ -1,4 +1,6 @@
-import HotelItinerary from "./hotelItinerary.model.js";
+import HotelItinerary, {
+  generateHotelBookingRefNo,
+} from "./hotelItinerary.model.js";
 import { createAkbarHotelItineraryAPI } from "./adapters/akbar/api/createHotelItinerary.api.js";
 import { getHotelPriceVerificationContext } from "../priceVerify/services/hotelPriceVerify.service.js";
 import { randomUUID } from "node:crypto";
@@ -366,7 +368,8 @@ export const createHotelItinerary = async ({
     TravelingFor: process.env.AKBAR_TRAVELING_FOR || "NTF",
   };
 
-  const booking = await HotelItinerary.create({
+  const bookingData = {
+    bookingRefNo: generateHotelBookingRefNo(),
     userId,
     searchId: search.internalSearchId,
     supplierSearchId: search.supplierSearchId,
@@ -403,7 +406,23 @@ export const createHotelItinerary = async ({
     },
     specialServiceRequest,
     paymentStatus: "pending",
-  });
+  };
+  let booking;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      booking = await HotelItinerary.create(bookingData);
+      break;
+    } catch (error) {
+      const duplicateBookingRef =
+        error.code === 11000 &&
+        (error.keyPattern?.bookingRefNo ||
+          error.keyValue?.bookingRefNo !== undefined);
+      if (!duplicateBookingRef || attempt === 4) {
+        throw error;
+      }
+      bookingData.bookingRefNo = generateHotelBookingRefNo();
+    }
+  }
 
   try {
     const correlationId = String(booking._id);
@@ -477,6 +496,7 @@ export const createHotelItinerary = async ({
 
     return {
       bookingId: booking._id,
+      bookingRefNo: booking.bookingRefNo,
       itineraryStatus: booking.itineraryStatus,
       paymentStatus: booking.paymentStatus,
       amount: netAmount,

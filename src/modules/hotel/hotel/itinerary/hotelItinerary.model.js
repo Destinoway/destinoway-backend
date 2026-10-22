@@ -1,7 +1,22 @@
 import mongoose from "mongoose";
+import { randomInt } from "node:crypto";
+
+export const generateHotelBookingRefNo = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const randomNumber = String(randomInt(10_000_000, 100_000_000));
+
+  return `DW-${year}-${month}-${randomNumber}`;
+};
 
 const hotelItinerarySchema = new mongoose.Schema(
   {
+    bookingRefNo: {
+      type: String,
+      unique: true,
+      sparse: true,
+      immutable: true,
+    },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

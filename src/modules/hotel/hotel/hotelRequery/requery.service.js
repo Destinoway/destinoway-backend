@@ -20,6 +20,7 @@ export const getHotelRequeryByUserService = async (
 
   if (bookingRefNo) {
     query.$or = [
+      { bookingRefNo },
       { transactionId: bookingRefNo },
       { "supplierBookingDetails.bookingConfirmationId": bookingRefNo },
       { "supplierBookingDetails.confirmationNumber": bookingRefNo },
@@ -48,7 +49,7 @@ export const getHotelRequeryByUserService = async (
       status:
         details.bookingStatus ?? booking.supplierBookingStatus ?? null,
       starRating: booking.hotel?.starRating ?? null,
-      bookingRefNo: String(booking._id),
+      bookingRefNo: booking.bookingRefNo ?? String(booking._id),
       checkInDate: booking.stay?.checkIn ?? null,
       checkOutDate: booking.stay?.checkOut ?? null,
       address: booking.hotel?.address ?? null,
@@ -60,15 +61,17 @@ export const getHotelRequeryByUserService = async (
 };
 
 export const getHotelBookingByUserService = async (userId, bookingId) => {
-  if (!mongoose.isValidObjectId(bookingId)) {
+  const isMongoId = mongoose.isValidObjectId(bookingId);
+  const isBookingRefNo = /^DW-\d{4}-(0[1-9]|1[0-2])-\d{8}$/.test(bookingId);
+  if (!isMongoId && !isBookingRefNo) {
     const error = new Error("Valid bookingId is required");
     error.statusCode = 400;
     throw error;
   }
 
   const booking = await HotelItinerary.findOne({
-    _id: bookingId,
     userId,
+    ...(isMongoId ? { _id: bookingId } : { bookingRefNo: bookingId }),
   })
     .select("-__v -itineraryResponse -supplierBookingResponse")
     .lean();
