@@ -27,13 +27,9 @@ const markupSchema = new mongoose.Schema(
       required: true,
     },
     serviceChargeValue: {
-  type: Number,
-      required: true,
-},
-
-    serviceChargeValue: {
       type: Number,
-      required: true,
+      min: 0,
+      default: 0,
     },
 
     countryCode: String,

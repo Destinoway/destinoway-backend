@@ -1,7 +1,19 @@
 import { sendError, sendSuccess } from "../../../utils/response/ApiResponse.js";
 import Markup from "./markup.model.js";
 
-// import { paginateHotels } from "../../hotel/hotelPagination.js";
+const paginateMarkups = (items, { page, limit }) => {
+  const safePage = Math.max(page || 1, 1);
+  const safeLimit = Math.max(limit || 10, 1);
+  const startIndex = (safePage - 1) * safeLimit;
+
+  return {
+    hotels: items.slice(startIndex, startIndex + safeLimit),
+    page: safePage,
+    limit: safeLimit,
+    totalPages: Math.ceil(items.length / safeLimit),
+    totalHotels: items.length,
+  };
+};
 
 export const getAllMarkups = async (req, res) => {
   try {
@@ -97,7 +109,7 @@ export const getAllMarkups = async (req, res) => {
     const allMarkups = await Markup.aggregate(pipeline);
 
     // 🔥 Apply pagination
-    const paginatedData = paginateHotels(allMarkups, {
+    const paginatedData = paginateMarkups(allMarkups, {
       page: Number(page),
       limit: Number(limit),
     });

@@ -13,10 +13,13 @@ export const mapHotelForFrontend = (hotel) => {
     images: hotel.images,
     isSoldOut: hotel.isSoldOut,
 
-    price: {
+    price: hotel.customerPrice ?? {
       basePrice: hotel.rate?.baseRate ?? 0,
       totalPrice: hotel.rate?.total ?? 0,
       currency: hotel.currency ?? "INR",
+      supplierTotalAmount: hotel.rate?.total ?? 0,
+      markupLevel: null,
+      markupPercent: null,
     },
 
     isRecommended: hotel.isRecommended ?? false,

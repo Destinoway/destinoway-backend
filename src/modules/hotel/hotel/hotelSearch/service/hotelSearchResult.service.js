@@ -7,6 +7,10 @@ import {
 import {
   mapHotelSearchResponse,
 } from "../adapters/akbar/hotelSearch/mappers/hotelSearch.response.mapper.js";
+import {
+  loadHotelPricingConfig,
+  priceHotelForSearch,
+} from "../../../priceMarkup/pricing/hotelPricing.service.js";
 
 // =========================================================
 // HELPERS
@@ -50,6 +54,7 @@ const normalizeText = (value) =>
 
 const getHotelPrice = (hotel) =>
   Number(
+    hotel.customerPrice?.totalPrice ??
     hotel.price?.totalPrice ??
     hotel.rate?.total ??
     0
@@ -139,7 +144,13 @@ export const getHotelSearchResults = async ({
 
   // 2. Read all currently available results from Redis.
   // Redis data is not modified.
-  const allHotels = await getAllHotelSearchResults(searchId);
+  const rawHotels = await getAllHotelSearchResults(searchId);
+  const pricingConfig = await loadHotelPricingConfig(
+    meta.destinationCountryCode || "IN"
+  );
+  const allHotels = rawHotels.map((hotel) =>
+    priceHotelForSearch(hotel, meta, pricingConfig)
+  );
 
   // 3. Normalize query values
   const safePage = Math.max(

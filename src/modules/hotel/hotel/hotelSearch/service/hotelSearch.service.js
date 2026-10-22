@@ -234,6 +234,11 @@ export const searchHotels = async ({
     supplier,
     checkIn,
     checkOut,
+    locationId: payload.locationId ?? null,
+    cityId: payload.cityId ?? payload.locationId ?? null,
+    cityName: payload.cityName ?? null,
+    stateName: payload.stateName ?? null,
+    destinationCountryCode: payload.destinationCountryCode || "IN",
     occupancies: (payload.rooms ?? []).map((room, index) => ({
       occupancyId: index + 1,
       numOfAdults: Number(room.adults ?? 0),

@@ -25,6 +25,11 @@ export const createHotelSearchState = async ({
   checkIn,
   checkOut,
   occupancies = [],
+  locationId = null,
+  cityId = null,
+  cityName = null,
+  stateName = null,
+  destinationCountryCode = "IN",
 }) => {
   const meta = {
     searchId,
@@ -33,6 +38,11 @@ export const createHotelSearchState = async ({
     checkIn: checkIn ?? null,
     checkOut: checkOut ?? null,
     occupancies,
+    locationId,
+    cityId,
+    cityName,
+    stateName,
+    destinationCountryCode,
 
     status: "processing",
 
