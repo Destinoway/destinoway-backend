@@ -10,7 +10,7 @@ import {
 import {
   loadHotelPricingConfig,
   priceHotelForSearch,
-} from "../../../priceMarkup/pricing/hotelPricing.service.js";
+} from "../../../../priceMarkup/pricing/hotelPricing.service.js";
 
 // =========================================================
 // HELPERS
