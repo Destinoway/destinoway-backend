@@ -4,6 +4,11 @@ import { getCountryTaxRule } from "../../tax/countryTax.service.js";
 import { calculateTaxForRule } from "../../tax/tax.service.js";
 
 const roundCurrency = (value) => Number(value.toFixed(2));
+const DEFAULT_ADDITIONAL_TAX = {
+  level: "additional_tax",
+  markupType: "percentage",
+  markupValue: 5,
+};
 
 const indianStateNamesByCode = {
   AN: "Andaman and Nicobar Islands",
@@ -154,7 +159,7 @@ export const priceHotelForSearch = (hotel, searchMeta, config) => {
   const additionalTax = getAdditionalTaxRule(
     config.rules,
     location.countryCode
-  );
+  ) ?? DEFAULT_ADDITIONAL_TAX;
 
   const supplierTotalAmount = roundCurrency(
     Number(hotel.rate?.total ?? 0)
