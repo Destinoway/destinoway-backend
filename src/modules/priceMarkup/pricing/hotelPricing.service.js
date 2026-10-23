@@ -5,6 +5,83 @@ import { calculateTaxForRule } from "../../tax/tax.service.js";
 
 const roundCurrency = (value) => Number(value.toFixed(2));
 
+const indianStateNamesByCode = {
+  AN: "Andaman and Nicobar Islands",
+  AP: "Andhra Pradesh",
+  AR: "Arunachal Pradesh",
+  AS: "Assam",
+  BR: "Bihar",
+  CH: "Chandigarh",
+  CG: "Chhattisgarh",
+  DD: "Dadra and Nagar Haveli and Daman and Diu",
+  DL: "Delhi",
+  GA: "Goa",
+  GJ: "Gujarat",
+  HR: "Haryana",
+  HP: "Himachal Pradesh",
+  JK: "Jammu and Kashmir",
+  JH: "Jharkhand",
+  KA: "Karnataka",
+  KL: "Kerala",
+  LA: "Ladakh",
+  LD: "Lakshadweep",
+  MP: "Madhya Pradesh",
+  MH: "Maharashtra",
+  MN: "Manipur",
+  ML: "Meghalaya",
+  MZ: "Mizoram",
+  NL: "Nagaland",
+  OD: "Odisha",
+  OR: "Odisha",
+  PB: "Punjab",
+  PY: "Puducherry",
+  RJ: "Rajasthan",
+  SK: "Sikkim",
+  TN: "Tamil Nadu",
+  TS: "Telangana",
+  TR: "Tripura",
+  UK: "Uttarakhand",
+  UT: "Uttarakhand",
+  UP: "Uttar Pradesh",
+  WB: "West Bengal",
+};
+
+const normalizeStateName = (value) => {
+  if (!value) return null;
+  const text = String(value).trim();
+  const code = text.match(/^([A-Z]{2})(?:\s+\d{5,6})?$/i)?.[1]?.toUpperCase();
+  if (code && indianStateNamesByCode[code]) {
+    return indianStateNamesByCode[code];
+  }
+
+  return Object.values(indianStateNamesByCode).find(
+    (stateName) => stateName.toLowerCase() === text.toLowerCase()
+  ) ?? text;
+};
+
+const extractStateName = (address) => {
+  if (!address) return null;
+  if (typeof address === "object") {
+    return normalizeStateName(address.state);
+  }
+
+  const parts = String(address)
+    .split(",")
+    .map((part) => part.trim());
+
+  for (const part of parts) {
+    const normalizedState = normalizeStateName(part);
+    if (
+      normalizedState !== part ||
+      Object.values(indianStateNamesByCode).includes(normalizedState)
+    ) {
+      return normalizedState;
+    }
+  }
+
+  return null;
+};
+
 const applyMarkupAmount = (amount, rule) => {
   if (!rule) return 0;
   if (rule.markupType === "percentage") {
@@ -32,7 +109,10 @@ const getHotelLocation = (hotel, searchMeta) => {
       addressObject.city ??
       (typeof address === "string" ? address : null),
     stateName:
-      searchMeta.stateName ?? raw.stateName ?? addressObject.state,
+      normalizeStateName(searchMeta.stateName) ??
+      normalizeStateName(raw.stateName) ??
+      extractStateName(address) ??
+      extractStateName(raw.address),
     countryCode:
       addressObject.countryCode ??
       raw.countryCode ??
