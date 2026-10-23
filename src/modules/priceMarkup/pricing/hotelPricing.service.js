@@ -2,6 +2,10 @@ import Markup from "../markup/markup.model.js";
 import { resolveRule } from "./markup.resolver.js";
 import { getCountryTaxRule } from "../../tax/countryTax.service.js";
 import { calculateTaxForRule } from "../../tax/tax.service.js";
+import {
+  findBestCouponFromList,
+  getAutoApplyCoupons,
+} from "../../promotionEngine/promotion.service.js";
 
 const roundCurrency = (value) => Number(value.toFixed(2));
 const DEFAULT_ADDITIONAL_TAX = {
@@ -139,9 +143,10 @@ const getAdditionalTaxRule = (rules, countryCode) => {
 
 export const loadHotelPricingConfig = async (countryCode) => {
   const now = new Date();
-  const [allRules, countryTaxRule] = await Promise.all([
+  const [allRules, countryTaxRule, autoCoupons] = await Promise.all([
     Markup.find({ isActive: true }).lean(),
     getCountryTaxRule({ countryCode, serviceType: "hotel" }),
+    getAutoApplyCoupons("hotel"),
   ]);
 
   const rules = allRules.filter(
@@ -150,7 +155,7 @@ export const loadHotelPricingConfig = async (countryCode) => {
       (!rule.endDate || new Date(rule.endDate) >= now)
   );
 
-  return { rules, countryTaxRule };
+  return { rules, countryTaxRule, autoCoupons };
 };
 
 export const priceHotelForSearch = (hotel, searchMeta, config) => {
@@ -185,7 +190,19 @@ export const priceHotelForSearch = (hotel, searchMeta, config) => {
     amount: basePrice,
     taxRule: config.countryTaxRule,
   });
-  const totalPrice = roundCurrency(basePrice + countryTax.taxAmount);
+  const totalPriceBeforeCoupon = roundCurrency(
+    basePrice + countryTax.taxAmount
+  );
+  const couponResult = findBestCouponFromList({
+    coupons: config.autoCoupons,
+    bookingAmount: Math.max(0, basePrice - serviceTaxAmount),
+    serviceTax: serviceTaxAmount,
+  });
+  const couponDiscount = Math.min(
+    couponResult.bestDiscount,
+    totalPriceBeforeCoupon
+  );
+  const totalPrice = roundCurrency(totalPriceBeforeCoupon - couponDiscount);
 
   return {
     ...hotel,
@@ -193,6 +210,7 @@ export const priceHotelForSearch = (hotel, searchMeta, config) => {
       basePrice,
       "platform&servicetax": countryTax.taxAmount,
       totalPrice,
+      totalPriceBeforeCoupon,
       currency: hotel.currency ?? "INR",
       supplierTotalAmount,
       markupLevel: markup?.level ?? null,
@@ -206,6 +224,9 @@ export const priceHotelForSearch = (hotel, searchMeta, config) => {
       serviceTaxAmount,
       additionalTaxAmount,
       countryTaxPercent: countryTax.taxPercentage,
+      appliedCouponCode: couponResult.bestCoupon?.code ?? null,
+      appliedCouponTitle: couponResult.bestCoupon?.title ?? null,
+      couponDiscount,
     },
   };
 };
