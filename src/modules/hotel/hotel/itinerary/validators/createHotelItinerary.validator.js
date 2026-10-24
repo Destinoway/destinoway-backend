@@ -5,13 +5,10 @@ export const validateCreateHotelItineraryRequest = (req, res, next) => {
   const { searchId, hotelId } = req.params;
   const { recommendationId, contactInfo, rooms } = req.body ?? {};
 
-  if (
-    req.body?.itineraryId !== undefined &&
-    !isNonEmptyString(String(req.body.itineraryId))
-  ) {
+  if (!isNonEmptyString(req.body?.itineraryId)) {
     return res.status(400).json({
       success: false,
-      message: "itineraryId must be a non-empty string",
+      message: "itineraryId is required and must be a non-empty string",
       data: null,
       meta: null,
     });
@@ -24,7 +21,7 @@ export const validateCreateHotelItineraryRequest = (req, res, next) => {
   ) {
     return res.status(400).json({
       success: false,
-      message: "searchId, hotelId and recommendationId are required",
+      message: "searchId, hotelId, recommendationId and itineraryId are required",
       data: null,
       meta: null,
     });

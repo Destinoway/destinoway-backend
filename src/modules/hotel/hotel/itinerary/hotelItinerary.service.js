@@ -285,6 +285,9 @@ export const createHotelItinerary = async ({
   if (!userId) {
     throw getError("Login is required to create a hotel itinerary", 401);
   }
+  if (typeof itineraryId !== "string" || !itineraryId.trim()) {
+    throw getError("itineraryId is required", 400);
+  }
 
   const { search, hotel, pricing } =
     await getHotelPriceVerificationContext({
@@ -411,51 +414,27 @@ export const createHotelItinerary = async ({
     itineraryStatus: "processing",
     paymentStatus: "pending",
   };
-  let booking;
-  if (itineraryId) {
-    try {
-      booking = await HotelItinerary.findOne({
-        _id: itineraryId,
-        userId,
-        searchId: search.internalSearchId,
-        hotelId: String(hotelId),
-        recommendationId: String(recommendationId),
-        itineraryStatus: "draft",
-      });
-      if (!booking) throw getError("Price-check itinerary draft not found", 404);
-      if (booking.bookingRefNo) {
-        bookingData.bookingRefNo = booking.bookingRefNo;
-      }
-      bookingData.price = {
-        ...booking.price,
-        supplierTotal: netAmount,
-        supplierNetAmount: netAmount,
-        roomGroups: booking.price?.roomGroups ?? bookingData.price.roomGroups,
-      };
-      bookingData.offer = booking.offer;
-      Object.assign(booking, bookingData, { itineraryStatus: "processing" });
-      await booking.save();
-    } catch (error) {
-      if (error.statusCode) throw error;
-      throw error;
-    }
-  } else {
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      try {
-        booking = await HotelItinerary.create(bookingData);
-        break;
-      } catch (error) {
-        const duplicateBookingRef =
-          error.code === 11000 &&
-          (error.keyPattern?.bookingRefNo ||
-            error.keyValue?.bookingRefNo !== undefined);
-        if (!duplicateBookingRef || attempt === 4) {
-          throw error;
-        }
-        bookingData.bookingRefNo = generateHotelBookingRefNo();
-      }
-    }
+  let booking = await HotelItinerary.findOne({
+    _id: itineraryId,
+    userId,
+    searchId: search.internalSearchId,
+    hotelId: String(hotelId),
+    recommendationId: String(recommendationId),
+    itineraryStatus: "draft",
+  });
+  if (!booking) throw getError("Price-check itinerary draft not found", 404);
+  if (booking.bookingRefNo) {
+    bookingData.bookingRefNo = booking.bookingRefNo;
   }
+  bookingData.price = {
+    ...booking.price,
+    supplierTotal: netAmount,
+    supplierNetAmount: netAmount,
+    roomGroups: booking.price?.roomGroups ?? bookingData.price.roomGroups,
+  };
+  bookingData.offer = booking.offer;
+  Object.assign(booking, bookingData, { itineraryStatus: "processing" });
+  await booking.save();
 
   try {
     const correlationId = String(booking._id);
