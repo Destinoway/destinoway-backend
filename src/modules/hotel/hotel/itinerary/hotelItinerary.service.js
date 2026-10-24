@@ -651,9 +651,14 @@ export const updateHotelItineraryCoupon = async ({
         customerPrice: {
           ...group.customerPrice,
           totalPrice: Number((beforeCoupon - perRoomDiscount).toFixed(2)),
+          basePrice: Number((beforeCoupon - perRoomDiscount).toFixed(2)),
           appliedCouponCode: appliedCoupon?.code ?? null,
           appliedCouponTitle: appliedCoupon?.title ?? null,
           couponDiscount: perRoomDiscount,
+          couponDiscountPercent:
+            beforeCoupon > 0
+              ? Number(((perRoomDiscount / beforeCoupon) * 100).toFixed(2))
+              : 0,
         },
       };
     },
@@ -661,6 +666,13 @@ export const updateHotelItineraryCoupon = async ({
   booking.price.total = Number(
     (totalBeforeCoupon - discount).toFixed(2),
   );
+  booking.price.basePrice = booking.price.total;
+  booking.price.totalPriceBeforeCoupon = totalBeforeCoupon;
+  booking.price.couponDiscount = discount;
+  booking.price.couponDiscountPercent =
+    totalBeforeCoupon > 0
+      ? Number(((discount / totalBeforeCoupon) * 100).toFixed(2))
+      : 0;
   booking.markModified("price");
   await booking.save();
 

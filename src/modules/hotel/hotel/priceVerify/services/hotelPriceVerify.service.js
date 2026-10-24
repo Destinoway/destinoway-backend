@@ -214,9 +214,18 @@ export const verifyHotelPrice = async ({
         totalPrice: Number(
           (item.customerPrice.totalPriceBeforeCoupon - perRoomDiscount).toFixed(2),
         ),
+        basePrice: Number(
+          (item.customerPrice.totalPriceBeforeCoupon - perRoomDiscount).toFixed(2),
+        ),
         appliedCouponCode: selectedCoupon?.code ?? null,
         appliedCouponTitle: selectedCoupon?.title ?? null,
         couponDiscount: perRoomDiscount,
+        couponDiscountPercent:
+          item.customerPrice.totalPriceBeforeCoupon > 0
+            ? Number(
+                ((perRoomDiscount / item.customerPrice.totalPriceBeforeCoupon) * 100).toFixed(2),
+              )
+            : 0,
       },
     };
   });
@@ -237,11 +246,18 @@ export const verifyHotelPrice = async ({
         stay: responseData.stay,
         verifiedPrice: pricing,
         price: {
+          basePrice: finalPrice,
           supplierTotal: pricedRooms.reduce(
             (sum, item) => sum + (Number(item.supplierRoom?.totalRate) || 0) * item.roomCount,
             0,
           ),
           totalBeforeCoupon,
+          totalPriceBeforeCoupon: totalBeforeCoupon,
+          couponDiscount,
+          couponDiscountPercent:
+            totalBeforeCoupon > 0
+              ? Number(((couponDiscount / totalBeforeCoupon) * 100).toFixed(2))
+              : 0,
           serviceTax,
           couponBaseAmount: baseForCoupon,
           total: finalPrice,

@@ -184,18 +184,18 @@ export const priceHotelForSearch = (hotel, searchMeta, config) => {
     afterServiceTax,
     additionalTax
   );
-  const basePrice = roundCurrency(afterServiceTax + additionalTaxAmount);
+  const preCouponBasePrice = roundCurrency(afterServiceTax + additionalTaxAmount);
 
   const countryTax = calculateTaxForRule({
-    amount: basePrice,
+    amount: preCouponBasePrice,
     taxRule: config.countryTaxRule,
   });
   const totalPriceBeforeCoupon = roundCurrency(
-    basePrice + countryTax.taxAmount
+    preCouponBasePrice + countryTax.taxAmount
   );
   const couponResult = findBestCouponFromList({
     coupons: config.autoCoupons,
-    bookingAmount: Math.max(0, basePrice - serviceTaxAmount),
+    bookingAmount: Math.max(0, preCouponBasePrice - serviceTaxAmount),
     serviceTax: serviceTaxAmount,
   });
   const couponDiscount = Math.min(
@@ -203,11 +203,14 @@ export const priceHotelForSearch = (hotel, searchMeta, config) => {
     totalPriceBeforeCoupon
   );
   const totalPrice = roundCurrency(totalPriceBeforeCoupon - couponDiscount);
+  const couponDiscountPercent = totalPriceBeforeCoupon > 0
+    ? roundCurrency((couponDiscount / totalPriceBeforeCoupon) * 100)
+    : 0;
 
   return {
     ...hotel,
     customerPrice: {
-      basePrice,
+      basePrice: totalPrice,
       "platform&servicetax": countryTax.taxAmount,
       totalPrice,
       totalPriceBeforeCoupon,
@@ -227,6 +230,7 @@ export const priceHotelForSearch = (hotel, searchMeta, config) => {
       appliedCouponCode: couponResult.bestCoupon?.code ?? null,
       appliedCouponTitle: couponResult.bestCoupon?.title ?? null,
       couponDiscount,
+      couponDiscountPercent,
     },
   };
 };
