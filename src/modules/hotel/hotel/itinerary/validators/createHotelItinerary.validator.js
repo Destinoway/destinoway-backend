@@ -6,6 +6,18 @@ export const validateCreateHotelItineraryRequest = (req, res, next) => {
   const { recommendationId, contactInfo, rooms } = req.body ?? {};
 
   if (
+    req.body?.itineraryId !== undefined &&
+    !isNonEmptyString(String(req.body.itineraryId))
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "itineraryId must be a non-empty string",
+      data: null,
+      meta: null,
+    });
+  }
+
+  if (
     !isNonEmptyString(searchId) ||
     !isNonEmptyString(hotelId) ||
     !isNonEmptyString(recommendationId)

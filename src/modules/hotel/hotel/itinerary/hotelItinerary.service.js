@@ -4,6 +4,8 @@ import HotelItinerary, {
 import { createAkbarHotelItineraryAPI } from "./adapters/akbar/api/createHotelItinerary.api.js";
 import { getHotelPriceVerificationContext } from "../priceVerify/services/hotelPriceVerify.service.js";
 import { randomUUID } from "node:crypto";
+import Coupon from "../../../promotionEngine/coupon.model.js";
+import { findBestCouponFromList } from "../../../promotionEngine/promotion.service.js";
 import {
   logHotelEvent,
   maskSupplierTracingKey,
@@ -277,6 +279,7 @@ export const createHotelItinerary = async ({
   contactInfo,
   rooms: submittedRooms,
   specialServiceRequest = "",
+  itineraryId,
   userId,
 }) => {
   if (!userId) {
@@ -405,22 +408,50 @@ export const createHotelItinerary = async ({
       })),
     },
     specialServiceRequest,
+    itineraryStatus: "processing",
     paymentStatus: "pending",
   };
   let booking;
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  if (itineraryId) {
     try {
-      booking = await HotelItinerary.create(bookingData);
-      break;
+      booking = await HotelItinerary.findOne({
+        _id: itineraryId,
+        userId,
+        searchId: search.internalSearchId,
+        hotelId: String(hotelId),
+        recommendationId: String(recommendationId),
+        itineraryStatus: "draft",
+      });
+      if (!booking) throw getError("Price-check itinerary draft not found", 404);
+      bookingData.bookingRefNo = booking.bookingRefNo;
+      bookingData.price = {
+        ...booking.price,
+        supplierTotal: netAmount,
+        supplierNetAmount: netAmount,
+        roomGroups: booking.price?.roomGroups ?? bookingData.price.roomGroups,
+      };
+      bookingData.offer = booking.offer;
+      Object.assign(booking, bookingData, { itineraryStatus: "processing" });
+      await booking.save();
     } catch (error) {
-      const duplicateBookingRef =
-        error.code === 11000 &&
-        (error.keyPattern?.bookingRefNo ||
-          error.keyValue?.bookingRefNo !== undefined);
-      if (!duplicateBookingRef || attempt === 4) {
-        throw error;
+      if (error.statusCode) throw error;
+      throw error;
+    }
+  } else {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        booking = await HotelItinerary.create(bookingData);
+        break;
+      } catch (error) {
+        const duplicateBookingRef =
+          error.code === 11000 &&
+          (error.keyPattern?.bookingRefNo ||
+            error.keyValue?.bookingRefNo !== undefined);
+        if (!duplicateBookingRef || attempt === 4) {
+          throw error;
+        }
+        bookingData.bookingRefNo = generateHotelBookingRefNo();
       }
-      bookingData.bookingRefNo = generateHotelBookingRefNo();
     }
   }
 
@@ -498,7 +529,7 @@ export const createHotelItinerary = async ({
       bookingRefNo: booking.bookingRefNo,
       itineraryStatus: booking.itineraryStatus,
       paymentStatus: booking.paymentStatus,
-      amount: netAmount,
+      amount: booking.price?.total ?? netAmount,
       currency: booking.price.currency,
       hotel: {
         hotelId: booking.hotel.hotelId,
@@ -565,4 +596,70 @@ export const createHotelItinerary = async ({
       502
     );
   }
+};
+
+export const updateHotelItineraryCoupon = async ({
+  itineraryId,
+  userId,
+  couponCode,
+}) => {
+  const booking = await HotelItinerary.findOne({
+    _id: itineraryId,
+    userId,
+    itineraryStatus: "draft",
+  });
+  if (!booking) throw getError("Price-check itinerary draft not found", 404);
+
+  let coupon = null;
+  if (couponCode) {
+    const now = new Date();
+    coupon = await Coupon.findOne({
+      code: String(couponCode).trim().toUpperCase(),
+      applicableModules: "hotel",
+      isActive: true,
+      minAmount: { $lte: Number(booking.price?.couponBaseAmount ?? 0) },
+      "validity.startDate": { $lte: now },
+      "validity.endDate": { $gte: now },
+      $and: [
+        { $or: [{ expiresAt: null }, { expiresAt: { $gte: now } }] },
+        {
+          $or: [
+            { usageLimit: null },
+            { $expr: { $lt: ["$usedCount", "$usageLimit"] } },
+          ],
+        },
+      ],
+    }).lean();
+    if (!coupon) throw getError("Coupon is invalid or not applicable", 400);
+  }
+
+  const result = coupon
+    ? findBestCouponFromList({
+        coupons: [coupon],
+        bookingAmount: Math.max(
+          0,
+          Number(booking.price?.totalBeforeCoupon ?? 0) -
+            Number(booking.price?.serviceTax ?? 0),
+        ),
+        serviceTax: Number(booking.price?.serviceTax ?? 0),
+      })
+    : { bestCoupon: null, bestDiscount: 0 };
+  const appliedCoupon = result.bestCoupon;
+  const discount = result.bestDiscount;
+  booking.offer = {
+    couponCode: appliedCoupon?.code ?? null,
+    couponDiscount: discount,
+  };
+  booking.price.total = Number(
+    (Number(booking.price?.totalBeforeCoupon ?? 0) - discount).toFixed(2),
+  );
+  await booking.save();
+
+  return {
+    itineraryId: String(booking._id),
+    appliedCoupon: appliedCoupon?.code ?? null,
+    couponDiscount: discount,
+    totalPayable: booking.price.total,
+    currency: booking.price.currency,
+  };
 };

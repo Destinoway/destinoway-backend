@@ -7,6 +7,18 @@ import { getHotelSearchResults } from "../../hotelSearch/service/hotelSearch.red
 import { akbarHotelPriceVerifyAPI } from "../adapters/akbar/api/hotelPriceVerify.api.js";
 import { mapAkbarHotelPriceVerifyResponse } from "../adapters/akbar/mappers/hotelPriceVerify.mapper.js";
 import { hotelRoomsAPI } from "../../hotelDetail/adapters/akbar/api/hotelRooms.api.js";
+import HotelItinerary, {
+  generateHotelBookingRefNo,
+} from "../../itinerary/hotelItinerary.model.js";
+import Coupon from "../../../../promotionEngine/coupon.model.js";
+import {
+  findBestCouponFromList,
+} from "../../../../promotionEngine/promotion.service.js";
+import {
+  loadHotelPricingConfig,
+  priceHotelForSearch,
+} from "../../../../priceMarkup/pricing/hotelPricing.service.js";
+import { getHotelSearchMeta } from "../../hotelSearch/service/hotelSearch.redis.service.js";
 
 const getNames = (items) =>
   (Array.isArray(items) ? items : [])
@@ -78,6 +90,7 @@ export const verifyHotelPrice = async ({
   searchId,
   hotelId,
   recommendationId,
+  userId,
 }) => {
   const { search, hotel, supplierHotel, pricing } =
     await getHotelPriceVerificationContext({
@@ -91,7 +104,7 @@ export const verifyHotelPrice = async ({
     : [];
   const refundability = roomGroups.map(getRefundable);
 
-  return {
+  const responseData = {
     searchId: search.internalSearchId,
     supplier: search.supplier,
     hotel: {
@@ -116,9 +129,140 @@ export const verifyHotelPrice = async ({
         refundability.every((value) => value !== null)
         ? refundability.every(Boolean)
         : null,
-      rooms: roomGroups.map((room) =>
-        mapVerifiedRoom(room, search.occupancies)
-      ),
+      rooms: roomGroups.map((room) => mapVerifiedRoom(room, search.occupancies)),
+    },
+  };
+
+  if (!userId) return responseData;
+
+  const searchMeta = await getHotelSearchMeta(search.internalSearchId);
+  const pricingConfig = await loadHotelPricingConfig(
+    searchMeta?.destinationCountryCode || "IN",
+  );
+  const configWithoutAutoCoupon = { ...pricingConfig, autoCoupons: [] };
+  const pricedRooms = roomGroups.map((room) => {
+    const supplierTotal = Number(room?.totalRate) || 0;
+    const pricedHotel = priceHotelForSearch(
+      {
+        ...hotel,
+        rate: { ...(hotel.rate ?? {}), total: supplierTotal },
+        currency: room?.conversionRate?.toCurrency ?? room?.currency ?? "INR",
+      },
+      searchMeta ?? {},
+      configWithoutAutoCoupon,
+    );
+    const roomCount = Number(room?.roomCount ?? 1) || 1;
+    return {
+      supplierRoom: room,
+      customerPrice: pricedHotel.customerPrice,
+      roomCount,
+    };
+  });
+  const totalBeforeCoupon = Number(
+    pricedRooms.reduce(
+      (sum, item) => sum + item.customerPrice.totalPriceBeforeCoupon * item.roomCount,
+      0,
+    ).toFixed(2),
+  );
+  const serviceTax = Number(
+    pricedRooms.reduce(
+      (sum, item) => sum + item.customerPrice.serviceTaxAmount * item.roomCount,
+      0,
+    ).toFixed(2),
+  );
+  const baseForCoupon = Math.max(0, totalBeforeCoupon - serviceTax);
+  const now = new Date();
+  const coupons = await Coupon.find({
+    applicableModules: "hotel",
+    isActive: true,
+    minAmount: { $lte: baseForCoupon },
+    "validity.startDate": { $lte: now },
+    "validity.endDate": { $gte: now },
+    $or: [{ expiresAt: null }, { expiresAt: { $gte: now } }],
+  }).lean();
+  const couponInputs = {
+    coupons,
+    bookingAmount: baseForCoupon,
+    serviceTax,
+  };
+  const autoCouponResult = findBestCouponFromList({
+    ...couponInputs,
+    coupons: coupons.filter((coupon) => coupon.isAutoApply),
+  });
+  const availableCoupons = findBestCouponFromList(couponInputs).availableCoupons;
+  const selectedCoupon = autoCouponResult.bestCoupon;
+  const couponDiscount = autoCouponResult.bestDiscount;
+  const currency = roomGroups[0]?.conversionRate?.toCurrency ?? "INR";
+  const finalPrice = Number((totalBeforeCoupon - couponDiscount).toFixed(2));
+
+  const draft = await HotelItinerary.findOneAndUpdate(
+    {
+      userId,
+      searchId: search.internalSearchId,
+      hotelId: String(hotelId),
+      recommendationId: String(recommendationId),
+      itineraryStatus: "draft",
+    },
+    {
+      $set: {
+        supplierSearchId: String(search.supplierSearchId),
+        supplier: search.supplier,
+        hotel: responseData.hotel,
+        stay: responseData.stay,
+        verifiedPrice: pricing,
+        price: {
+          supplierTotal: pricedRooms.reduce(
+            (sum, item) => sum + (Number(item.supplierRoom?.totalRate) || 0) * item.roomCount,
+            0,
+          ),
+          totalBeforeCoupon,
+          serviceTax,
+          couponBaseAmount: baseForCoupon,
+          total: finalPrice,
+          currency,
+          roomGroups: pricedRooms.map(({ supplierRoom, customerPrice, roomCount }) => ({
+            roomGroupId: supplierRoom.id ?? null,
+            roomId: supplierRoom.room?.id ?? null,
+            providerName: supplierRoom.providerName ?? null,
+            roomCount,
+            baseRate: supplierRoom.baseRate ?? null,
+            totalRate: supplierRoom.totalRate ?? null,
+            customerPrice,
+          })),
+        },
+        offer: {
+          couponCode: selectedCoupon?.code ?? null,
+          couponDiscount,
+        },
+      },
+      $setOnInsert: {
+        bookingRefNo: generateHotelBookingRefNo(),
+        userId,
+        searchId: search.internalSearchId,
+        hotelId: String(hotelId),
+        recommendationId: String(recommendationId),
+        itineraryStatus: "draft",
+        paymentStatus: "pending",
+      },
+    },
+    { new: true, upsert: true, setDefaultsOnInsert: true },
+  );
+
+  return {
+    ...responseData,
+    itineraryId: String(draft._id),
+    bookingRefNo: draft.bookingRefNo,
+    availableCoupons,
+    appliedCoupon: selectedCoupon?.code ?? null,
+    couponDiscount,
+    totalPayable: finalPrice,
+    currency,
+    pricing: {
+      ...responseData.pricing,
+      rooms: responseData.pricing.rooms.map((room, index) => ({
+        ...room,
+        customerPrice: pricedRooms[index]?.customerPrice ?? null,
+      })),
     },
   };
 };

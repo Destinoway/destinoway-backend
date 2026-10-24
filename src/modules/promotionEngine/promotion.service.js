@@ -49,6 +49,7 @@ export const findBestCouponFromList = ({
     availableCoupons.push({
       code: coupon.code,
       title: coupon.title,
+      image: coupon.image ?? null,
       discount,
       discountType: coupon.discountType,
       discountValue: coupon.discountValue,

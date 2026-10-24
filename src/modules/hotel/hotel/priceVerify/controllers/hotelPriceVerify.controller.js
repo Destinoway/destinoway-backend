@@ -6,6 +6,7 @@ export const hotelPriceVerifyController = async (req, res) => {
       searchId: req.params.searchId,
       hotelId: req.params.hotelId,
       recommendationId: req.body.recommendationId,
+      userId: req.user._id,
     });
 
     return res.status(200).json({

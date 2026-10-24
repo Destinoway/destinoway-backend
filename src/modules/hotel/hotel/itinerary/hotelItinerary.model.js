@@ -54,19 +54,27 @@ const hotelItinerarySchema = new mongoose.Schema(
     },
     contactInfo: {
       type: mongoose.Schema.Types.Mixed,
-      required: true,
+      default: null,
     },
     rooms: {
       type: [mongoose.Schema.Types.Mixed],
-      required: true,
+      default: [],
     },
     supplierRooms: {
       type: [mongoose.Schema.Types.Mixed],
-      required: true,
+      default: [],
     },
     price: {
       type: mongoose.Schema.Types.Mixed,
-      required: true,
+      default: null,
+    },
+    verifiedPrice: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    offer: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
     specialServiceRequest: {
       type: String,
@@ -79,8 +87,8 @@ const hotelItinerarySchema = new mongoose.Schema(
     },
     itineraryStatus: {
       type: String,
-      enum: ["processing", "created", "failed"],
-      default: "processing",
+      enum: ["draft", "processing", "created", "failed"],
+      default: "draft",
       index: true,
     },
     itineraryResponse: {
