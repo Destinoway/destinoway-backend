@@ -64,7 +64,9 @@ export const getAdminHotelBookingByRefNo = async (bookingRefNo) => {
 export const getAdminHotelBookings = async (query = {}) => {
   const page = parsePositiveInteger(query.page, 1);
   const limit = parsePositiveInteger(query.limit, 20, 100);
-  const filter = {};
+  const filter = {
+    bookingRefNo: { $exists: true, $nin: [null, ""] },
+  };
 
   if (query.status) {
     const stage = String(query.status).trim().toLowerCase();
