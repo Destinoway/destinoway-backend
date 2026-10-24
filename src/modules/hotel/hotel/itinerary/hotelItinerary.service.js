@@ -423,7 +423,9 @@ export const createHotelItinerary = async ({
         itineraryStatus: "draft",
       });
       if (!booking) throw getError("Price-check itinerary draft not found", 404);
-      bookingData.bookingRefNo = booking.bookingRefNo;
+      if (booking.bookingRefNo) {
+        bookingData.bookingRefNo = booking.bookingRefNo;
+      }
       bookingData.price = {
         ...booking.price,
         supplierTotal: netAmount,
@@ -650,9 +652,37 @@ export const updateHotelItineraryCoupon = async ({
     couponCode: appliedCoupon?.code ?? null,
     couponDiscount: discount,
   };
-  booking.price.total = Number(
-    (Number(booking.price?.totalBeforeCoupon ?? 0) - discount).toFixed(2),
+  const totalBeforeCoupon = Number(booking.price?.totalBeforeCoupon ?? 0);
+  let allocatedDiscount = 0;
+  booking.price.roomGroups = (booking.price?.roomGroups ?? []).map(
+    (group, index, groups) => {
+      const roomCount = Math.max(1, Number(group.roomCount) || 1);
+      const beforeCoupon = Number(
+        group.customerPrice?.totalPriceBeforeCoupon ?? 0,
+      );
+      const groupDiscount = index === groups.length - 1
+        ? Number((discount - allocatedDiscount).toFixed(2))
+        : Number(
+            ((discount * beforeCoupon * roomCount) / (totalBeforeCoupon || 1)).toFixed(2),
+          );
+      allocatedDiscount += groupDiscount;
+      const perRoomDiscount = Number((groupDiscount / roomCount).toFixed(2));
+      return {
+        ...group,
+        customerPrice: {
+          ...group.customerPrice,
+          totalPrice: Number((beforeCoupon - perRoomDiscount).toFixed(2)),
+          appliedCouponCode: appliedCoupon?.code ?? null,
+          appliedCouponTitle: appliedCoupon?.title ?? null,
+          couponDiscount: perRoomDiscount,
+        },
+      };
+    },
   );
+  booking.price.total = Number(
+    (totalBeforeCoupon - discount).toFixed(2),
+  );
+  booking.markModified("price");
   await booking.save();
 
   return {
@@ -661,5 +691,6 @@ export const updateHotelItineraryCoupon = async ({
     couponDiscount: discount,
     totalPayable: booking.price.total,
     currency: booking.price.currency,
+    customerPrices: booking.price.roomGroups.map((group) => group.customerPrice),
   };
 };

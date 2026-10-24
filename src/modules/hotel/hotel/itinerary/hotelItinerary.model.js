@@ -15,7 +15,6 @@ const hotelItinerarySchema = new mongoose.Schema(
       type: String,
       unique: true,
       sparse: true,
-      immutable: true,
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,

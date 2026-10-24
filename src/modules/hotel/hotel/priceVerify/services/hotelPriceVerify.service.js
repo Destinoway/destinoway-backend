@@ -7,9 +7,7 @@ import { getHotelSearchResults } from "../../hotelSearch/service/hotelSearch.red
 import { akbarHotelPriceVerifyAPI } from "../adapters/akbar/api/hotelPriceVerify.api.js";
 import { mapAkbarHotelPriceVerifyResponse } from "../adapters/akbar/mappers/hotelPriceVerify.mapper.js";
 import { hotelRoomsAPI } from "../../hotelDetail/adapters/akbar/api/hotelRooms.api.js";
-import HotelItinerary, {
-  generateHotelBookingRefNo,
-} from "../../itinerary/hotelItinerary.model.js";
+import HotelItinerary from "../../itinerary/hotelItinerary.model.js";
 import Coupon from "../../../../promotionEngine/coupon.model.js";
 import {
   findBestCouponFromList,
@@ -194,6 +192,34 @@ export const verifyHotelPrice = async ({
   const couponDiscount = autoCouponResult.bestDiscount;
   const currency = roomGroups[0]?.conversionRate?.toCurrency ?? "INR";
   const finalPrice = Number((totalBeforeCoupon - couponDiscount).toFixed(2));
+  let allocatedCouponDiscount = 0;
+  const pricedRoomsWithCoupon = pricedRooms.map((item, index) => {
+    const isLastRoom = index === pricedRooms.length - 1;
+    const groupDiscount = isLastRoom
+      ? Number((couponDiscount - allocatedCouponDiscount).toFixed(2))
+      : Number(
+          (
+            (couponDiscount *
+              item.customerPrice.totalPriceBeforeCoupon *
+              item.roomCount) /
+            (totalBeforeCoupon || 1)
+          ).toFixed(2),
+        );
+    allocatedCouponDiscount += groupDiscount;
+    const perRoomDiscount = Number((groupDiscount / item.roomCount).toFixed(2));
+    return {
+      ...item,
+      customerPrice: {
+        ...item.customerPrice,
+        totalPrice: Number(
+          (item.customerPrice.totalPriceBeforeCoupon - perRoomDiscount).toFixed(2),
+        ),
+        appliedCouponCode: selectedCoupon?.code ?? null,
+        appliedCouponTitle: selectedCoupon?.title ?? null,
+        couponDiscount: perRoomDiscount,
+      },
+    };
+  });
 
   const draft = await HotelItinerary.findOneAndUpdate(
     {
@@ -220,7 +246,7 @@ export const verifyHotelPrice = async ({
           couponBaseAmount: baseForCoupon,
           total: finalPrice,
           currency,
-          roomGroups: pricedRooms.map(({ supplierRoom, customerPrice, roomCount }) => ({
+          roomGroups: pricedRoomsWithCoupon.map(({ supplierRoom, customerPrice, roomCount }) => ({
             roomGroupId: supplierRoom.id ?? null,
             roomId: supplierRoom.room?.id ?? null,
             providerName: supplierRoom.providerName ?? null,
@@ -235,8 +261,8 @@ export const verifyHotelPrice = async ({
           couponDiscount,
         },
       },
+      $unset: { bookingRefNo: "" },
       $setOnInsert: {
-        bookingRefNo: generateHotelBookingRefNo(),
         userId,
         searchId: search.internalSearchId,
         hotelId: String(hotelId),
@@ -251,7 +277,6 @@ export const verifyHotelPrice = async ({
   return {
     ...responseData,
     itineraryId: String(draft._id),
-    bookingRefNo: draft.bookingRefNo,
     availableCoupons,
     appliedCoupon: selectedCoupon?.code ?? null,
     couponDiscount,
@@ -261,7 +286,7 @@ export const verifyHotelPrice = async ({
       ...responseData.pricing,
       rooms: responseData.pricing.rooms.map((room, index) => ({
         ...room,
-        customerPrice: pricedRooms[index]?.customerPrice ?? null,
+        customerPrice: pricedRoomsWithCoupon[index]?.customerPrice ?? null,
       })),
     },
   };
