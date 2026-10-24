@@ -2,6 +2,7 @@ import { resolveSupplierSearch } from "../../utils/resolveSupplierSearch.js";
 import {
   cacheHotelRoomProviders,
   getCachedHotelRoomProvider,
+  getCachedHotelRoomRecommendationMeta,
 } from "../../utils/hotelRoomProviderCache.js";
 import { getHotelSearchResults } from "../../hotelSearch/service/hotelSearch.redis.service.js";
 import { akbarHotelPriceVerifyAPI } from "../adapters/akbar/api/hotelPriceVerify.api.js";
@@ -90,7 +91,7 @@ export const verifyHotelPrice = async ({
   recommendationId,
   userId,
 }) => {
-  const { search, hotel, supplierHotel, pricing } =
+  const { search, hotel, supplierHotel, pricing, recommendationMeta } =
     await getHotelPriceVerificationContext({
       searchId,
       hotelId,
@@ -117,6 +118,8 @@ export const verifyHotelPrice = async ({
         ]),
       ],
     },
+    isPANRequired:
+      pricing?.isPANRequired ?? recommendationMeta?.isPANRequired ?? false,
     stay: {
       checkIn: search.checkIn,
       checkOut: search.checkOut,
@@ -338,8 +341,13 @@ export const getHotelPriceVerificationContext = async ({
     hotelId,
     recommendationId,
   });
+  let recommendationMeta = await getCachedHotelRoomRecommendationMeta({
+    searchId,
+    hotelId,
+    recommendationId,
+  });
 
-  if (!providerName) {
+  if (!providerName || !recommendationMeta) {
     const rooms = await hotelRoomsAPI({
       correlationId: search.internalSearchId,
       supplierSearchId: search.supplierSearchId,
@@ -348,11 +356,14 @@ export const getHotelPriceVerificationContext = async ({
     });
 
     await cacheHotelRoomProviders({ searchId, hotelId, rooms });
-    providerName = await getCachedHotelRoomProvider({
-      searchId,
-      hotelId,
-      recommendationId,
-    });
+    [providerName, recommendationMeta] = await Promise.all([
+      getCachedHotelRoomProvider({ searchId, hotelId, recommendationId }),
+      getCachedHotelRoomRecommendationMeta({
+        searchId,
+        hotelId,
+        recommendationId,
+      }),
+    ]);
   }
 
   if (!providerName) {
@@ -405,5 +416,6 @@ export const getHotelPriceVerificationContext = async ({
     hotel,
     supplierHotel: hotel.rawSupplierData ?? {},
     pricing,
+    recommendationMeta,
   };
 };
