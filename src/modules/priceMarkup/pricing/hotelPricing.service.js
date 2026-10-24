@@ -210,7 +210,9 @@ export const priceHotelForSearch = (hotel, searchMeta, config) => {
   return {
     ...hotel,
     customerPrice: {
-      basePrice: totalPrice,
+      basePrice: roundCurrency(
+        totalPriceBeforeCoupon - couponDiscount - countryTax.taxAmount,
+      ),
       "platform&servicetax": countryTax.taxAmount,
       totalPrice,
       totalPriceBeforeCoupon,

@@ -215,7 +215,11 @@ export const verifyHotelPrice = async ({
           (item.customerPrice.totalPriceBeforeCoupon - perRoomDiscount).toFixed(2),
         ),
         basePrice: Number(
-          (item.customerPrice.totalPriceBeforeCoupon - perRoomDiscount).toFixed(2),
+          (
+            item.customerPrice.totalPriceBeforeCoupon -
+            perRoomDiscount -
+            (Number(item.customerPrice["platform&servicetax"]) || 0)
+          ).toFixed(2),
         ),
         appliedCouponCode: selectedCoupon?.code ?? null,
         appliedCouponTitle: selectedCoupon?.title ?? null,
@@ -229,6 +233,13 @@ export const verifyHotelPrice = async ({
       },
     };
   });
+  const platformServiceTaxTotal = pricedRoomsWithCoupon.reduce(
+    (sum, item) =>
+      sum +
+      (Number(item.customerPrice?.["platform&servicetax"]) || 0) *
+        item.roomCount,
+    0,
+  );
 
   const draft = await HotelItinerary.findOneAndUpdate(
     {
@@ -246,7 +257,9 @@ export const verifyHotelPrice = async ({
         stay: responseData.stay,
         verifiedPrice: pricing,
         price: {
-          basePrice: finalPrice,
+          basePrice: Number(
+            (totalBeforeCoupon - couponDiscount - platformServiceTaxTotal).toFixed(2),
+          ),
           supplierTotal: pricedRooms.reduce(
             (sum, item) => sum + (Number(item.supplierRoom?.totalRate) || 0) * item.roomCount,
             0,

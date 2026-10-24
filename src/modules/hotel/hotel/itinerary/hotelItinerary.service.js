@@ -651,7 +651,13 @@ export const updateHotelItineraryCoupon = async ({
         customerPrice: {
           ...group.customerPrice,
           totalPrice: Number((beforeCoupon - perRoomDiscount).toFixed(2)),
-          basePrice: Number((beforeCoupon - perRoomDiscount).toFixed(2)),
+          basePrice: Number(
+            (
+              beforeCoupon -
+              perRoomDiscount -
+              (Number(group.customerPrice?.["platform&servicetax"]) || 0)
+            ).toFixed(2),
+          ),
           appliedCouponCode: appliedCoupon?.code ?? null,
           appliedCouponTitle: appliedCoupon?.title ?? null,
           couponDiscount: perRoomDiscount,
@@ -666,7 +672,16 @@ export const updateHotelItineraryCoupon = async ({
   booking.price.total = Number(
     (totalBeforeCoupon - discount).toFixed(2),
   );
-  booking.price.basePrice = booking.price.total;
+  const platformServiceTaxTotal = booking.price.roomGroups.reduce(
+    (sum, group) =>
+      sum +
+      (Number(group.customerPrice?.["platform&servicetax"]) || 0) *
+        Math.max(1, Number(group.roomCount) || 1),
+    0,
+  );
+  booking.price.basePrice = Number(
+    (totalBeforeCoupon - discount - platformServiceTaxTotal).toFixed(2),
+  );
   booking.price.totalPriceBeforeCoupon = totalBeforeCoupon;
   booking.price.couponDiscount = discount;
   booking.price.couponDiscountPercent =
