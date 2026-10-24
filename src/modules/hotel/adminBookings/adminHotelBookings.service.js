@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import HotelItinerary from "../hotel/itinerary/hotelItinerary.model.js";
 
 const stageFilters = {
@@ -39,14 +38,16 @@ const mapAdminBookingSummary = (booking) => ({
     null,
 });
 
-export const getAdminHotelBookingById = async (bookingId) => {
-  if (!mongoose.Types.ObjectId.isValid(bookingId)) {
-    const error = new Error("Valid booking ID is required");
+export const getAdminHotelBookingByRefNo = async (bookingRefNo) => {
+  if (typeof bookingRefNo !== "string" || !bookingRefNo.trim()) {
+    const error = new Error("Valid bookingRefNo is required");
     error.statusCode = 400;
     throw error;
   }
 
-  const booking = await HotelItinerary.findById(bookingId)
+  const booking = await HotelItinerary.findOne({
+    bookingRefNo: bookingRefNo.trim(),
+  })
     .select("-__v")
     .populate("userId", "name email mobile")
     .lean();

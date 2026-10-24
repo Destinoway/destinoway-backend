@@ -15,7 +15,7 @@ router.get(
   getAdminHotelBookingsController,
 );
 router.get(
-  "/hotel-bookings/:bookingId",
+  "/hotel-bookings/:bookingRefNo",
   protect,
   checkPermission("hotelBookings", "read"),
   getAdminHotelBookingByIdController,
