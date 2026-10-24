@@ -1,6 +1,9 @@
 import { asyncHandler } from "../../../middleware/asyncHandler.js";
 import { sendSuccess } from "../../../utils/response/ApiResponse.js";
-import { getAdminHotelBookings } from "./adminHotelBookings.service.js";
+import {
+  getAdminHotelBookingById,
+  getAdminHotelBookings,
+} from "./adminHotelBookings.service.js";
 
 export const getAdminHotelBookingsController = asyncHandler(async (req, res) => {
   const result = await getAdminHotelBookings(req.query);
@@ -11,3 +14,10 @@ export const getAdminHotelBookingsController = asyncHandler(async (req, res) => 
     result.pagination,
   );
 });
+
+export const getAdminHotelBookingByIdController = asyncHandler(
+  async (req, res) => {
+    const booking = await getAdminHotelBookingById(req.params.bookingId);
+    return sendSuccess(res, "Hotel booking fetched successfully", booking);
+  },
+);
