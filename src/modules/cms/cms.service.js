@@ -8,10 +8,19 @@ import User from "../user/user.model.js";
 import CMSPage from "./cms.model.js";
 import { CMS_TEMPLATES } from "./cms.templates.js";
 
+// Writes only the legacy `schema` field; the key is hardcoded, never client-supplied.
+const setSchemaField = (id, value) =>
+  CMSPage.findByIdAndUpdate(
+    id,
+    { $set: { schema: value } },
+    { new: true, runValidators: true, strict: false },
+  );
+
 /*
 CREATE
 */
-export const createCMSPage = async (payload) => {
+export const createCMSPage = async (input) => {
+  const { schema, ...payload } = input;
   const { entityType, entityId } = payload;
 
   // auto slug
@@ -62,7 +71,16 @@ export const createCMSPage = async (payload) => {
 
   const page = await CMSPage.create(payload);
 
-  return serializeCMSPage(page);
+  if (schema === undefined) {
+    return serializeCMSPage(page);
+  }
+
+  try {
+    return serializeCMSPage(await setSchemaField(page._id, schema));
+  } catch (error) {
+    await CMSPage.deleteOne({ _id: page._id }).catch(() => {});
+    throw error;
+  }
 };
 
 /*
@@ -121,19 +139,12 @@ export const getCMSPageById = async (id) => {
 /*
 UPDATE
 */
-export const updateCMSPage = async (id, payload) => {
+export const updateCMSPage = async (id, input) => {
+  const { schema, ...payload } = input;
   const page = await CMSPage.findById(id);
 
   if (!page) {
     throw new ApiError(404, "CMS page not found");
-  }
-
-  // regenerate slug if title changed
-  if (!payload.slug) {
-    payload.slug = generateCMSSlug({
-      ...page.toObject(),
-      ...payload,
-    });
   }
 
   // slug duplicate check
@@ -150,11 +161,26 @@ export const updateCMSPage = async (id, payload) => {
     }
   }
 
-  Object.assign(page, payload);
+  // merge `data` so omitted blocks (faqs, cityMeta, breadcrumbs...) survive partial updates
+  const { data, ...rest } = payload;
+
+  // slug is only changed when explicitly sent
+  if (!rest.slug) delete rest.slug;
+
+  Object.assign(page, rest);
+
+  if (data && typeof data === "object") {
+    page.data = { ...(page.data || {}), ...data };
+    page.markModified("data");
+  }
 
   await page.save();
 
-  return serializeCMSPage(page);
+  if (schema === undefined) {
+    return serializeCMSPage(page);
+  }
+
+  return serializeCMSPage(await setSchemaField(id, schema));
 };
 
 /*
@@ -229,9 +255,9 @@ export const getCMSByEntity = async (entityType, entityId) => {
   const page = await CMSPage.findOne({
     entityType,
     entityId,
-  });
+  }).lean();
 
-  return page;
+  return page ? { ...page, schema: page.schema ?? null } : page;
 };
 export const getCMSTemplates = async () => {
   return CMS_TEMPLATES;
@@ -310,6 +336,8 @@ export const getAllBlogsService = async (query) => {
 
     return {
       ...blog,
+      canonicalUrl: blog.canonicalUrl ?? "",
+      schema: blog.schema ?? null,
       createdByName,
       categoryName: category.placeName,
     };
@@ -320,7 +348,7 @@ export const getAllBlogsService = async (query) => {
 
   const blogs = await CMSPage.find(filter)
     .select(
-      "title slug description featuredImage categoryId createdAt createdBy"
+      "title slug canonicalUrl description featuredImage categoryId createdAt createdBy"
     )
     .sort({ createdAt: -1 })
     .skip((Number(page) - 1) * Number(limit))
@@ -382,6 +410,7 @@ export const getAllBlogsService = async (query) => {
     })
     .map((blog) => ({
       ...blog,
+      canonicalUrl: blog.canonicalUrl ?? "",
       createdByName:
         userMap[blog.createdBy?.toString()] || null,
       categoryName:
