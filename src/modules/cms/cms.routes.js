@@ -13,7 +13,10 @@ import {
   getSingleCMS,
   getTemplates,
   updateCMS,
-  previewSlug
+  previewSlug,
+  checkMetadata,
+  resolveRedirect,
+  getPageRedirects,
 } from "./cms.controller.js";
 
 import { createCMSValidation, updateCMSValidation } from "./cms.validation.js";
@@ -43,6 +46,28 @@ router.get("/public/pages", getAllCMS);
 CMS TEMPLATES
 */
 router.get("/templates", getTemplates);
+
+/*
+301 REDIRECT FOR A RETIRED PUBLIC PATH
+*/
+router.get("/redirect", resolveRedirect);
+
+/*
+METADATA DUPLICATE CHECK
+*/
+router.get(
+  "/metadata/check",
+  protect,
+  checkPermission("cmsPages", "read"),
+  checkMetadata,
+);
+
+router.get(
+  "/:id/redirects",
+  protect,
+  checkPermission("cmsPages", "read"),
+  getPageRedirects,
+);
 
 /*
 ENTITY CMS

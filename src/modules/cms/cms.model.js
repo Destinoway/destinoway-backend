@@ -61,6 +61,11 @@ createdBy: {
       type: String,
       default: "",
     },
+    featuredImageAlt: {
+      type: String,
+      trim: true,
+      default: "",
+    },
 
     keywords: [
       {

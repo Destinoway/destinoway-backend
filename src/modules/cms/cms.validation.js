@@ -50,6 +50,7 @@ export const createCMSValidation = Joi.object({
     }),
   description: Joi.string().allow(""),
   featuredImage: Joi.string().allow(""),
+  featuredImageAlt: Joi.string().trim().max(500).allow(""),
   keywords: Joi.array().items(Joi.string()),
   schema: Joi.any(),
   data: Joi.object(),

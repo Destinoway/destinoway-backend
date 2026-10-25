@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import ApiError from "../../utils/response/ApiError.js";
 import { generateCMSSlug } from "../../utils/slug/cmsSlug.js";
 import { generateSlug } from "../../utils/slug/slugify.js";
@@ -7,6 +8,18 @@ import MasterData from "../master-data/masterData.model.js";
 import User from "../user/user.model.js";
 import CMSPage from "./cms.model.js";
 import { CMS_TEMPLATES } from "./cms.templates.js";
+import { getCMSPublicUrl, recordCMSRedirect } from "./cms.redirect.service.js";
+
+// Normalizes an explicitly supplied slug the same way auto-generated slugs are built.
+const normalizeSlugInput = (slug) => {
+  const normalized = generateSlug(String(slug));
+
+  if (!normalized) {
+    throw new ApiError(400, "Slug is invalid");
+  }
+
+  return normalized;
+};
 
 // Writes only the legacy `schema` field; the key is hardcoded, never client-supplied.
 const setSchemaField = (id, value) =>
@@ -24,7 +37,9 @@ export const createCMSPage = async (input) => {
   const { entityType, entityId } = payload;
 
   // auto slug
-  let slug = payload.slug || generateCMSSlug(payload);
+  let slug = payload.slug
+    ? normalizeSlugInput(payload.slug)
+    : generateCMSSlug(payload);
 
   if (!slug) {
     // HOTEL
@@ -147,6 +162,13 @@ export const updateCMSPage = async (id, input) => {
     throw new ApiError(404, "CMS page not found");
   }
 
+  // unchanged slugs are left untouched; supplied ones are normalized
+  if (payload.slug && payload.slug !== page.slug) {
+    payload.slug = normalizeSlugInput(payload.slug);
+  }
+
+  const previousUrl = getCMSPublicUrl(page);
+
   // slug duplicate check
   if (payload.slug && payload.slug !== page.slug) {
     const slugExists = await CMSPage.findOne({
@@ -175,6 +197,16 @@ export const updateCMSPage = async (id, input) => {
   }
 
   await page.save();
+
+  const currentUrl = getCMSPublicUrl(page);
+
+  if (currentUrl !== previousUrl) {
+    try {
+      await recordCMSRedirect(page._id, previousUrl, currentUrl, page.entityType);
+    } catch (error) {
+      console.error("CMS redirect could not be recorded:", error);
+    }
+  }
 
   if (schema === undefined) {
     return serializeCMSPage(page);
@@ -245,6 +277,66 @@ export const previewCMSSlug = async (payload) => {
 };
 
 /*
+METADATA DUPLICATE CHECK
+Informational only: reports other pages already using the same
+metaTitle / metaDescription (case-insensitive, trimmed). Never blocks saving.
+*/
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+export const checkCMSMetadata = async ({
+  metaTitle,
+  metaDescription,
+  excludeId,
+}) => {
+  const filter = {};
+
+  if (excludeId !== undefined) {
+    if (!mongoose.isValidObjectId(excludeId)) {
+      throw new ApiError(400, "Invalid excludeId");
+    }
+
+    filter._id = { $ne: excludeId };
+  }
+
+  const result = {};
+
+  for (const [field, raw] of [
+    ["metaTitle", metaTitle],
+    ["metaDescription", metaDescription],
+  ]) {
+    if (raw === undefined) continue;
+
+    if (typeof raw !== "string") {
+      throw new ApiError(400, `${field} must be a string`);
+    }
+
+    const value = raw.trim();
+
+    if (!value) {
+      result[field] = { value, duplicate: false, count: 0, pages: [] };
+      continue;
+    }
+
+    const query = {
+      ...filter,
+      [field]: { $regex: `^${escapeRegex(value)}$`, $options: "i" },
+    };
+
+    const [count, pages] = await Promise.all([
+      CMSPage.countDocuments(query),
+      CMSPage.find(query)
+        .select("title slug entityType entityId")
+        .limit(10)
+        .lean(),
+    ]);
+
+    result[field] = { value, duplicate: count > 0, count, pages };
+  }
+
+  return result;
+};
+
+/*
 GET TEMPLATES
 */
 
@@ -257,7 +349,13 @@ export const getCMSByEntity = async (entityType, entityId) => {
     entityId,
   }).lean();
 
-  return page ? { ...page, schema: page.schema ?? null } : page;
+  return page
+    ? {
+        ...page,
+        schema: page.schema ?? null,
+        featuredImageAlt: page.featuredImageAlt ?? "",
+      }
+    : page;
 };
 export const getCMSTemplates = async () => {
   return CMS_TEMPLATES;
@@ -338,6 +436,7 @@ export const getAllBlogsService = async (query) => {
       ...blog,
       canonicalUrl: blog.canonicalUrl ?? "",
       schema: blog.schema ?? null,
+      featuredImageAlt: blog.featuredImageAlt ?? "",
       createdByName,
       categoryName: category.placeName,
     };
@@ -348,7 +447,7 @@ export const getAllBlogsService = async (query) => {
 
   const blogs = await CMSPage.find(filter)
     .select(
-      "title slug canonicalUrl description featuredImage categoryId createdAt createdBy"
+      "title slug canonicalUrl description featuredImage featuredImageAlt categoryId createdAt createdBy"
     )
     .sort({ createdAt: -1 })
     .skip((Number(page) - 1) * Number(limit))
@@ -411,6 +510,7 @@ export const getAllBlogsService = async (query) => {
     .map((blog) => ({
       ...blog,
       canonicalUrl: blog.canonicalUrl ?? "",
+      featuredImageAlt: blog.featuredImageAlt ?? "",
       createdByName:
         userMap[blog.createdBy?.toString()] || null,
       categoryName:
