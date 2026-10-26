@@ -326,10 +326,30 @@ export const createHotelItinerary = async ({
     );
   }
 
-  const normalizedSubmittedRooms = submittedRooms.map((room, index) => ({
-    ...room,
-    occupancyId: search.occupancies[index].occupancyId,
-  }));
+  const normalizedSubmittedRooms = submittedRooms.map((room, index) => {
+    const occupancy = search.occupancies[index];
+    return {
+      ...room,
+      occupancyId: occupancy.occupancyId,
+      children: room.children.map((guest, childIndex) => {
+        const age = guest.age ?? occupancy.childAges?.[childIndex];
+        if (
+          age === undefined ||
+          age === null ||
+          age === "" ||
+          !Number.isInteger(Number(age)) ||
+          Number(age) < 0 ||
+          Number(age) > 17
+        ) {
+          throw getError(
+            `Age is required for child ${childIndex + 1} in room ${index + 1}; provide it in the request or the original hotel search`,
+            400,
+          );
+        }
+        return { ...guest, age: Number(age) };
+      }),
+    };
+  });
   const netAmount = getNetAmount(roomGroups);
   const supplierRooms = mapSupplierRooms(
     roomGroups,

@@ -108,19 +108,20 @@ export const validateCreateHotelItineraryRequest = (req, res, next) => {
     }
 
     if (
-      room.children.some(
-        (guest) =>
-          guest?.age === "" ||
-          guest?.age === null ||
-          guest?.age === undefined ||
+      room.children.some((guest) => {
+        if (guest?.age === undefined || guest?.age === null || guest?.age === "") {
+          return false;
+        }
+        return (
           !Number.isInteger(Number(guest.age)) ||
           Number(guest.age) < 0 ||
           Number(guest.age) > 17
-      )
+        );
+      })
     ) {
       return res.status(400).json({
         success: false,
-        message: "Each child guest must have an age between 0 and 17",
+        message: "Each provided child age must be an integer between 0 and 17",
         data: null,
         meta: null,
       });
