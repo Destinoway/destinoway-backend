@@ -17,7 +17,7 @@ const getError = (message, statusCode = 400) => {
   return error;
 };
 
-const mapContactInfo = (contactInfo, netAmount) => ({
+const mapContactInfo = (contactInfo) => ({
   Title: contactInfo.title.trim(),
   FName: contactInfo.firstName.trim(),
   LName: contactInfo.lastName.trim(),
@@ -35,7 +35,7 @@ const mapContactInfo = (contactInfo, netAmount) => ({
   IsGuest: false,
   CountryCode: process.env.AKBAR_COUNTRY_CODE || "IN",
   MobileCountryCode: process.env.AKBAR_MOBILE_COUNTRY_CODE || "+91",
-  NetAmount: String(netAmount),
+  NetAmount: "",
 });
 
 const mapStoredContactInfo = (contactInfo) => ({
@@ -356,12 +356,11 @@ export const createHotelItinerary = async ({
     normalizedSubmittedRooms,
     search.occupancies
   );
-  const countryCode = process.env.AKBAR_CUSTOMER_COUNTRY || "IN";
   const supplierRequest = {
     TUI: search.searchTracingKey ?? "",
     ServiceEnquiry: "",
     SpecialServiceRequest: specialServiceRequest.trim(),
-    ContactInfo: mapContactInfo(contactInfo, netAmount),
+    ContactInfo: mapContactInfo(contactInfo),
     Auxiliaries: [
       {
         Code: "PROMO",
@@ -369,13 +368,6 @@ export const createHotelItinerary = async ({
           { Type: "Code", Value: "" },
           { Type: "ID", Value: "" },
           { Type: "Amount", Value: "" },
-        ],
-      },
-      {
-        Code: "CUSTOMER DETAILS",
-        Parameters: [
-          { Type: "Nationality", Value: countryCode },
-          { Type: "Country of Residence", Value: countryCode },
         ],
       },
     ],
