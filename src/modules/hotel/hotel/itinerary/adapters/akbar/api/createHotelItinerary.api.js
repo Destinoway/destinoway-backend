@@ -1,6 +1,9 @@
 import axios from "axios";
 import { getAKBARToken } from "../../../../../supplier/akbar/akbarAuth.service.js";
-import { logHotelEvent } from "../../../../utils/hotelObservability.js";
+import {
+  logHotelEvent,
+  maskSupplierTracingKey,
+} from "../../../../utils/hotelObservability.js";
 
 const summarizeItineraryResponse = (response) => {
   const responseData = response.data;
@@ -82,6 +85,48 @@ const summarizeItineraryResponse = (response) => {
   return summary;
 };
 
+const redactItineraryPayload = (payload) => ({
+  ...payload,
+  TUI: maskSupplierTracingKey(payload.TUI),
+  ClientID: payload.ClientID ? "[REDACTED]" : payload.ClientID,
+  DeviceID: payload.DeviceID ? "[REDACTED]" : payload.DeviceID,
+  ContactInfo: payload.ContactInfo
+    ? {
+        ...payload.ContactInfo,
+        Title: "[REDACTED]",
+        FName: "[REDACTED]",
+        LName: "[REDACTED]",
+        Mobile: "[REDACTED]",
+        Email: "[REDACTED]",
+        Address: "[REDACTED]",
+        State: "[REDACTED]",
+        City: "[REDACTED]",
+        PIN: "[REDACTED]",
+        GSTCompanyName: "[REDACTED]",
+        GSTTIN: "[REDACTED]",
+        GSTMobile: "[REDACTED]",
+        GSTEmail: "[REDACTED]",
+      }
+    : payload.ContactInfo,
+  Rooms: Array.isArray(payload.Rooms)
+    ? payload.Rooms.map((room) => ({
+        ...room,
+        Guests: Array.isArray(room.Guests)
+          ? room.Guests.map((guest) => ({
+              ...guest,
+              GuestID: "[REDACTED]",
+              FirstName: "[REDACTED]",
+              MiddleName: guest.MiddleName ? "[REDACTED]" : guest.MiddleName,
+              LastName: "[REDACTED]",
+              MobileNo: guest.MobileNo ? "[REDACTED]" : guest.MobileNo,
+              Email: guest.Email ? "[REDACTED]" : guest.Email,
+              Pan: guest.Pan ? "[REDACTED]" : guest.Pan,
+            }))
+          : room.Guests,
+      }))
+    : payload.Rooms,
+});
+
 export const createAkbarHotelItineraryAPI = async ({
   payload,
   searchTracingKey,
@@ -118,6 +163,12 @@ export const createAkbarHotelItineraryAPI = async ({
   const token = await getAKBARToken();
   const startedAt = performance.now();
   let response;
+  logHotelEvent("info", "hotel.supplier_request.payload", {
+    correlationId,
+    supplier: "AKBAR",
+    operation: "create_itinerary",
+    payload: redactItineraryPayload(payload),
+  });
   try {
     response = await axios.post(itineraryUrl, payload, {
       headers: {
