@@ -32,7 +32,7 @@ const mapContactInfo = (contactInfo, netAmount) => ({
   GSTMobile: "",
   GSTEmail: "",
   UpdateProfile: true,
-  IsGuest: true,
+  IsGuest: false,
   CountryCode: process.env.AKBAR_COUNTRY_CODE || "IN",
   MobileCountryCode: process.env.AKBAR_MOBILE_COUNTRY_CODE || "+91",
   NetAmount: String(netAmount),
