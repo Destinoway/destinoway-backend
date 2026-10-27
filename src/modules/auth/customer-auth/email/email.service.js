@@ -13,7 +13,6 @@ export const sendEmailOtpService = async (email) => {
   const htmlTemplate = getEmailTemplate(otp);
 
   await transporter.sendMail({
-    from: `"Travel App" <${process.env.GMAIL_USER}>`,
     to: normalizedEmail,
     subject: "Your OTP Code",
     html: htmlTemplate
