@@ -110,6 +110,8 @@ export const verifyHotelPrice = async ({
       hotelId: String(hotelId),
       name: hotel.name ?? null,
       address: formatHotelAddress(hotel.address),
+      heroImage: hotel.heroImage ?? hotel.images?.[0]?.url ?? null,
+      images: hotel.images ?? [],
       starCategory: hotel.starRating ?? null,
       facilities: [
         ...new Set([
