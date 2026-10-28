@@ -142,7 +142,7 @@ const mapSupplierRooms = (roomGroups, submittedRooms, occupancies) => {
     throw getError("Price verification returned no available rooms", 409);
   }
 
-  return roomGroups.map((roomGroup) => {
+  return roomGroups.flatMap((roomGroup) => {
     if (
       !roomGroup?.id ||
       !roomGroup?.room?.id ||
@@ -183,15 +183,13 @@ const mapSupplierRooms = (roomGroups, submittedRooms, occupancies) => {
       );
     });
 
-    return {
+    return resolvedOccupancies.map((occupancy) => ({
       RoomId: roomGroup.room.id,
-      GuestCode: resolvedOccupancies.map((item) => item.guestCode).join(""),
+      GuestCode: occupancy.guestCode,
       SupplierName: roomGroup.providerName,
       RoomGroupId: roomGroup.id,
-      Guests: resolvedOccupancies.flatMap((item) =>
-        item.guests.map(mapSupplierGuest)
-      ),
-    };
+      Guests: occupancy.guests.map(mapSupplierGuest),
+    }));
   });
 };
 
