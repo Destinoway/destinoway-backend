@@ -74,7 +74,7 @@ const mapStoredRooms = (submittedRooms) =>
     })),
   }));
 
-const getOccupancyGuestDetails = (occupancy, submittedRoom) => {
+const getOccupancyGuestDetails = (occupancy, submittedRoom, pricingOccupancy) => {
   if (!submittedRoom) {
     throw getError(
       `Guest details are missing for room occupancy ${occupancy.occupancyId}`
@@ -90,6 +90,18 @@ const getOccupancyGuestDetails = (occupancy, submittedRoom) => {
     );
   }
 
+  // Akbar expects GuestCode child ages in the same order as the verified
+  // pricing occupancy. Keep guest details in submitted order, but take each
+  // child's age from that authoritative occupancy so the two representations
+  // cannot drift apart.
+  const childAges = Array.isArray(pricingOccupancy?.childAges)
+    ? pricingOccupancy.childAges
+    : occupancy.childAges;
+  const children = submittedRoom.children.map((guest, index) => ({
+    ...guest,
+    age: Number(childAges?.[index] ?? guest.age),
+  }));
+
   return {
     guestCode: [
       `|${occupancy.occupancyId}|`,
@@ -99,14 +111,14 @@ const getOccupancyGuestDetails = (occupancy, submittedRoom) => {
             .join(":")}|`
         : "",
       submittedRoom.children.length
-        ? `${submittedRoom.children.length}:C:${submittedRoom.children
-            .map((guest) => Number(guest.age))
+        ? `${submittedRoom.children.length}:C:${children
+            .map((guest) => guest.age)
             .join(":")}|`
         : "",
     ].join(""),
     guests: [
       ...submittedRoom.adults.map((guest) => ({ ...guest, paxType: "A" })),
-      ...submittedRoom.children.map((guest) => ({ ...guest, paxType: "C" })),
+      ...children.map((guest) => ({ ...guest, paxType: "C" })),
     ],
   };
 };
@@ -160,7 +172,15 @@ const mapSupplierRooms = (roomGroups, submittedRooms, occupancies) => {
         );
       }
 
-      return getOccupancyGuestDetails(searchOccupancy, submittedRoom);
+      const pricingOccupancy = groupOccupancies.find(
+        (item) => Number(item.occupancyId) === Number(occupancy.occupancyId)
+      );
+
+      return getOccupancyGuestDetails(
+        searchOccupancy,
+        submittedRoom,
+        pricingOccupancy
+      );
     });
 
     return {
