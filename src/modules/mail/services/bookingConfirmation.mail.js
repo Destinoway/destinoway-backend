@@ -5,6 +5,7 @@ export const sendBookingConfirmationEmail = async ({
   email,
   customerName,
   bookingRefNo,
+  pnr,
   hotelName,
   hotelAddress,
   city,
@@ -21,6 +22,7 @@ export const sendBookingConfirmationEmail = async ({
   const html = bookingConfirmationTemplate({
     customerName,
     bookingRefNo,
+    pnr,
     hotelName,
     hotelAddress,
     city,

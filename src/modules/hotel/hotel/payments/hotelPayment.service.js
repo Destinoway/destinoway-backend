@@ -54,6 +54,7 @@ const emailHotelBookingConfirmation = async ({ booking, correlationId }) => {
       email: contact.email,
       customerName: [contact.firstName, contact.lastName].filter(Boolean).join(" "),
       bookingRefNo: emailBooking.bookingRefNo,
+      pnr: emailBooking.supplierBookingDetails?.crsPnr,
       hotelName: emailBooking.hotel?.name ?? "Hotel",
       hotelAddress: emailBooking.hotel?.address ?? "",
       city: emailBooking.hotel?.locationName ?? "",
