@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import transporter from "../../../../config/mailer.js";
 import { getEmailTemplate } from "../../../../utils/emailTemplateReader.js";
 import { findOrCreateAndMergeUser } from "../auth.service.js";
@@ -11,11 +12,22 @@ export const sendEmailOtpService = async (email) => {
   const otp = await sendOtp("email", normalizedEmail);
 
   const htmlTemplate = getEmailTemplate(otp);
+  const companyLogo = await readFile(
+    new URL("../../../mail/assets/destinoway-logo.png", import.meta.url),
+  );
 
   await transporter.sendMail({
     to: normalizedEmail,
-    subject: "Your OTP Code",
-    html: htmlTemplate
+    subject: "Verify your email | Destinoway",
+    html: htmlTemplate,
+    attachments: [
+      {
+        filename: "destinoway-logo.png",
+        content: companyLogo,
+        contentType: "image/png",
+        cid: "destinoway-logo",
+      },
+    ],
   });
 
   return true;
