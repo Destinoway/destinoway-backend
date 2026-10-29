@@ -14,6 +14,7 @@ export const sendBookingConfirmationEmail = async ({
   guests,
   amount,
   currency,
+  voucherNumber,
   pdfBuffer,
 }) => {
 
@@ -29,6 +30,7 @@ export const sendBookingConfirmationEmail = async ({
     guests,
     amount,
     currency,
+    voucherNumber,
   });
 
   await sendMail({

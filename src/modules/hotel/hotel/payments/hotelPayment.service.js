@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import HotelItinerary from "../itinerary/hotelItinerary.model.js";
 import PaymentGateway from "../../../gateways/models/paymentGateway.model.js";
 import HotelPaymentTransaction from "./models/hotelPaymentTransaction.model.js";
+import { sendBookingConfirmationEmail } from "../../../mail/services/bookingConfirmation.mail.js";
 import { createHotelPaymentGateway } from "./paymentGateway.factory.js";
 import { getAkbarStartPayResponseData, startAkbarHotelPay } from "./adapters/akbar/startPay.api.js";
 import {
@@ -28,6 +29,57 @@ const getError = (message, statusCode = 400) => {
 
 const logGatewayEvent = (level, event, fields) =>
   logHotelEvent(level, `hotel.payment.${event}`, fields);
+
+const emailHotelBookingConfirmation = async ({ booking, correlationId }) => {
+  const contact = booking.contactInfo ?? {};
+  if (!contact.email) {
+    logGatewayEvent("warn", "booking_confirmation_email.skipped", {
+      correlationId,
+      bookingId: String(booking._id),
+      reason: "guest_email_missing",
+    });
+    return;
+  }
+
+  try {
+    const latestBooking = await HotelItinerary.findById(booking._id)
+      .select("contactInfo hotel stay rooms price bookingRefNo supplierBookingDetails")
+      .lean();
+    const emailBooking = latestBooking ?? booking;
+    const guestNames = (emailBooking.rooms ?? [])
+      .flatMap((room) => [...(room.adults ?? []), ...(room.children ?? [])])
+      .map((guest) => [guest.firstName, guest.lastName].filter(Boolean).join(" "))
+      .filter(Boolean);
+    await sendBookingConfirmationEmail({
+      email: contact.email,
+      customerName: [contact.firstName, contact.lastName].filter(Boolean).join(" "),
+      bookingRefNo: emailBooking.bookingRefNo,
+      hotelName: emailBooking.hotel?.name ?? "Hotel",
+      hotelAddress: emailBooking.hotel?.address ?? "",
+      city: emailBooking.hotel?.locationName ?? "",
+      checkIn: emailBooking.stay?.checkIn ?? "",
+      checkOut: emailBooking.stay?.checkOut ?? "",
+      rooms: emailBooking.rooms?.length ?? 0,
+      guests: guestNames.join(", "),
+      amount: emailBooking.price?.total ?? 0,
+      currency: emailBooking.price?.currency ?? "INR",
+      voucherNumber: emailBooking.supplierBookingDetails?.voucherNumber,
+    });
+    logGatewayEvent("info", "booking_confirmation_email.sent", {
+      correlationId,
+      bookingId: String(booking._id),
+      bookingRefNo: emailBooking.bookingRefNo,
+    });
+  } catch (error) {
+    // Email delivery must not change a confirmed supplier booking to failed.
+    logGatewayEvent("error", "booking_confirmation_email.failed", {
+      correlationId,
+      bookingId: String(booking._id),
+      bookingRefNo: booking.bookingRefNo,
+      errorMessage: error.message,
+    });
+  }
+};
 
 const tracePaymentStep = (correlationId, step, fields, operation) =>
   traceHotelPaymentStep({ correlationId, step, fields, operation });
@@ -946,6 +998,10 @@ const startSupplierBooking = async ({
       () => Promise.all([claimedBooking.save(), transaction.save()])
     );
     await retrieveAndSaveAkbarBookingDetails({
+      booking: claimedBooking,
+      correlationId,
+    });
+    await emailHotelBookingConfirmation({
       booking: claimedBooking,
       correlationId,
     });

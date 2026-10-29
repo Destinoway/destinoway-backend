@@ -10,6 +10,7 @@ export const bookingConfirmationTemplate = ({
   guests,
   amount,
   currency = "INR",
+  voucherNumber,
 }) => {
   return `
 <!DOCTYPE html>
@@ -38,7 +39,7 @@ color:#fff;
 ">
 
 <h1 style="margin:0;">
-Pan Journey
+Destinoway
 </h1>
 
 <p style="margin-top:10px;font-size:18px;">
@@ -54,7 +55,7 @@ Your Hotel Booking is Confirmed 🎉
 <p>Hello <b>${customerName}</b>,</p>
 
 <p>
-Thank you for choosing <b>Pan Journey</b>.
+Thank you for choosing <b>Destinoway</b>.
 Your booking has been successfully confirmed.
 </p>
 
@@ -71,6 +72,8 @@ style="border-collapse:collapse;border:1px solid #ddd;">
 <td><b>Booking Reference</b></td>
 <td>${bookingRefNo}</td>
 </tr>
+
+${voucherNumber ? `<tr><td><b>Hotel Voucher</b></td><td>${voucherNumber}</td></tr>` : ""}
 
 <tr>
 <td><b>Hotel</b></td>
@@ -140,7 +143,7 @@ support@panjourney.com
 </p>
 
 <p>
-Thank you for choosing Pan Journey ❤️
+Thank you for choosing Destinoway ❤️
 </p>
 
 </td>
@@ -157,7 +160,7 @@ font-size:13px;
 color:#666;
 ">
 
-© ${new Date().getFullYear()} Pan Journey
+© ${new Date().getFullYear()} Destinoway
 
 </td>
 

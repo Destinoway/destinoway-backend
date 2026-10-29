@@ -22,7 +22,10 @@ const mapContactInfo = (contactInfo) => ({
   FName: contactInfo.firstName.trim(),
   LName: contactInfo.lastName.trim(),
   Mobile: contactInfo.mobile.trim(),
-  Email: contactInfo.email.trim(),
+  // Akbar sends booking vouchers and notifications to ContactInfo.Email.
+  // Route those messages to our inbox; the guest email is stored separately
+  // and used by our own booking confirmation email.
+  Email: "info@destinoway.com",
   Address: contactInfo.address.trim(),
   State: contactInfo.state.trim(),
   City: contactInfo.city.trim(),
