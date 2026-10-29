@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { sendMail } from "../mail-sender-helper/mail-helper.js";
 import { bookingConfirmationTemplate } from "../templates/bookingConfirmation.template.js";
 
@@ -18,6 +19,9 @@ export const sendBookingConfirmationEmail = async ({
   voucherNumber,
   pdfBuffer,
 }) => {
+  const companyLogo = await readFile(
+    new URL("../assets/destinoway-logo.png", import.meta.url),
+  );
 
   const html = bookingConfirmationTemplate({
     customerName,
@@ -39,13 +43,21 @@ export const sendBookingConfirmationEmail = async ({
     to: email,
     subject: `Booking Confirmed | ${bookingRefNo}`,
     html,
-    attachments: pdfBuffer
-      ? [
-          {
-            filename: `Invoice-${bookingRefNo}.pdf`,
-            content: pdfBuffer,
-          },
-        ]
-      : [],
+    attachments: [
+      {
+        filename: "destinoway-logo.png",
+        content: companyLogo,
+        contentType: "image/png",
+        cid: "destinoway-logo",
+      },
+      ...(pdfBuffer
+        ? [
+            {
+              filename: `Invoice-${bookingRefNo}.pdf`,
+              content: pdfBuffer,
+            },
+          ]
+        : []),
+    ],
   });
 };

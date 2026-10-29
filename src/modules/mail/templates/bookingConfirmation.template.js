@@ -65,9 +65,11 @@ export const bookingConfirmationTemplate = ({
   </head>
   <body style="margin:0;padding:16px 8px;background:#eef0f4;color:#17254f;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e8ef">
-      <tr><td style="padding:14px 20px;background:#fff4df;border-bottom:1px solid #e7d9bc">
-        <a href="https://destinoway.com" style="color:#17244c;font-size:22px;font-weight:bold;text-decoration:none">Destinoway</a>
-        <div style="float:right;padding-top:5px;color:#17254f;font-size:12px">Powering unforgettable stays across India</div>
+      <tr><td style="padding:10px 20px;background:#fff4df;border-bottom:1px solid #e7d9bc">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>
+          <td width="210" valign="middle"><img src="cid:destinoway-logo" width="190" height="64" alt="Destinoway" style="display:block;width:190px;height:64px;object-fit:contain;border:0" /></td>
+          <td align="right" valign="middle" style="color:#17254f;font-size:12px">Powering unforgettable stays across India</td>
+        </tr></table>
       </td></tr>
       <tr><td style="padding:20px">
         <p style="font-size:16px;font-weight:bold;margin:0 0 8px">Hi ${safeName},</p>
