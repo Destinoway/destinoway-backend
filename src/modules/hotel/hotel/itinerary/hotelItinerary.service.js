@@ -471,23 +471,6 @@ export const createHotelItinerary = async ({
 
   try {
     const correlationId = String(booking._id);
-    logHotelEvent("info", "hotel.booking.itinerary_started", {
-      correlationId,
-      bookingId: correlationId,
-      searchId: search.internalSearchId,
-      supplier: "AKBAR",
-    });
-    logHotelEvent(
-      "info",
-      "hotel.booking.supplier_request_summary",
-      {
-        correlationId,
-        bookingId: correlationId,
-        searchId: search.internalSearchId,
-        supplier: "AKBAR",
-        ...summarizeItineraryRequest(supplierRequest),
-      }
-    );
     const supplierResponse = await createAkbarHotelItineraryAPI({
       payload: supplierRequest,
       searchTracingKey: search.searchTracingKey,
@@ -514,15 +497,6 @@ export const createHotelItinerary = async ({
       booking.itineraryResponse = supplierResponse;
       booking.itineraryError = itineraryError;
       await booking.save();
-      logHotelEvent("error", "hotel.booking.final_state", {
-        correlationId,
-        bookingId: correlationId,
-        searchId: search.internalSearchId,
-        supplier: "AKBAR",
-        finalState: "failed",
-        supplierCode: supplierCode ?? null,
-        supplierMessage: supplierMessage || null,
-      });
       throw getError(itineraryError, 502);
     }
 
@@ -530,14 +504,6 @@ export const createHotelItinerary = async ({
     booking.itineraryStatus = "created";
     booking.itineraryResponse = supplierResponse;
     await booking.save();
-    logHotelEvent("info", "hotel.booking.final_state", {
-      correlationId,
-      bookingId: correlationId,
-      searchId: search.internalSearchId,
-      supplier: "AKBAR",
-      finalState: "created",
-      supplierCode: supplierCode ?? null,
-    });
 
     return {
       bookingRefNo: booking.bookingRefNo,
@@ -590,15 +556,6 @@ export const createHotelItinerary = async ({
       booking.itineraryStatus = "failed";
       booking.itineraryError = error.message;
       await booking.save();
-      logHotelEvent("error", "hotel.booking.final_state", {
-        correlationId: String(booking._id),
-        bookingId: String(booking._id),
-        searchId: search.internalSearchId,
-        supplier: "AKBAR",
-        finalState: "failed",
-        errorCode: error.code ?? null,
-        errorMessage: error.message,
-      });
     }
 
     if (error.statusCode) {

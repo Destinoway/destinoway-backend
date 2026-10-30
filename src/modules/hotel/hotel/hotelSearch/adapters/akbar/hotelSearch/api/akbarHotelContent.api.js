@@ -43,12 +43,6 @@ export const akbarHotelContentAPI = async ({
       const active = await shouldContinue();
 
       if (!active) {
-        logHotelEvent("info", "hotel.search.cancelled", {
-          correlationId,
-          supplier: "AKBAR",
-          operation: "search_content",
-          attempt,
-        });
         return null;
       }
     }
@@ -56,14 +50,6 @@ export const akbarHotelContentAPI = async ({
     const token = await getAKBARToken();
     const apiStart = performance.now();
 
-    logHotelEvent("info", "hotel.supplier_request.started", {
-      correlationId,
-      supplier: "AKBAR",
-      operation: "search_content",
-      attempt,
-      limit,
-      offset,
-    });
 
     try {
       const response = await axios.get(url, {
@@ -90,20 +76,6 @@ export const akbarHotelContentAPI = async ({
 
       const elapsed = performance.now() - apiStart;
 
-      logHotelEvent("info", "hotel.supplier_request.completed", {
-        correlationId,
-        supplier: "AKBAR",
-        operation: "search_content",
-        attempt,
-        limit,
-        offset,
-        httpStatus: response.status,
-        durationMs: Math.round(elapsed),
-        supplierStatus: data?.searchStatus ?? data?.status ?? null,
-        hotelCount: hotels.length,
-        total,
-        ...getSupplierResponseSummary(data),
-      });
 
       if (isFailureResponse(data)) {
         throw new Error(
@@ -120,25 +92,9 @@ export const akbarHotelContentAPI = async ({
         return data;
       }
 
-      console.log(
-        "⏳ AKBAR CONTENT EMPTY ON FIRST PAGE. RETRYING..."
-      );
 
       await sleep(1000);
     } catch (error) {
-      logHotelEvent("error", "hotel.supplier_request.failed", {
-        correlationId,
-        supplier: "AKBAR",
-        operation: "search_content",
-        attempt,
-        limit,
-        offset,
-        httpStatus: error.response?.status ?? null,
-        durationMs: Math.round(performance.now() - apiStart),
-        errorCode: error.code ?? null,
-        errorMessage: error.message,
-        ...getSupplierResponseSummary(error.response?.data),
-      });
 
       throw error;
     }

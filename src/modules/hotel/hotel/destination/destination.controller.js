@@ -18,7 +18,6 @@ export const searchDestination = async (req, res) => {
       data,
     });
   } catch (error) {
-    console.error("Destination Search Error:", error);
 
     return res.status(500).json({
       success: false,

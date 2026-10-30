@@ -126,7 +126,6 @@ export const getAllMarkups = async (req, res) => {
       },
     );
   } catch (err) {
-    console.error(err);
 
     return sendError(res, "Failed to fetch markups", 500, err.message);
   }

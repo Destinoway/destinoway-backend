@@ -18,13 +18,6 @@ export const hotelRoomsAPI = async ({
     `/api/hotels/search/result/${supplierSearchId}/${encodeURIComponent(hotelId)}/rooms`;
 
   const startedAt = performance.now();
-  logHotelEvent("info", "hotel.supplier_request.started", {
-    correlationId,
-    supplier: "AKBAR",
-    operation: "hotel_rooms",
-    supplierSearchId,
-    hotelId,
-  });
 
   let response;
   try {
@@ -38,30 +31,8 @@ export const hotelRoomsAPI = async ({
     timeout: 60000,
     });
   } catch (error) {
-    logHotelEvent("error", "hotel.supplier_request.failed", {
-      correlationId,
-      supplier: "AKBAR",
-      operation: "hotel_rooms",
-      supplierSearchId,
-      hotelId,
-      httpStatus: error.response?.status ?? null,
-      durationMs: Math.round(performance.now() - startedAt),
-      errorCode: error.code ?? null,
-      errorMessage: error.message,
-      ...getSupplierResponseSummary(error.response?.data),
-    });
     throw error;
   }
 
-  logHotelEvent("info", "hotel.supplier_request.completed", {
-    correlationId,
-    supplier: "AKBAR",
-    operation: "hotel_rooms",
-    supplierSearchId,
-    hotelId,
-    httpStatus: response.status,
-    durationMs: Math.round(performance.now() - startedAt),
-    ...getSupplierResponseSummary(response.data),
-  });
   return response.data;
 };

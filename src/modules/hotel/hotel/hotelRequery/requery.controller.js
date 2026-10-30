@@ -39,10 +39,6 @@ export const cancelHotelBookingController = async (req, res) => {
   const correlationId = randomUUID();
   const bookingRefNo = String(req.params.bookingRefNo);
   try {
-    logHotelEvent("info", "hotel.booking.cancellation.request_started", {
-      correlationId,
-      bookingRefNo,
-    });
     const data = await cancelHotelBooking({
       bookingRefNo,
       userId: req.user._id,
@@ -58,13 +54,6 @@ export const cancelHotelBookingController = async (req, res) => {
       200
     );
   } catch (error) {
-    logHotelEvent("error", "hotel.booking.cancellation.request_failed", {
-      correlationId,
-      bookingRefNo,
-      statusCode: error.statusCode ?? null,
-      errorCode: error.code ?? null,
-      errorMessage: error.message,
-    });
     return sendError(res, error.message, error.statusCode ?? 500);
   }
 };

@@ -16,7 +16,6 @@ export const hotelPriceVerifyController = async (req, res) => {
       meta: null,
     });
   } catch (error) {
-    console.error("Hotel price verification error:", error.message);
 
     return res.status(error.statusCode || 500).json({
       success: false,

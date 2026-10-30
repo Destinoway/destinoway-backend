@@ -18,24 +18,12 @@ const sendError = (res, message, statusCode) =>
 
 export const createHotelPaymentOrderController = async (req, res, next) => {
   const correlationId = randomUUID();
-  logHotelEvent("info", "hotel.payment.request.started", {
-    correlationId,
-    operation: "create_order",
-    bookingRefNo: String(req.params.bookingRefNo),
-  });
   try {
     const data = await createHotelPaymentOrder({
       bookingRefNo: req.params.bookingRefNo,
       gateway: req.body.gateway,
       userId: req.user._id ?? req.user.id,
       correlationId,
-    });
-    logHotelEvent("info", "hotel.payment.request.completed", {
-      correlationId,
-      operation: "create_order",
-      bookingRefNo: String(req.params.bookingRefNo),
-      transactionId: data.transactionId,
-      gateway: data.gateway,
     });
     return res.status(201).json({
       success: true,
@@ -44,25 +32,12 @@ export const createHotelPaymentOrderController = async (req, res, next) => {
       meta: null,
     });
   } catch (error) {
-    logHotelEvent("error", "hotel.payment.request.failed", {
-      correlationId,
-      operation: "create_order",
-      bookingRefNo: String(req.params.bookingRefNo),
-      errorCode: error.code ?? null,
-      statusCode: error.statusCode ?? null,
-      errorMessage: error.message,
-    });
     return next(error);
   }
 };
 
 export const verifyHotelPaymentController = async (req, res, next) => {
   const correlationId = randomUUID();
-  logHotelEvent("info", "hotel.payment.request.started", {
-    correlationId,
-    operation: "verify_payment",
-    transactionId: req.body.transactionId ?? null,
-  });
   try {
     const data = await verifyHotelPayment({
       transactionId: req.body.transactionId,
@@ -72,14 +47,6 @@ export const verifyHotelPaymentController = async (req, res, next) => {
       gatewayName: req.body.gateway,
       userId: req.user._id ?? req.user.id,
       correlationId,
-    });
-    logHotelEvent("info", "hotel.payment.request.completed", {
-      correlationId,
-      operation: "verify_payment",
-      bookingRefNo: data.bookingRefNo,
-      transactionId: data.paymentTransactionId,
-      gateway: data.gateway,
-      supplierBookingStatus: data.supplierBookingStatus,
     });
     return res.status(200).json({
       success: true,
@@ -91,38 +58,17 @@ export const verifyHotelPaymentController = async (req, res, next) => {
       meta: null,
     });
   } catch (error) {
-    logHotelEvent("error", "hotel.payment.request.failed", {
-      correlationId,
-      operation: "verify_payment",
-      transactionId: req.body.transactionId ?? null,
-      errorCode: error.code ?? null,
-      statusCode: error.statusCode ?? null,
-      errorMessage: error.message,
-    });
     return next(error);
   }
 };
 
 export const hotelPaymentStatusController = async (req, res, next) => {
   const correlationId = randomUUID();
-  logHotelEvent("info", "hotel.payment.request.started", {
-    correlationId,
-    operation: "payment_status",
-    bookingRefNo: String(req.params.bookingRefNo),
-  });
   try {
     const data = await getHotelPaymentStatus({
       bookingRefNo: req.params.bookingRefNo,
       userId: req.user._id ?? req.user.id,
       correlationId,
-    });
-    logHotelEvent("info", "hotel.payment.request.completed", {
-      correlationId,
-      operation: "payment_status",
-      bookingRefNo: data.bookingRefNo,
-      transactionId: data.paymentTransactionId,
-      paymentStatus: data.paymentStatus,
-      supplierBookingStatus: data.supplierBookingStatus,
     });
     return res.status(200).json({
       success: true,
@@ -131,14 +77,6 @@ export const hotelPaymentStatusController = async (req, res, next) => {
       meta: null,
     });
   } catch (error) {
-    logHotelEvent("error", "hotel.payment.request.failed", {
-      correlationId,
-      operation: "payment_status",
-      bookingRefNo: String(req.params.bookingRefNo),
-      errorCode: error.code ?? null,
-      statusCode: error.statusCode ?? null,
-      errorMessage: error.message,
-    });
     return next(error);
   }
 };
@@ -177,16 +115,8 @@ const verifyRazorpayWebhook = (body, signature) => {
 
 export const razorpayHotelWebhookController = async (req, res) => {
   const correlationId = randomUUID();
-  logHotelEvent("info", "hotel.payment.webhook.started", {
-    correlationId,
-    gateway: "razorpay",
-  });
   try {
     if (!verifyRazorpayWebhook(req.rawBody, req.get("x-razorpay-signature"))) {
-      logHotelEvent("error", "hotel.payment.webhook.signature_rejected", {
-        correlationId,
-        gateway: "razorpay",
-      });
       return sendError(res, "Invalid Razorpay webhook signature", 400);
     }
     const event = parseWebhookBody(req.rawBody);
@@ -217,29 +147,14 @@ export const razorpayHotelWebhookController = async (req, res) => {
         correlationId,
       });
     }
-    logHotelEvent("info", "hotel.payment.webhook.completed", {
-      correlationId,
-      gateway: "razorpay",
-      eventType: event.event ?? null,
-    });
     return res.status(200).json({ success: true });
   } catch (error) {
-    logHotelEvent("error", "hotel.payment.webhook.failed", {
-      correlationId,
-      gateway: "razorpay",
-      errorCode: error.code ?? null,
-      errorMessage: error.message,
-    });
     return sendError(res, error.message, error.statusCode ?? 500);
   }
 };
 
 export const stripeHotelWebhookController = async (req, res) => {
   const correlationId = randomUUID();
-  logHotelEvent("info", "hotel.payment.webhook.started", {
-    correlationId,
-    gateway: "stripe",
-  });
   try {
     const secret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!secret) {
@@ -260,10 +175,6 @@ export const stripeHotelWebhookController = async (req, res) => {
         secret
       );
     } catch {
-      logHotelEvent("error", "hotel.payment.webhook.signature_rejected", {
-        correlationId,
-        gateway: "stripe",
-      });
       return sendError(res, "Invalid Stripe webhook signature", 400);
     }
     if (event.type === "payment_intent.succeeded") {
@@ -290,19 +201,8 @@ export const stripeHotelWebhookController = async (req, res) => {
         });
       }
     }
-    logHotelEvent("info", "hotel.payment.webhook.completed", {
-      correlationId,
-      gateway: "stripe",
-      eventType: event.type,
-    });
     return res.status(200).json({ success: true });
   } catch (error) {
-    logHotelEvent("error", "hotel.payment.webhook.failed", {
-      correlationId,
-      gateway: "stripe",
-      errorCode: error.code ?? null,
-      errorMessage: error.message,
-    });
     return sendError(res, error.message, error.statusCode ?? 500);
   }
 };

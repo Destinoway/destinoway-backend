@@ -46,7 +46,6 @@ export const getAllSupport = async (req, res) => {
 
 export const getSingleSupport = async (req, res) => {
   try {
-    console.log(req.params); 
     // should print { supportType: 'contact_us' }
 
     const result = await getSingleSupportService(

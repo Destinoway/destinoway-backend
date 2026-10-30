@@ -31,10 +31,6 @@ export const subscribeNewsletter = async (req, res) => {
         html: newsletterSubscriptionTemplate(),
       });
     } catch (mailError) {
-      console.error(
-        "Newsletter confirmation email failed:",
-        mailError.message
-      );
     }
 
     return sendSuccess(

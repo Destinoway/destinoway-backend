@@ -1,55 +1,7 @@
-export const logHotelEvent = (level, event, fields = {}) => {
-  const entry = {
-    timestamp: new Date().toISOString(),
-    level,
-    event,
-    ...fields,
-  };
+export const logHotelEvent = () => {};
 
-  const write = console[level] ?? console.log;
-  write(JSON.stringify(entry));
-};
-
-export const traceHotelPaymentStep = async ({
-  correlationId,
-  step,
-  fields = {},
-  operation,
-}) => {
-  const startedAt = performance.now();
-  const traceFields = {
-    correlationId,
-    flow: "hotel_payment",
-    step,
-    ...fields,
-  };
-
-  logHotelEvent("info", "hotel.payment.trace", {
-    ...traceFields,
-    phase: "started",
-  });
-
-  try {
-    const result = await operation();
-    logHotelEvent("info", "hotel.payment.trace", {
-      ...traceFields,
-      phase: "completed",
-      durationMs: Math.round(performance.now() - startedAt),
-    });
-    return result;
-  } catch (error) {
-    logHotelEvent("error", "hotel.payment.trace", {
-      ...traceFields,
-      phase: "failed",
-      durationMs: Math.round(performance.now() - startedAt),
-      errorName: error.name,
-      errorCode: error.code ?? null,
-      httpStatus: error.response?.status ?? null,
-      statusCode: error.statusCode ?? null,
-    });
-    throw error;
-  }
-};
+// Keep the wrapper API for callers while running the operation without emitting logs.
+export const traceHotelPaymentStep = ({ operation }) => operation();
 
 export const maskSupplierTracingKey = (value) => {
   if (typeof value !== "string" || value.length === 0) {

@@ -59,20 +59,8 @@ export { redisConnectionInfo };
 const redisClient = createClient(redisOptions);
 
 redisClient.on("error", (err) => {
-  console.log("Redis Error:", err);
 });
 
-console.info(
-  JSON.stringify({
-    timestamp: new Date().toISOString(),
-    level: "info",
-    event: "redis.connection.configured",
-    processId: process.pid,
-    nodeEnv: process.env.NODE_ENV ?? null,
-    ...redisConnectionInfo,
-    authenticationConfigured,
-  })
-);
 
 await redisClient.connect();
 

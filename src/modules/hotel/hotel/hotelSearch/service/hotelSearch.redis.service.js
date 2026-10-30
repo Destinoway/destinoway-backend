@@ -329,9 +329,6 @@ export const cancelAndDeleteHotelSearch = async (
     getResultsKey(searchId)
   );
 
-  console.log(
-    `🗑️ HOTEL SEARCH CANCELLED: ${searchId}`
-  );
 };
 
 // =========================================================

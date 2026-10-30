@@ -38,12 +38,6 @@ export const akbarHotelRateAPIWithPolling = async (
 
   let attempt = 0;
 
-  logHotelEvent("info", "hotel.search.polling.started", {
-    correlationId,
-    supplier: "AKBAR",
-    operation: "search_rate",
-    supplierSearchId: searchId,
-  });
 
 
   // =========================================================
@@ -62,13 +56,6 @@ export const akbarHotelRateAPIWithPolling = async (
       const active = await shouldContinue();
 
       if (!active) {
-        logHotelEvent("info", "hotel.search.polling.cancelled", {
-          correlationId,
-          supplier: "AKBAR",
-          operation: "search_rate",
-          supplierSearchId: searchId,
-          attempts: attempt,
-        });
 
         return null;
       }
@@ -91,13 +78,6 @@ export const akbarHotelRateAPIWithPolling = async (
       // POLLING ATTEMPT
       // =====================================================
 
-      logHotelEvent("info", "hotel.supplier_request.started", {
-        correlationId,
-        supplier: "AKBAR",
-        operation: "search_rate",
-        supplierSearchId: searchId,
-        attempt,
-      });
 
 
       // =====================================================
@@ -148,20 +128,6 @@ export const akbarHotelRateAPIWithPolling = async (
       // LOG RESPONSE SUMMARY
       // =====================================================
 
-      logHotelEvent("info", "hotel.supplier_request.completed", {
-        correlationId,
-        supplier: "AKBAR",
-        operation: "search_rate",
-        supplierSearchId: searchId,
-        attempt,
-        httpStatus: response.status,
-        durationMs: Math.round(performance.now() - requestStart),
-        attemptDurationMs: Math.round(elapsed),
-        supplierStatus: data?.searchStatus ?? data?.status ?? null,
-        hotelCount: data?.hotels?.length ?? 0,
-        total: data?.total ?? 0,
-        ...getSupplierResponseSummary(data),
-      });
 
 
       // =====================================================
@@ -204,16 +170,6 @@ export const akbarHotelRateAPIWithPolling = async (
         searchStatus === "completed"
       ) {
 
-        logHotelEvent("info", "hotel.search.polling.completed", {
-          correlationId,
-          supplier: "AKBAR",
-          operation: "search_rate",
-          supplierSearchId: searchId,
-          attempts: attempt,
-          supplierStatus: data?.searchStatus ?? data?.status ?? null,
-          hotelCount: data?.hotels?.length ?? 0,
-          total: data?.total ?? 0,
-        });
 
         return data;
       }
@@ -253,15 +209,6 @@ export const akbarHotelRateAPIWithPolling = async (
         responseStatus === "error"
       ) {
 
-        logHotelEvent("error", "hotel.search.polling.failed", {
-          correlationId,
-          supplier: "AKBAR",
-          operation: "search_rate",
-          supplierSearchId: searchId,
-          attempts: attempt,
-          supplierStatus: data?.searchStatus ?? data?.status ?? null,
-          ...getSupplierResponseSummary(data),
-        });
 
         throw new Error(
           `AKBAR rate search failed: ${
@@ -277,15 +224,7 @@ export const akbarHotelRateAPIWithPolling = async (
       // STILL IN PROGRESS
       // =====================================================
 
-      console.log(
-        "⏳ RATE STILL IN PROGRESS"
-      );
 
-      console.log(
-        `⏳ Waiting 1 second before attempt #${
-          attempt + 1
-        }`
-      );
 
 
       // =====================================================
@@ -300,18 +239,6 @@ export const akbarHotelRateAPIWithPolling = async (
       // AXIOS / TOKEN / API ERROR
       // =====================================================
 
-      logHotelEvent("error", "hotel.supplier_request.failed", {
-        correlationId,
-        supplier: "AKBAR",
-        operation: "search_rate",
-        supplierSearchId: searchId,
-        attempt,
-        httpStatus: error.response?.status ?? null,
-        durationMs: Math.round(performance.now() - start),
-        errorCode: error.code ?? null,
-        errorMessage: error.message,
-        ...getSupplierResponseSummary(error.response?.data),
-      });
 
 
       // =====================================================

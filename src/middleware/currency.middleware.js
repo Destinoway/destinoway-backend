@@ -28,10 +28,6 @@ export const currencyMiddleware = (req, res, next) => {
 
   req.currency = currency;
   req.currencySource = currencySource;
-  console.log("Header:", req.headers.currency);
-console.log("IP Currency:", detectCurrencyFromIP(req));
-console.log("Final Currency:", req.currency);
-console.log("Source:", req.currencySource);
 
   next();
 };

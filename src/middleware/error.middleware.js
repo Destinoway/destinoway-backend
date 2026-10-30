@@ -1,7 +1,6 @@
 import { sendError } from "../utils/response/ApiResponse.js";
 
 export const errorHandler = (err, req, res, next) => {
-  console.error("❌ Error:", err);
 
   if (err.name === "CastError") {
     return sendError(res, "Invalid ID format", 400);

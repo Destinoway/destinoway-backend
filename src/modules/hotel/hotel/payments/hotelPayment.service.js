@@ -27,17 +27,11 @@ const getError = (message, statusCode = 400) => {
   return error;
 };
 
-const logGatewayEvent = (level, event, fields) =>
-  logHotelEvent(level, `hotel.payment.${event}`, fields);
+const logGatewayEvent = () => {};
 
 const emailHotelBookingConfirmation = async ({ booking, correlationId }) => {
   const contact = booking.contactInfo ?? {};
   if (!contact.email) {
-    logGatewayEvent("warn", "booking_confirmation_email.skipped", {
-      correlationId,
-      bookingId: String(booking._id),
-      reason: "guest_email_missing",
-    });
     return;
   }
 
@@ -66,19 +60,8 @@ const emailHotelBookingConfirmation = async ({ booking, correlationId }) => {
       currency: emailBooking.price?.currency ?? "INR",
       voucherNumber: emailBooking.supplierBookingDetails?.voucherNumber,
     });
-    logGatewayEvent("info", "booking_confirmation_email.sent", {
-      correlationId,
-      bookingId: String(booking._id),
-      bookingRefNo: emailBooking.bookingRefNo,
-    });
   } catch (error) {
     // Email delivery must not change a confirmed supplier booking to failed.
-    logGatewayEvent("error", "booking_confirmation_email.failed", {
-      correlationId,
-      bookingId: String(booking._id),
-      bookingRefNo: booking.bookingRefNo,
-      errorMessage: error.message,
-    });
   }
 };
 
@@ -226,12 +209,6 @@ export const createHotelPaymentOrder = async ({
         409
       );
     }
-    logGatewayEvent("info", "order.reused", {
-      correlationId: String(booking._id),
-      bookingId: String(booking._id),
-      transactionId: existing.transactionId,
-      gateway: existing.gateway,
-    });
     return tracePaymentStep(
       correlationId,
       "order.rebuild_checkout_response",
@@ -277,14 +254,6 @@ export const createHotelPaymentOrder = async ({
   }
 
   const transactionId = randomUUID();
-  logGatewayEvent("info", "order.started", {
-    correlationId,
-    bookingId: String(booking._id),
-    transactionId,
-    gateway: gatewayName,
-    amount,
-    currency,
-  });
   const startedAt = performance.now();
 
   try {
@@ -326,16 +295,6 @@ export const createHotelPaymentOrder = async ({
       () => lock.save()
     );
 
-    logGatewayEvent("info", "order.completed", {
-      correlationId,
-      bookingId: String(booking._id),
-      transactionId,
-      gateway: gatewayName,
-      amount,
-      currency,
-      durationMs: Math.round(performance.now() - startedAt),
-      gatewayOrderId: order.gatewayOrderId,
-    });
     return {
       bookingRefNo: booking.bookingRefNo,
       transactionId,
@@ -351,17 +310,6 @@ export const createHotelPaymentOrder = async ({
       { bookingId: correlationId, gateway: gatewayName, transactionId },
       () => lock.save()
     );
-    logGatewayEvent("error", "order.failed", {
-      correlationId,
-      bookingId: String(booking._id),
-      transactionId,
-      gateway: gatewayName,
-      amount,
-      currency,
-      durationMs: Math.round(performance.now() - startedAt),
-      errorCode: error.code ?? null,
-      errorMessage: error.message,
-    });
     throw error;
   }
 };
@@ -421,14 +369,6 @@ const issueCustomerRefund = async ({ booking, transaction, correlationId }) => {
       },
       () => Promise.all([booking.save(), transaction.save()])
     );
-    logGatewayEvent("info", "refund.completed", {
-      correlationId,
-      bookingId: String(booking._id),
-      transactionId: transaction.transactionId,
-      gateway: transaction.gateway,
-      refundStatus: refund.status ?? "pending",
-      durationMs: Math.round(performance.now() - startedAt),
-    });
   } catch (error) {
     transaction.lastError = error.message;
     await tracePaymentStep(
@@ -441,15 +381,6 @@ const issueCustomerRefund = async ({ booking, transaction, correlationId }) => {
       },
       () => Promise.all([transaction.save(), booking.save()])
     );
-    logGatewayEvent("error", "refund.failed", {
-      correlationId,
-      bookingId: String(booking._id),
-      transactionId: transaction.transactionId,
-      gateway: transaction.gateway,
-      durationMs: Math.round(performance.now() - startedAt),
-      errorCode: error.code ?? null,
-      errorMessage: error.message,
-    });
   }
 };
 
@@ -488,13 +419,6 @@ const retrieveAndSaveAkbarBookingDetails = async ({
 
     const retrievedFields = getAkbarRetrievedBookingFields(response);
     if (Object.keys(retrievedFields).length === 0) {
-      logGatewayEvent("error", "supplier_booking.retrieve_details_unrecognized", {
-        correlationId,
-        bookingId: String(booking._id),
-        transactionId: String(booking.transactionId),
-        supplier: "AKBAR",
-        ...getSupplierResponseSummary(response),
-      });
       return;
     }
 
@@ -544,24 +468,7 @@ const retrieveAndSaveAkbarBookingDetails = async ({
         return fieldsPresent;
       }
     );
-    logGatewayEvent("info", "supplier_booking.details_retrieved", {
-      correlationId,
-      bookingId: String(booking._id),
-      transactionId: String(booking.transactionId),
-      supplier: "AKBAR",
-      fieldsSaved: Object.keys(retrievedFields),
-    });
   } catch (error) {
-    logGatewayEvent("error", "supplier_booking.retrieve_details_failed", {
-      correlationId,
-      bookingId: String(booking._id),
-      transactionId: String(booking.transactionId),
-      supplier: "AKBAR",
-      bookingRemainsConfirmed: booking.supplierBookingStatus === "confirmed",
-      httpStatus: error.response?.status ?? null,
-      errorCode: error.code ?? null,
-      errorMessage: error.message,
-    });
   }
 };
 
@@ -774,19 +681,6 @@ export const cancelHotelBooking = async ({
           { new: true, runValidators: true }
         )
     );
-    logGatewayEvent(
-      cancelled ? "info" : finalStatus === "failed" ? "error" : "warn",
-      `cancellation.${finalStatus}`,
-      {
-        correlationId,
-        bookingId: String(claimedBooking._id),
-        transactionId: String(claimedBooking.transactionId),
-        supplier: "AKBAR",
-        supplierCode: supplierCode ?? null,
-        supplierMessage,
-        cancellationId: cancellationId ? String(cancellationId) : null,
-      }
-    );
     return {
       bookingRefNo: claimedBooking.bookingRefNo ?? null,
       cancellationStatus: finalStatus,
@@ -824,16 +718,6 @@ export const cancelHotelBooking = async ({
           { runValidators: true }
         )
     );
-    logGatewayEvent("error", `cancellation.${finalStatus}`, {
-      correlationId,
-      bookingId: String(claimedBooking._id),
-      transactionId: String(claimedBooking.transactionId),
-      supplier: "AKBAR",
-      httpStatus: error.response?.status ?? null,
-      errorCode: error.code ?? null,
-      errorMessage: error.message,
-      requestMayHaveReachedSupplier,
-    });
     throw error;
   }
 };
@@ -887,13 +771,6 @@ const startSupplierBooking = async ({
     },
     () => transaction.save()
   );
-  logGatewayEvent("info", "supplier_booking.started", {
-    correlationId,
-    bookingId: String(booking._id),
-    transactionId: transaction.transactionId,
-    gateway: transaction.gateway,
-    supplier: "AKBAR",
-  });
 
   const startedAt = performance.now();
   try {
@@ -934,15 +811,6 @@ const startSupplierBooking = async ({
         },
         () => Promise.all([claimedBooking.save(), transaction.save()])
       );
-      logGatewayEvent("error", "supplier_booking.response_unrecognized", {
-        correlationId,
-        bookingId: String(booking._id),
-        transactionId: transaction.transactionId,
-        gateway: transaction.gateway,
-        supplier: "AKBAR",
-        durationMs: Math.round(performance.now() - startedAt),
-        ...getSupplierResponseSummary(supplierResponse),
-      });
       return getPaymentState(claimedBooking, transaction);
     }
 
@@ -962,16 +830,6 @@ const startSupplierBooking = async ({
         },
         () => Promise.all([claimedBooking.save(), transaction.save()])
       );
-      logGatewayEvent("error", "supplier_booking.rejected", {
-        correlationId,
-        bookingId: String(booking._id),
-        transactionId: transaction.transactionId,
-        gateway: transaction.gateway,
-        supplier: "AKBAR",
-        supplierCode: supplierCode ?? null,
-        supplierMessage,
-        durationMs: Math.round(performance.now() - startedAt),
-      });
       await issueCustomerRefund({ booking: claimedBooking, transaction, correlationId });
       return getPaymentState(claimedBooking, transaction);
     }
@@ -1006,17 +864,6 @@ const startSupplierBooking = async ({
       booking: claimedBooking,
       correlationId,
     });
-    logGatewayEvent("info", "supplier_booking.confirmed", {
-      correlationId,
-      bookingId: String(booking._id),
-      transactionId: transaction.transactionId,
-      gateway: transaction.gateway,
-      supplier: "AKBAR",
-      supplierCode,
-      bookStatus: supplierData.BookStatus ?? null,
-      hasCrsPnr: Boolean(supplierData.CRSPNR),
-      durationMs: Math.round(performance.now() - startedAt),
-    });
     return getPaymentState(claimedBooking, transaction);
   } catch (error) {
     const supplierFailureIsDefinitive =
@@ -1038,18 +885,6 @@ const startSupplierBooking = async ({
       },
       () => Promise.all([claimedBooking.save(), transaction.save()])
     );
-    logGatewayEvent("error", "supplier_booking.failed", {
-      correlationId,
-      bookingId: String(booking._id),
-      transactionId: transaction.transactionId,
-      gateway: transaction.gateway,
-      supplier: "AKBAR",
-      finalState: claimedBooking.supplierBookingStatus,
-      httpStatus: error.response?.status ?? null,
-      durationMs: Math.round(performance.now() - startedAt),
-      errorCode: error.code ?? null,
-      errorMessage: error.message,
-    });
     if (supplierFailureIsDefinitive) {
       await issueCustomerRefund({ booking: claimedBooking, transaction, correlationId });
     }
@@ -1163,13 +998,6 @@ export const verifyHotelPayment = async ({
     throw getError("Payment order does not match this transaction", 400);
   }
 
-  logGatewayEvent("info", "verification.started", {
-    correlationId,
-    bookingId: String(transaction.bookingId),
-    transactionId,
-    gateway: transaction.gateway,
-    gatewayOrderId: transaction.gatewayOrderId,
-  });
   const startedAt = performance.now();
   try {
     const gateway = createHotelPaymentGateway(transaction.gateway);
@@ -1192,24 +1020,8 @@ export const verifyHotelPayment = async ({
         })
     );
     if (!verification.success) {
-      logGatewayEvent("error", "verification.rejected", {
-        correlationId,
-        bookingId: String(transaction.bookingId),
-        transactionId,
-        gateway: transaction.gateway,
-        durationMs: Math.round(performance.now() - startedAt),
-        reason: verification.reason,
-      });
       throw getError(verification.reason, 400);
     }
-    logGatewayEvent("info", "verification.completed", {
-      correlationId,
-      bookingId: String(transaction.bookingId),
-      transactionId,
-      gateway: transaction.gateway,
-      durationMs: Math.round(performance.now() - startedAt),
-      paymentCaptured: true,
-    });
     return recordCapturedPayment({
       transaction,
       gatewayPaymentId: verification.gatewayPaymentId,
@@ -1217,15 +1029,6 @@ export const verifyHotelPayment = async ({
     });
   } catch (error) {
     if (error.statusCode === 400) throw error;
-    logGatewayEvent("error", "verification.failed", {
-      correlationId,
-      bookingId: String(transaction.bookingId),
-      transactionId,
-      gateway: transaction.gateway,
-      durationMs: Math.round(performance.now() - startedAt),
-      errorCode: error.code ?? null,
-      errorMessage: error.message,
-    });
     throw error;
   }
 };
@@ -1339,11 +1142,4 @@ export const handleHotelPaymentRefundWebhook = async ({
       });
     }
   );
-  logGatewayEvent("info", "refund.webhook_processed", {
-    correlationId,
-    bookingId: String(transaction.bookingId),
-    transactionId: transaction.transactionId,
-    gateway: gatewayName,
-    refundStatus,
-  });
 };

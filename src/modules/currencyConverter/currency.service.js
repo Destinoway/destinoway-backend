@@ -28,7 +28,6 @@ export const getCurrencyRate = async ({ from = "INR", to = "USD" }) => {
     ================================= */
 
     if (isValid && existingRate?.rates?.[to]) {
-      console.log("⚡ USING CACHED RATE");
 
       return existingRate.rates[to];
     }
@@ -37,7 +36,6 @@ export const getCurrencyRate = async ({ from = "INR", to = "USD" }) => {
        FETCH FROM API
     ================================= */
 
-    console.log("🌍 FETCHING NEW RATES");
 
     const url = `https://v6.exchangerate-api.com/v6/${process.env.EXCHANGE_RATE_API_KEY}/latest/${from}`;
 
@@ -69,11 +67,9 @@ export const getCurrencyRate = async ({ from = "INR", to = "USD" }) => {
       },
     );
 
-    console.log("💾 CURRENCY RATES SAVED");
 
     return rates[to];
   } catch (error) {
-    console.log("❌ Currency Error:", error.message);
 
     // fallback old cache
     const existingRate = await CurrencyRate.findOne({
@@ -81,7 +77,6 @@ export const getCurrencyRate = async ({ from = "INR", to = "USD" }) => {
     });
 
     if (existingRate?.rates?.[to]) {
-      console.log("⚠ USING OLD CACHE");
 
       return existingRate.rates[to];
     }

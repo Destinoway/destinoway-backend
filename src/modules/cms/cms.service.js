@@ -204,7 +204,6 @@ export const updateCMSPage = async (id, input) => {
     try {
       await recordCMSRedirect(page._id, previousUrl, currentUrl, page.entityType);
     } catch (error) {
-      console.error("CMS redirect could not be recorded:", error);
     }
   }
 
@@ -234,7 +233,6 @@ export const deleteCMSPage = async (id) => {
 GET BY SLUG
 */
 export const getCMSPageBySlug = async (slug, preview = false) => {
-  console.log("CMS SLUG:", slug, "PREVIEW:", preview);
 
   const filter = preview
     ? {
@@ -247,7 +245,6 @@ export const getCMSPageBySlug = async (slug, preview = false) => {
 
   const page = await CMSPage.findOne(filter);
 
-  console.log("CMS PAGE:", page);
 
   if (!page) {
     throw new ApiError(404, "Page not found");

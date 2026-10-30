@@ -346,16 +346,6 @@ const getStartPayEndpoint = () => {
     // or query-string values.
     return new URL("/Payment/StartPay", baseUrl.origin);
   } catch (error) {
-    logHotelEvent("error", "hotel.supplier_config.invalid", {
-      supplier: "AKBAR",
-      operation: "start_payment",
-      variable: "START_PAY_URL",
-      configured: true,
-      valueLength: configuredUrl.length,
-      containsWhitespace: /\s/.test(configuredUrl),
-      errorName: error.name,
-      errorMessage: error.message,
-    });
 
     const configError = new Error(
       "START_PAY_URL is invalid. A valid HTTPS URL is required."
@@ -385,16 +375,6 @@ const getStoredAkbarToken = async ({ correlationId, bookingId }) => {
       .lean();
 
     if (typeof record?.token !== "string" || !record.token.trim()) {
-      logHotelEvent("error", "hotel.supplier_booking.startpay_token_missing", {
-        correlationId,
-        bookingId,
-        supplier: "AKBAR",
-        operation: "start_payment",
-        storage: "mongodb",
-        recordFound: Boolean(record),
-        tokenPresent: false,
-        durationMs: Math.round(performance.now() - startedAt),
-      });
       const error = new Error(
         "No valid AKBAR token was found in MongoDB; refresh the Signature token before StartPay"
       );
@@ -403,29 +383,9 @@ const getStoredAkbarToken = async ({ correlationId, bookingId }) => {
       throw error;
     }
 
-    logHotelEvent("info", "hotel.supplier_booking.startpay_token_loaded", {
-      correlationId,
-      bookingId,
-      supplier: "AKBAR",
-      operation: "start_payment",
-      storage: "mongodb",
-      tokenPresent: true,
-      durationMs: Math.round(performance.now() - startedAt),
-    });
     return record.token;
   } catch (error) {
     if (!error.statusCode) {
-      logHotelEvent("error", "hotel.supplier_booking.startpay_token_db_failed", {
-        correlationId,
-        bookingId,
-        supplier: "AKBAR",
-        operation: "start_payment",
-        storage: "mongodb",
-        durationMs: Math.round(performance.now() - startedAt),
-        errorName: error.name,
-        errorCode: error.code ?? null,
-        errorMessage: error.message,
-      });
       error.statusCode = 503;
       error.supplierRequestSent = false;
     }
@@ -608,14 +568,6 @@ export const startAkbarHotelPay = async ({
     processId: process.pid,
   };
 
-  logHotelEvent(
-    "info",
-    "hotel.supplier_booking.startpay_started",
-    {
-      ...logContext,
-      serverNetwork: getServerNetworkContext(),
-    }
-  );
 
   let endpoint = null;
   let tuiForLogging = null;
@@ -627,19 +579,6 @@ export const startAkbarHotelPay = async ({
     const itineraryValues = getItineraryValues(booking);
     tuiForLogging = maskSupplierTracingKey(itineraryValues.tui);
 
-    logHotelEvent(
-      "info",
-      "hotel.supplier_booking.startpay_token_lookup_started",
-      {
-        ...logContext,
-        host: endpoint.host,
-        path: endpoint.pathname,
-        protocol: endpoint.protocol,
-        tui: tuiForLogging,
-        tokenProvider: "AkbarToken MongoDB model",
-        storage: "mongodb",
-      }
-    );
 
     const tokenLookupStartedAt = performance.now();
 
@@ -651,43 +590,10 @@ export const startAkbarHotelPay = async ({
         bookingId,
       });
     } catch (error) {
-      logHotelEvent(
-        "error",
-        "hotel.supplier_booking.startpay_token_lookup_failed",
-        {
-          ...logContext,
-          host: endpoint.host,
-          path: endpoint.pathname,
-          tokenLookupDurationMs: Math.round(
-            performance.now() - tokenLookupStartedAt
-          ),
-          errorName: error.name,
-          errorCode: error.code ?? null,
-          errorMessage: error.message,
-          httpStatus: error.response?.status ?? null,
-          supplierRequestSent:
-            error.supplierRequestSent ?? false,
-        }
-      );
 
       throw error;
     }
 
-    logHotelEvent(
-      "info",
-      "hotel.supplier_booking.startpay_token_lookup_completed",
-      {
-        ...logContext,
-        tokenLookupDurationMs: Math.round(
-          performance.now() - tokenLookupStartedAt
-        ),
-        tokenAvailable:
-          typeof token === "string" && Boolean(token.trim()),
-        tokenLength:
-          typeof token === "string" ? token.length : 0,
-        // Do not log the token or Authorization header.
-      }
-    );
 
     if (typeof token !== "string" || !token.trim()) {
       const error = new Error(
@@ -709,23 +615,6 @@ export const startAkbarHotelPay = async ({
 
     const requestStartedAt = performance.now();
 
-    logHotelEvent(
-      "info",
-      "hotel.supplier_booking.startpay_request_started",
-      {
-        ...logContext,
-        host: endpoint.host,
-        path: endpoint.pathname,
-        protocol: endpoint.protocol,
-        amount: itineraryValues.amount,
-        currency: booking.price?.currency ?? null,
-        timeoutMs: 60000,
-        tui: tuiForLogging,
-        serverNetwork: getServerNetworkContext(),
-        requestBodyLogged: false,
-        authorizationHeaderLogged: false,
-      }
-    );
 
     let response;
 
@@ -745,53 +634,12 @@ export const startAkbarHotelPay = async ({
         error.response?.status >= 400 &&
         error.response.status < 500;
 
-      logHotelEvent("error", "hotel.supplier_request.failed", {
-        ...logContext,
-        host: endpoint.host,
-        path: endpoint.pathname,
-        protocol: endpoint.protocol,
-        httpStatus: error.response?.status ?? null,
-        durationMs: Math.round(
-          performance.now() - requestStartedAt
-        ),
-        totalOperationDurationMs: Math.round(
-          performance.now() - startedAt
-        ),
-        errorName: error.name,
-        errorCode: error.code ?? null,
-        errorMessage: error.message,
-        requestMayHaveReachedSupplier: Boolean(error.request),
-        responseReceived: Boolean(error.response),
-        serverNetwork: getServerNetworkContext(),
-        ...getSupplierResponseSummary(error.response?.data),
-      });
 
       throw error;
     }
 
     const supplierData = unwrapSupplierResponse(response.data);
 
-    logHotelEvent("info", "hotel.supplier_request.completed", {
-      ...logContext,
-      host: endpoint.host,
-      path: endpoint.pathname,
-      protocol: endpoint.protocol,
-      httpStatus: response.status,
-      durationMs: Math.round(
-        performance.now() - requestStartedAt
-      ),
-      totalOperationDurationMs: Math.round(
-        performance.now() - startedAt
-      ),
-      ...getSupplierResponseSummary(response.data),
-      supplierCode:
-        supplierData.Code ?? supplierData.code ?? null,
-      bookStatus: supplierData.BookStatus ?? null,
-      hasCrsPnr: Boolean(supplierData.CRSPNR),
-      tui: maskSupplierTracingKey(
-        supplierData.TUI ?? itineraryValues.tui
-      ),
-    });
 
     return response.data;
   } catch (error) {
@@ -799,27 +647,6 @@ export const startAkbarHotelPay = async ({
       error.supplierRequestSent = false;
     }
 
-    logHotelEvent(
-      "error",
-      "hotel.supplier_booking.startpay_failed",
-      {
-        ...logContext,
-        host: endpoint?.host ?? null,
-        path: endpoint?.pathname ?? null,
-        durationMs: Math.round(
-          performance.now() - startedAt
-        ),
-        stage: error.supplierRequestSent
-          ? "supplier_request"
-          : "pre_request",
-        errorName: error.name,
-        errorCode: error.code ?? null,
-        errorMessage: error.message,
-        httpStatus: error.response?.status ?? null,
-        supplierRequestSent: error.supplierRequestSent,
-        tui: tuiForLogging,
-      }
-    );
 
     throw error;
   }

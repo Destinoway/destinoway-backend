@@ -349,27 +349,18 @@ const TOKEN_TTL = 10 * 24 * 60 * 60; // 10 days
 
 async function testBenzySignature() {
   try {
-    console.log("=================================");
-    console.log("Benzy Signature API Test");
-    console.log("=================================");
 
     // Check Redis
-    console.log("\n1. Checking Redis...");
 
     const existingToken = await redisClient.get(TOKEN_KEY);
 
     if (existingToken) {
       const ttl = await redisClient.ttl(TOKEN_KEY);
 
-      console.log("✅ Token already exists in Redis");
-      console.log(`⏳ Remaining TTL: ${ttl} seconds`);
-      console.log("➡️ Signature API will NOT be called.");
 
       return;
     }
 
-    console.log("⚠️ Token not found in Redis.");
-    console.log("➡️ Calling Benzy Signature API...");
 
     // Signature API
     const response = await axios.post(
@@ -391,12 +382,7 @@ async function testBenzySignature() {
       }
     );
 
-    console.log("\n2. Signature API Response");
 
-    console.log("Code:", response.data?.Code);
-    console.log("Message:", response.data?.Msg);
-    console.log("TUI received:", !!response.data?.TUI);
-    console.log("Token received:", !!response.data?.Token);
 
     if (response.data?.Code !== "200" || !response.data?.Token) {
       throw new Error("Signature API did not return a valid token");
@@ -409,24 +395,12 @@ async function testBenzySignature() {
 
     const ttl = await redisClient.ttl(TOKEN_KEY);
 
-    console.log("\n3. Redis");
 
-    console.log("✅ Token saved in Redis");
-    console.log(`⏳ TTL: ${ttl} seconds`);
 
-    console.log("\n=================================");
-    console.log("✅ TEST PASSED");
-    console.log("=================================");
   } catch (error) {
-    console.log("\n=================================");
-    console.log("❌ TEST FAILED");
-    console.log("=================================");
 
     if (error.response) {
-      console.log("HTTP Status:", error.response.status);
-      console.log("Response:", error.response.data);
     } else {
-      console.log("Error:", error.message);
     }
   } finally {
     await redisClient.quit();

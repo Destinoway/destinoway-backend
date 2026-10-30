@@ -152,23 +152,10 @@ export const createAkbarHotelItineraryAPI = async ({
   itineraryEndpoint.pathname = itineraryEndpoint.pathname.replace(/\/+$/, "");
 
   const itineraryUrl = itineraryEndpoint.toString();
-  logHotelEvent("info", "hotel.supplier_request.started", {
-    correlationId,
-    supplier: "AKBAR",
-    operation: "create_itinerary",
-    host: itineraryEndpoint.host,
-    path: itineraryEndpoint.pathname,
-  });
 
   const token = await getAKBARToken();
   const startedAt = performance.now();
   let response;
-  logHotelEvent("info", "hotel.supplier_request.payload", {
-    correlationId,
-    supplier: "AKBAR",
-    operation: "create_itinerary",
-    payload: redactItineraryPayload(payload),
-  });
   try {
     response = await axios.post(itineraryUrl, payload, {
       headers: {
@@ -181,28 +168,9 @@ export const createAkbarHotelItineraryAPI = async ({
       timeout: 60000,
     });
   } catch (error) {
-    logHotelEvent("error", "hotel.supplier_request.failed", {
-      correlationId,
-      supplier: "AKBAR",
-      operation: "create_itinerary",
-      httpStatus: error.response?.status ?? null,
-      durationMs: Math.round(performance.now() - startedAt),
-      errorCode: error.code ?? null,
-      errorMessage: error.message,
-      ...(error.response
-        ? summarizeItineraryResponse(error.response)
-        : {}),
-    });
     throw error;
   }
 
-  logHotelEvent("info", "hotel.supplier_request.completed", {
-    correlationId,
-    supplier: "AKBAR",
-    operation: "create_itinerary",
-    durationMs: Math.round(performance.now() - startedAt),
-    ...summarizeItineraryResponse(response),
-  });
 
   return response.data;
 };

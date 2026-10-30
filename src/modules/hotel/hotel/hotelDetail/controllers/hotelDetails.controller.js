@@ -14,7 +14,6 @@ export const hotelDetailsController = async (req, res) => {
       meta: null,
     });
   } catch (error) {
-    console.error("Hotel details error:", error.message);
 
     return res.status(error.statusCode || 500).json({
       success: false,

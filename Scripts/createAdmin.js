@@ -21,14 +21,12 @@ const createAdmin = async () => {
     }
 
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ MongoDB connected");
     const adminRole = await Role.findOne({
       name: "admin",
       type: "admin",
     });
 
     if (!adminRole) {
-      console.log("❌ Admin role not found. Create role first.");
       process.exit(1);
     }
 
@@ -37,7 +35,6 @@ const createAdmin = async () => {
     });
 
     if (existingAdmin) {
-      console.log("⚠️ Admin already exists");
       process.exit();
     }
 
@@ -51,10 +48,8 @@ const createAdmin = async () => {
       isEmailVerified: true,
       type: "admin", // ✅ ADD THIS
     });
-    console.log("🎉 Admin created successfully");
     process.exit();
   } catch (error) {
-    console.error("❌ Error:", error.message);
     process.exit(1);
   }
 };

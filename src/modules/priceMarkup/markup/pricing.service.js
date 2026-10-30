@@ -63,11 +63,9 @@ const panjourneyServiceCharge =
 
 
 if (countryTax) {
-  console.log("Inside country tax block");
 
   // 1. FLAT TAX
   if (countryTax.ruleType === "flat") {
-  console.log("Inside FLAT block");
     if (countryTax.taxType === "percentage") {
       amount += (amount * countryTax.taxValue) / 100;
     }

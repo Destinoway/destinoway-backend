@@ -201,10 +201,6 @@ export const searchHotels = async ({
 
   // 2. Cancel previous search
   if (previousSearchId) {
-    console.log(
-      "🔄 PREVIOUS HOTEL SEARCH FOUND:",
-      previousSearchId
-    );
 
     await cancelAndDeleteHotelSearch(
       previousSearchId,
@@ -222,10 +218,6 @@ export const searchHotels = async ({
     throw error;
   }
 
-  logHotelEvent("info", "hotel.search.accepted", {
-    correlationId: searchId,
-    supplier,
-  });
 
   // 4. Initialize Redis state
   await createHotelSearchState({
@@ -247,7 +239,6 @@ export const searchHotels = async ({
     })),
   });
 
-  console.log("🚀 NEW HOTEL SEARCH:", searchId);
 
   // 5. Start supplier search in background
   setImmediate(() => {
@@ -257,25 +248,10 @@ export const searchHotels = async ({
         searchSessionId,
       })
       .catch(async (error) => {
-        logHotelEvent("error", "hotel.search.failed", {
-          correlationId: searchId,
-          supplier,
-          finalState: "failed",
-          errorCode: error.code ?? null,
-          errorMessage: error.message,
-        });
-        console.error(
-          "❌ BACKGROUND HOTEL SEARCH FAILED:",
-          error
-        );
 
         try {
           await failHotelSearch(searchId, error);
         } catch (redisError) {
-          console.error(
-            "❌ FAILED TO UPDATE REDIS SEARCH ERROR:",
-            redisError
-          );
         }
       });
   });
@@ -293,12 +269,6 @@ export const searchHotels = async ({
     // Return as soon as at least one matched hotel
     // has been published to Redis.
     if (hotels.length > 0) {
-      console.log(
-        "✅ FIRST MATCHED HOTEL AVAILABLE:",
-        searchId,
-        "Count:",
-        hotels.length
-      );
 
       return {
         searchId,
@@ -335,10 +305,6 @@ export const searchHotels = async ({
   const meta = await getHotelSearchMeta(searchId);
   const hotels = await getHotelSearchResults(searchId);
 
-  console.warn(
-    "⏳ FIRST HOTEL RESULT WAIT TIMED OUT:",
-    searchId
-  );
 
   return {
     searchId,

@@ -72,29 +72,6 @@ export const startTwilioVerification = async (mobile) => {
       });
   } catch (error) {
     if (error.statusCode) throw error;
-    const twilioMessage = String(error.message ?? "")
-      .replace(/\+?\d[\d\s().-]{7,}\d/g, "[REDACTED_NUMBER]")
-      .replace(/\b(?:AC|VA|SK)[a-f\d]{32}\b/gi, "[REDACTED_SID]");
-    const invalidParameter = twilioMessage.match(
-      /invalid parameter:?\s*["']?([a-z]+)/i,
-    )?.[1] ?? null;
-    console.error("Twilio Verify send failed", {
-      status: error.status ?? null,
-      code: error.code ?? null,
-      invalidParameter,
-      twilioMessage,
-      toFormat: {
-        startsWithPlus: to.startsWith("+"),
-        digitCount: to.replace(/\D/g, "").length,
-        countryCode: `+${String(
-          process.env.TWILIO_DEFAULT_COUNTRY_CODE || "+91",
-        ).replace(/\D/g, "")}`,
-      },
-      verifyServiceSidValid: /^VA[a-f\d]{32}$/i.test(
-        config.verifyServiceSid,
-      ),
-      channel: "sms",
-    });
     throw getTwilioError(error, "send");
   }
 };
@@ -112,10 +89,6 @@ export const checkTwilioVerification = async (mobile, code) => {
         code,
       });
   } catch (error) {
-    console.error("Twilio Verify check failed", {
-      status: error.status ?? null,
-      code: error.code ?? null,
-    });
     if (error.status === 404 || error.status === 400) {
       const invalidCodeError = new Error("Invalid or expired OTP");
       invalidCodeError.statusCode = 400;

@@ -90,14 +90,6 @@ export const cancelAkbarHotelBooking = async ({
     operation: "cancel_booking",
   };
 
-  logHotelEvent("info", "hotel.supplier_request.started", {
-    ...logContext,
-    method: "POST",
-    host: endpoint.host,
-    path: endpoint.pathname,
-    transactionId: numericTransactionId,
-    requestBodyLogged: false,
-  });
 
   const startedAt = performance.now();
   try {
@@ -109,33 +101,9 @@ export const cancelAkbarHotelBooking = async ({
       timeout: 60000,
     });
     const supplierData = unwrapSupplierResponse(response.data);
-    logHotelEvent("info", "hotel.supplier_request.completed", {
-      ...logContext,
-      host: endpoint.host,
-      path: endpoint.pathname,
-      httpStatus: response.status,
-      durationMs: Math.round(performance.now() - startedAt),
-      ...getSupplierResponseSummary(supplierData),
-      responseKeys:
-        supplierData && typeof supplierData === "object"
-          ? Object.keys(supplierData)
-          : [],
-    });
     return response.data;
   } catch (error) {
     error.supplierRequestSent = true;
-    logHotelEvent("error", "hotel.supplier_request.failed", {
-      ...logContext,
-      host: endpoint.host,
-      path: endpoint.pathname,
-      httpStatus: error.response?.status ?? null,
-      durationMs: Math.round(performance.now() - startedAt),
-      errorName: error.name,
-      errorCode: error.code ?? null,
-      errorMessage: error.message,
-      responseReceived: Boolean(error.response),
-      ...getSupplierResponseSummary(error.response?.data),
-    });
     throw error;
   }
 };

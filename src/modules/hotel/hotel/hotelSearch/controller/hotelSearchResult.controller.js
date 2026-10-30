@@ -111,10 +111,6 @@ export const getHotelSearchResultsController = asyncHandler(
         result
       );
     } catch (error) {
-      console.error(
-        "❌ HOTEL SEARCH RESULT ERROR:",
-        error
-      );
 
       return sendError(
         res,

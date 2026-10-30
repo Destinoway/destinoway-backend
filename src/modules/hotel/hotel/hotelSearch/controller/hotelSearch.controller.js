@@ -66,10 +66,6 @@ export const searchHotelsController =
         "Hotel search started successfully"
       );
     } catch (error) {
-      console.error(
-        "❌ HOTEL SEARCH ERROR:",
-        error
-      );
 
       return sendError(
         res,
