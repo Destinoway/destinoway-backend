@@ -1,9 +1,6 @@
 import axios from "axios";
 import { getAKBARToken } from "../../../../supplier/akbar/akbarAuth.service.js";
-import {
-  getSupplierResponseSummary,
-  logHotelEvent,
-} from "../../../utils/hotelObservability.js";
+import { logSupplierApiExchange } from "../../../utils/hotelObservability.js";
 
 const getRetrieveBookingEndpoint = () => {
   const configuredUrl = process.env.START_PAY_URL;
@@ -56,14 +53,6 @@ export const retrieveAkbarHotelBooking = async ({
     throw error;
   }
 
-  const logContext = {
-    correlationId,
-    bookingId: String(bookingId),
-    supplier: "AKBAR",
-    operation: "retrieve_booking",
-  };
-
-
   const token = await getAKBARToken({
     operation: "retrieve_booking",
     correlationId,
@@ -79,21 +68,23 @@ export const retrieveAkbarHotelBooking = async ({
     Name: null,
   };
 
-  const startedAt = performance.now();
-  try {
-    const response = await axios.post(endpoint.toString(), payload, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      timeout: 60000,
-    });
-
-    const supplierData = unwrapSupplierResponse(response.data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  const response = await logSupplierApiExchange(
+    {
+      operation: "retrieve_booking",
+      correlationId,
+      hotelLogKey: String(bookingId),
+      method: "POST",
+      endpoint: endpoint.toString(),
+      headers,
+      request: { body: payload },
+    },
+    () => axios.post(endpoint.toString(), payload, { headers, timeout: 60000 }),
+  );
+  return response.data;
 };
 
 export const getAkbarRetrievedBookingFields = (response) => {

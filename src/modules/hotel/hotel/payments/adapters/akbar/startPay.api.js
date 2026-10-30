@@ -286,9 +286,7 @@ import axios from "axios";
 import AkbarToken from "../../../../supplier/akbar/akbarToken.model.js";
 
 import {
-  getSupplierResponseSummary,
-  logHotelEvent,
-  maskSupplierTracingKey,
+  logSupplierApiExchange,
 } from "../../../utils/hotelObservability.js";
 
 /**
@@ -558,29 +556,14 @@ export const startAkbarHotelPay = async ({
   correlationId,
 }) => {
   const bookingId = String(booking?._id ?? "");
-  const startedAt = performance.now();
-
-  const logContext = {
-    correlationId,
-    bookingId,
-    supplier: "AKBAR",
-    operation: "start_payment",
-    processId: process.pid,
-  };
-
 
   let endpoint = null;
-  let tuiForLogging = null;
 
   try {
     const config = getStartPayConfig();
     endpoint = getStartPayEndpoint();
 
     const itineraryValues = getItineraryValues(booking);
-    tuiForLogging = maskSupplierTracingKey(itineraryValues.tui);
-
-
-    const tokenLookupStartedAt = performance.now();
 
     let token;
 
@@ -613,19 +596,28 @@ export const startAkbarHotelPay = async ({
       token,
     });
 
-    const requestStartedAt = performance.now();
-
-
     let response;
 
     try {
-      response = await axios.post(endpoint.toString(), payload, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+      response = await logSupplierApiExchange(
+        {
+          operation: "start_payment",
+          correlationId,
+          hotelLogKey: bookingId,
+          method: "POST",
+          endpoint: endpoint.toString(),
+          headers,
+          request: { body: payload },
         },
-        timeout: 60000,
-      });
+        () => axios.post(endpoint.toString(), payload, {
+          headers,
+          timeout: 60000,
+        }),
+      );
     } catch (error) {
       // This means the request was attempted. It does not prove
       // the supplier received or processed the complete request.
@@ -637,9 +629,6 @@ export const startAkbarHotelPay = async ({
 
       throw error;
     }
-
-    const supplierData = unwrapSupplierResponse(response.data);
-
 
     return response.data;
   } catch (error) {

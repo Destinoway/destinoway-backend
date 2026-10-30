@@ -1,8 +1,7 @@
 import axios from "axios";
 import { getAKBARToken } from "../../../../supplier/akbar/akbarAuth.service.js";
 import {
-  getSupplierResponseSummary,
-  logHotelEvent,
+  logSupplierApiExchange,
 } from "../../../utils/hotelObservability.js";
 
 const getCancelBookingEndpoint = () => {
@@ -83,24 +82,23 @@ export const cancelAkbarHotelBooking = async ({
     TransactionID: numericTransactionId,
     YearType: String(finYearId),
   };
-  const logContext = {
-    correlationId,
-    bookingId: String(bookingId),
-    supplier: "AKBAR",
-    operation: "cancel_booking",
-  };
-
-
-  const startedAt = performance.now();
   try {
-    const response = await axios.post(endpoint.toString(), payload, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+    const response = await logSupplierApiExchange(
+      {
+        operation: "cancel_booking",
+        correlationId,
+        hotelLogKey: String(bookingId),
+        method: "POST",
+        endpoint: endpoint.toString(),
+        headers,
+        request: { body: payload },
       },
-      timeout: 60000,
-    });
-    const supplierData = unwrapSupplierResponse(response.data);
+      () => axios.post(endpoint.toString(), payload, { headers, timeout: 60000 }),
+    );
     return response.data;
   } catch (error) {
     error.supplierRequestSent = true;

@@ -3,10 +3,7 @@ import axios from "axios";
 import {
   getAKBARToken,
 } from "../../../../../../supplier/akbar/akbarAuth.service.js";
-import {
-  getSupplierResponseSummary,
-  logHotelEvent,
-} from "../../../../../../hotel/utils/hotelObservability.js";
+import { logSupplierApiExchange } from "../../../../../../hotel/utils/hotelObservability.js";
 
 
 // =========================================================
@@ -84,22 +81,26 @@ export const akbarHotelRateAPIWithPolling = async (
       // CALL AKBAR RATE API
       // =====================================================
 
-      const requestStart = performance.now();
-      const response = await axios.get(
-        url,
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "search-tracing-key": searchTracingKey,
+      };
+      const response = await logSupplierApiExchange(
         {
-          headers: {
-            Authorization:
-              `Bearer ${token}`,
-
-            "search-tracing-key":
-              searchTracingKey,
-          },
-
-          // Individual HTTP request timeout.
-          // There is NO overall polling timeout.
-          timeout: 60000,
-        }
+          operation: "hotel_search_rate",
+          correlationId,
+          hotelLogKey: correlationId ?? searchId,
+          method: "GET",
+          endpoint: url,
+          headers,
+          request: null,
+        },
+        () =>
+          axios.get(url, {
+            headers,
+            // Individual HTTP request timeout. There is no overall polling timeout.
+            timeout: 60000,
+          }),
       );
 
 

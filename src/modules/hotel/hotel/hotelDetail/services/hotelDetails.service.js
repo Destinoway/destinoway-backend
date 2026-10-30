@@ -29,6 +29,7 @@ export const getHotelDetails = async ({ searchId, hotelId }) => {
   const search = await resolveSupplierSearch(searchId);
 
   const request = {
+    correlationId: search.internalSearchId,
     supplierSearchId: search.supplierSearchId,
     hotelId,
     searchTracingKey: search.searchTracingKey,

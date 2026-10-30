@@ -1,8 +1,7 @@
 import axios from "axios";
 import { getAKBARToken } from "../../../../../../supplier/akbar/akbarAuth.service.js";
 import {
-  getSupplierResponseSummary,
-  logHotelEvent,
+  logSupplierApiExchange,
 } from "../../../../../../hotel/utils/hotelObservability.js";
 
 const sleep = (ms) =>
@@ -48,22 +47,29 @@ export const akbarHotelContentAPI = async ({
     }
 
     const token = await getAKBARToken();
-    const apiStart = performance.now();
-
-
     try {
-      const response = await axios.get(url, {
-        params: {
-          limit,
-          offset,
-          filterdata: false,
+      const params = { limit, offset, filterdata: false };
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        "search-tracing-key": searchTracingKey,
+      };
+      const response = await logSupplierApiExchange(
+        {
+          operation: "hotel_search_content",
+          correlationId,
+          hotelLogKey: correlationId ?? searchId,
+          method: "GET",
+          endpoint: url,
+          headers,
+          request: { params },
         },
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "search-tracing-key": searchTracingKey,
-        },
-        timeout: 60000,
-      });
+        () =>
+          axios.get(url, {
+            params,
+            headers,
+            timeout: 60000,
+          }),
+      );
 
       const data = response.data;
       const hotels = data?.hotels || [];
@@ -73,9 +79,6 @@ export const akbarHotelContentAPI = async ({
         data?.Count ??
         data?.count ??
         0;
-
-      const elapsed = performance.now() - apiStart;
-
 
       if (isFailureResponse(data)) {
         throw new Error(

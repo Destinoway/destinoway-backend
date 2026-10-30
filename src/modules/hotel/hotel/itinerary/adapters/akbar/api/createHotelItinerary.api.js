@@ -1,7 +1,7 @@
 import axios from "axios";
 import { getAKBARToken } from "../../../../../supplier/akbar/akbarAuth.service.js";
 import {
-  logHotelEvent,
+  logSupplierApiExchange,
   maskSupplierTracingKey,
 } from "../../../../utils/hotelObservability.js";
 
@@ -154,23 +154,27 @@ export const createAkbarHotelItineraryAPI = async ({
   const itineraryUrl = itineraryEndpoint.toString();
 
   const token = await getAKBARToken();
-  const startedAt = performance.now();
-  let response;
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+    ...(searchTracingKey
+      ? { "search-tracing-key": searchTracingKey }
+      : {}),
+  };
   try {
-    response = await axios.post(itineraryUrl, payload, {
-      headers: {
-        "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-        ...(searchTracingKey
-          ? { "search-tracing-key": searchTracingKey }
-          : {}),
+    const response = await logSupplierApiExchange(
+      {
+        operation: "create_itinerary",
+        correlationId,
+        method: "POST",
+        endpoint: itineraryUrl,
+        headers,
+        request: { body: payload },
       },
-      timeout: 60000,
-    });
+      () => axios.post(itineraryUrl, payload, { headers, timeout: 60000 }),
+    );
+    return response.data;
   } catch (error) {
     throw error;
   }
-
-
-  return response.data;
 };

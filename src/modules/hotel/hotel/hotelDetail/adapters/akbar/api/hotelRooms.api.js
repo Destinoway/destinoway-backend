@@ -1,8 +1,7 @@
 import axios from "axios";
 import { getAKBARToken } from "../../../../../supplier/akbar/akbarAuth.service.js";
 import {
-  getSupplierResponseSummary,
-  logHotelEvent,
+  logSupplierApiExchange,
 } from "../../../../utils/hotelObservability.js";
 
 export const hotelRoomsAPI = async ({
@@ -17,22 +16,24 @@ export const hotelRoomsAPI = async ({
     `${process.env.AKBAR_HOTEL_API_URL}` +
     `/api/hotels/search/result/${supplierSearchId}/${encodeURIComponent(hotelId)}/rooms`;
 
-  const startedAt = performance.now();
-
-  let response;
-  try {
-    response = await axios.get(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(searchTracingKey
-        ? { "search-tracing-key": searchTracingKey }
-        : {}),
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    ...(searchTracingKey
+      ? { "search-tracing-key": searchTracingKey }
+      : {}),
+  };
+  const response = await logSupplierApiExchange(
+    {
+      operation: "hotel_details_rooms",
+      correlationId,
+      hotelLogKey: `${correlationId}:hotel-rooms:${hotelId}`,
+      method: "GET",
+      endpoint: url,
+      headers,
+      request: null,
     },
-    timeout: 60000,
-    });
-  } catch (error) {
-    throw error;
-  }
+    () => axios.get(url, { headers, timeout: 60000 }),
+  );
 
   return response.data;
 };

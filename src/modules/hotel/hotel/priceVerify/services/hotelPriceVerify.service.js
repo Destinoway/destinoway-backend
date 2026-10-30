@@ -392,6 +392,7 @@ export const getHotelPriceVerificationContext = async ({
   }
 
   const response = await adapter.verifyPrice({
+    correlationId: search.internalSearchId,
     supplierSearchId: search.supplierSearchId,
     hotelId,
     providerName,
