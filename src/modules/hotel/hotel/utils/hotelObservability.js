@@ -5,52 +5,9 @@ export const traceHotelPaymentStep = ({ operation }) => operation();
 
 const supplierHotelLogCounts = new Map();
 const MAX_SUPPLIER_HOTEL_DETAILS = 10;
-const secretLogKey =
-  /authorization|access.?token|refresh.?token|password|api.?key|client.?secret|browser.?key|signature|secret|cookie/i;
-const privateLogKey =
-  /email|mobile|phone|first.?name|middle.?name|last.?name|^fname$|^mname$|^lname$|postal|^pin$|^pan$/i;
 
 const toPlainHeaders = (headers = {}) =>
   typeof headers?.toJSON === "function" ? headers.toJSON() : headers;
-
-const redactSupplierLogValue = (value, key = "", parentPath = "") => {
-  const isGuestOrContact = /contact|guest|passenger|traveler|traveller/i.test(parentPath);
-  if (
-    secretLogKey.test(key) ||
-    privateLogKey.test(key) ||
-    (isGuestOrContact && /^(name|address|addr)$/i.test(key))
-  ) return "[REDACTED]";
-  if (key.toLowerCase() === "tui") return maskSupplierTracingKey(value);
-  if (Array.isArray(value)) {
-    return value.map((item) => redactSupplierLogValue(item, "", `${parentPath}.${key}`));
-  }
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([childKey, childValue]) => [
-        childKey,
-        redactSupplierLogValue(childValue, childKey, `${parentPath}.${key}`),
-      ]),
-    );
-  }
-  if (typeof value === "string" && value.length > 4000) {
-    return `${value.slice(0, 4000)}...[truncated]`;
-  }
-  return value;
-};
-
-const redactSupplierHeaders = (headers) => {
-  const plainHeaders = toPlainHeaders(headers);
-  const safeHeaders = {};
-  for (const [name, value] of Object.entries(plainHeaders ?? {})) {
-    const normalizedName = name.toLowerCase();
-    safeHeaders[name] = normalizedName === "search-tracing-key"
-      ? maskSupplierTracingKey(String(value ?? ""))
-      : secretLogKey.test(name)
-        ? "[REDACTED]"
-        : value;
-  }
-  return safeHeaders;
-};
 
 const limitHotelDetailsForLog = (
   value,
@@ -144,15 +101,15 @@ export const logSupplierApiExchange = async ({
     correlationId: correlationId ?? null,
     method: String(method).toUpperCase(),
     endpoint,
-    headers: redactSupplierHeaders(headers),
-    request: redactSupplierLogValue(request),
+    headers: toPlainHeaders(headers),
+    request,
   });
 
   try {
     const response = await execute();
     const hotelCounts = { included: 0, omitted: 0 };
     const responseData = limitHotelDetailsForLog(
-      redactSupplierLogValue(response.data),
+      response.data,
       logKey,
       "",
       hotelCounts,
@@ -171,7 +128,7 @@ export const logSupplierApiExchange = async ({
       method: String(method).toUpperCase(),
       endpoint,
       status: response.status,
-      headers: redactSupplierHeaders(response.headers),
+      headers: toPlainHeaders(response.headers),
       response: responseData,
       ...(hotelCounts.included || hotelCounts.omitted
         ? {
@@ -187,7 +144,7 @@ export const logSupplierApiExchange = async ({
     const hotelCounts = { included: 0, omitted: 0 };
     const responseData = errorResponse
       ? limitHotelDetailsForLog(
-          redactSupplierLogValue(errorResponse.data),
+          errorResponse.data,
           logKey,
           "",
           hotelCounts,
@@ -207,7 +164,7 @@ export const logSupplierApiExchange = async ({
       method: String(method).toUpperCase(),
       endpoint,
       status: errorResponse?.status ?? null,
-      headers: redactSupplierHeaders(errorResponse?.headers),
+      headers: toPlainHeaders(errorResponse?.headers),
       response: responseData,
       error: error.message,
     });
