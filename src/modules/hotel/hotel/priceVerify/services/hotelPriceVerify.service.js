@@ -308,7 +308,7 @@ export const verifyHotelPrice = async ({
     { new: true, upsert: true, setDefaultsOnInsert: true },
   );
 
-  return {
+  const result = {
     ...responseData,
     itineraryId: String(draft._id),
     availableCoupons,
@@ -323,6 +323,29 @@ export const verifyHotelPrice = async ({
         customerPrice: pricedRoomsWithCoupon[index]?.customerPrice ?? null,
       })),
     },
+  };
+  draft.priceVerificationSnapshot = result;
+  draft.markModified("priceVerificationSnapshot");
+  await draft.save();
+
+  const removedKeys = new Set([
+    "availableCoupons",
+    "appliedCoupon",
+    "couponDiscount",
+    "totalPayable",
+    "currency",
+  ]);
+  const priceCheckResult = Object.fromEntries(
+    Object.entries(result).filter(([key]) => !removedKeys.has(key)),
+  );
+  return {
+    ...priceCheckResult,
+    pricing: {
+      ...result.pricing,
+      rooms: result.pricing.rooms.map(({ price, customerPrice, ...room }) => room),
+    },
+    // The itinerary ID remains so the client can request the full price and
+    // coupon breakdown from GET /itinerary/:itineraryId/pricing.
   };
 };
 

@@ -1,7 +1,25 @@
 import {
   createHotelItinerary,
+  getHotelItineraryPricing,
   updateHotelItineraryCoupon,
 } from "./hotelItinerary.service.js";
+
+export const getHotelItineraryPricingController = async (req, res, next) => {
+  try {
+    const data = await getHotelItineraryPricing({
+      itineraryId: req.params.itineraryId,
+      userId: req.user._id,
+    });
+    return res.status(200).json({
+      success: true,
+      message: "Hotel itinerary pricing fetched successfully",
+      data,
+      meta: null,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
 
 export const createHotelItineraryController = async (req, res, next) => {
   try {

@@ -71,6 +71,10 @@ const hotelItinerarySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: null,
     },
+    priceVerificationSnapshot: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
     offer: {
       type: mongoose.Schema.Types.Mixed,
       default: null,

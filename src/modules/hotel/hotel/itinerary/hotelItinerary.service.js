@@ -17,6 +17,48 @@ const getError = (message, statusCode = 400) => {
   return error;
 };
 
+export const getHotelItineraryPricing = async ({ itineraryId, userId }) => {
+  const itinerary = await HotelItinerary.findOne({ _id: itineraryId, userId }).lean();
+  if (!itinerary) throw getError("Hotel itinerary not found", 404);
+  const snapshot = itinerary.priceVerificationSnapshot;
+  if (snapshot) {
+    return {
+      pricing: {
+        rooms: (snapshot.pricing?.rooms ?? []).map((room) => ({
+          price: room.price,
+          customerPrice: room.customerPrice,
+        })),
+      },
+      availableCoupons: snapshot.availableCoupons ?? [],
+      appliedCoupon: snapshot.appliedCoupon ?? null,
+      couponDiscount: snapshot.couponDiscount ?? 0,
+      totalPayable: snapshot.totalPayable ?? itinerary.price?.total ?? null,
+      currency: snapshot.currency ?? itinerary.price?.currency ?? "INR",
+    };
+  }
+
+  // Older drafts created before pricing snapshots were stored can still return
+  // their persisted price data, though their original available coupon list is unavailable.
+  const price = itinerary.price ?? {};
+  return {
+    pricing: {
+      rooms: (price.roomGroups ?? []).map((group) => ({
+        price: {
+          baseRate: group.baseRate,
+          totalRate: group.totalRate,
+          currency: price.currency,
+        },
+        customerPrice: group.customerPrice,
+      })),
+    },
+    availableCoupons: [],
+    appliedCoupon: itinerary.offer?.couponCode ?? null,
+    couponDiscount: price.couponDiscount ?? 0,
+    totalPayable: price.total ?? null,
+    currency: price.currency ?? "INR",
+  };
+};
+
 const mapContactInfo = (contactInfo) => ({
   Title: contactInfo.title.trim(),
   FName: contactInfo.firstName.trim(),
@@ -678,6 +720,21 @@ export const updateHotelItineraryCoupon = async ({
     totalBeforeCoupon > 0
       ? Number(((discount / totalBeforeCoupon) * 100).toFixed(2))
       : 0;
+  if (booking.priceVerificationSnapshot) {
+    booking.priceVerificationSnapshot.appliedCoupon = appliedCoupon?.code ?? null;
+    booking.priceVerificationSnapshot.couponDiscount = discount;
+    booking.priceVerificationSnapshot.totalPayable = booking.price.total;
+    booking.priceVerificationSnapshot.pricing = {
+      ...booking.priceVerificationSnapshot.pricing,
+      rooms: (booking.priceVerificationSnapshot.pricing?.rooms ?? []).map(
+        (room, index) => ({
+          ...room,
+          customerPrice: booking.price.roomGroups[index]?.customerPrice ?? room.customerPrice,
+        }),
+      ),
+    };
+    booking.markModified("priceVerificationSnapshot");
+  }
   booking.markModified("price");
   await booking.save();
 
