@@ -686,6 +686,15 @@ export const updateHotelItineraryCoupon = async ({
     appliedCoupon: appliedCoupon?.code ?? null,
     couponDiscount: discount,
     totalPayable: booking.price.total,
+    price: {
+      totalBeforeCoupon: booking.price.totalBeforeCoupon,
+      basePrice: booking.price.basePrice,
+      serviceTax: booking.price.serviceTax,
+      couponDiscount: booking.price.couponDiscount,
+      couponDiscountPercent: booking.price.couponDiscountPercent,
+      total: booking.price.total,
+      currency: booking.price.currency,
+    },
     currency: booking.price.currency,
     customerPrices: booking.price.roomGroups.map((group) => group.customerPrice),
   };
