@@ -46,5 +46,7 @@ couponSchema.index({
   "validity.startDate": 1,
   "validity.endDate": 1,
 });
+couponSchema.index({ createdAt: -1 });
+couponSchema.index({ isActive: 1, applicableModules: 1, createdAt: -1 });
 
 export default mongoose.model("Coupon", couponSchema);

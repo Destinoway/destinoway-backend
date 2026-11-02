@@ -9,11 +9,12 @@ import {
   updateCouponAdminController,
   updateCouponStatusController,
 } from "./promotion.controller.js";
+import { getHomeCouponsController } from "./homeCoupons.controller.js";
 
 const router = express.Router();
 
 router.get("/get-all-coupons", protect, checkPermission("couponCodes", "read"), getAllCouponsController);
-router.get("/get-all-giftCard", getAllCouponsController);
+router.get("/get-all-giftCard", getHomeCouponsController);
 router.get("/get-single-coupon/:id", protect, checkPermission("couponCodes", "read"), getSingleCouponController);
 router.post("/create-coupon", protect, checkPermission("couponCodes", "write"), createCouponController);
 router.put("/update-coupon/:id", protect, checkPermission("couponCodes", "update"), updateCouponAdminController);

@@ -1,4 +1,5 @@
 import Coupon from "./coupon.model.js";
+import { clearHomeCouponsCache } from "./homeCoupons.service.js";
 
 const roundCurrency = (value) => Number(value.toFixed(2));
 
@@ -78,10 +79,12 @@ const asServiceError = (message, statusCode = 400) =>
 
 export const createCouponService = async (payload) => {
   try {
-    return await Coupon.create({
+    const coupon = await Coupon.create({
       ...payload,
       code: String(payload.code ?? "").trim().toUpperCase(),
     });
+    clearHomeCouponsCache();
+    return coupon;
   } catch (error) {
     if (error.code === 11000) throw asServiceError("Coupon code already exists", 409);
     throw error;
@@ -118,6 +121,7 @@ export const updateCouponAdminService = async (id, payload) => {
       runValidators: true,
     });
     if (!coupon) throw asServiceError("Coupon not found", 404);
+    clearHomeCouponsCache();
     return coupon;
   } catch (error) {
     if (error.code === 11000) throw asServiceError("Coupon code already exists", 409);
@@ -135,11 +139,13 @@ export const updateCouponStatusService = async (id, isActive) => {
     { new: true, runValidators: true },
   );
   if (!coupon) throw asServiceError("Coupon not found", 404);
+  clearHomeCouponsCache();
   return coupon;
 };
 
 export const deleteCouponAdminService = async (id) => {
   const coupon = await Coupon.findByIdAndDelete(id);
   if (!coupon) throw asServiceError("Coupon not found", 404);
+  clearHomeCouponsCache();
   return { id: coupon._id };
 };
