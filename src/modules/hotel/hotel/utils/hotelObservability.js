@@ -6,6 +6,7 @@ export const traceHotelPaymentStep = ({ operation }) => operation();
 const supplierHotelLogCounts = new Map();
 const MAX_SUPPLIER_HOTEL_DETAILS = 10;
 
+
 const toPlainHeaders = (headers = {}) =>
   typeof headers?.toJSON === "function" ? headers.toJSON() : headers;
 
