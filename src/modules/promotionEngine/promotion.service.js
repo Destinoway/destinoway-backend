@@ -77,6 +77,35 @@ export const findBestCoupon = async ({
 const asServiceError = (message, statusCode = 400) =>
   Object.assign(new Error(message), { statusCode });
 
+const syncDraftItinerariesForCoupon = async (previousCode, coupon) => {
+  if (!previousCode) return;
+  const HotelItinerary = (await import("../hotel/hotel/itinerary/hotelItinerary.model.js")).default;
+  const { updateHotelItineraryCoupon } = await import(
+    "../hotel/hotel/itinerary/hotelItinerary.service.js"
+  );
+  const itineraries = await HotelItinerary.find({
+    itineraryStatus: "draft",
+    "offer.couponCode": previousCode,
+  }).select("_id userId").lean();
+
+  for (const itinerary of itineraries) {
+    try {
+      await updateHotelItineraryCoupon({
+        itineraryId: itinerary._id,
+        userId: itinerary.userId,
+        couponCode: coupon.code,
+      });
+    } catch (error) {
+      if (error.message !== "Coupon is invalid or not applicable") throw error;
+      await updateHotelItineraryCoupon({
+        itineraryId: itinerary._id,
+        userId: itinerary.userId,
+        couponCode: null,
+      });
+    }
+  }
+};
+
 export const createCouponService = async (payload) => {
   try {
     const coupon = await Coupon.create({
@@ -116,12 +145,14 @@ export const updateCouponAdminService = async (id, payload) => {
   const updates = { ...payload };
   if (updates.code !== undefined) updates.code = String(updates.code).trim().toUpperCase();
   try {
+    const previousCoupon = await Coupon.findById(id).select("code").lean();
     const coupon = await Coupon.findByIdAndUpdate(id, updates, {
       new: true,
       runValidators: true,
     });
     if (!coupon) throw asServiceError("Coupon not found", 404);
     clearHomeCouponsCache();
+    await syncDraftItinerariesForCoupon(previousCoupon?.code, coupon);
     return coupon;
   } catch (error) {
     if (error.code === 11000) throw asServiceError("Coupon code already exists", 409);
@@ -140,6 +171,7 @@ export const updateCouponStatusService = async (id, isActive) => {
   );
   if (!coupon) throw asServiceError("Coupon not found", 404);
   clearHomeCouponsCache();
+  await syncDraftItinerariesForCoupon(coupon.code, coupon);
   return coupon;
 };
 
