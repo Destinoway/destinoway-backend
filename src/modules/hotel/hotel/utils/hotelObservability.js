@@ -10,6 +10,30 @@ const MAX_SUPPLIER_HOTEL_DETAILS = 10;
 const toPlainHeaders = (headers = {}) =>
   typeof headers?.toJSON === "function" ? headers.toJSON() : headers;
 
+const SENSITIVE_LOG_FIELD =
+  /^(authorization|proxy-authorization|cookie|set-cookie|password|apikey|api_key|secret|key|browserkey|token|rmssignature|cvv|pan|gsttin)$/i;
+
+const redactSupplierLogValue = (value, fieldName = "") => {
+  if (SENSITIVE_LOG_FIELD.test(fieldName)) {
+    return value == null || value === "" ? value : "[REDACTED]";
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => redactSupplierLogValue(item));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, child]) => [
+        key,
+        redactSupplierLogValue(child, key),
+      ]),
+    );
+  }
+  return value;
+};
+
+const redactSupplierLogHeaders = (headers) =>
+  redactSupplierLogValue(toPlainHeaders(headers));
+
 const limitHotelDetailsForLog = (
   value,
   hotelLogKey,
@@ -102,8 +126,8 @@ export const logSupplierApiExchange = async ({
     correlationId: correlationId ?? null,
     method: String(method).toUpperCase(),
     endpoint,
-    headers: toPlainHeaders(headers),
-    request,
+    headers: redactSupplierLogHeaders(headers),
+    request: redactSupplierLogValue(request),
   });
 
   try {
@@ -129,8 +153,8 @@ export const logSupplierApiExchange = async ({
       method: String(method).toUpperCase(),
       endpoint,
       status: response.status,
-      headers: toPlainHeaders(response.headers),
-      response: responseData,
+      headers: redactSupplierLogHeaders(response.headers),
+      response: redactSupplierLogValue(responseData),
       ...(hotelCounts.included || hotelCounts.omitted
         ? {
             hotelDetailsIncludedInThisResponse: hotelCounts.included,
@@ -165,8 +189,8 @@ export const logSupplierApiExchange = async ({
       method: String(method).toUpperCase(),
       endpoint,
       status: errorResponse?.status ?? null,
-      headers: toPlainHeaders(errorResponse?.headers),
-      response: responseData,
+      headers: redactSupplierLogHeaders(errorResponse?.headers),
+      response: redactSupplierLogValue(responseData),
       error: error.message,
     });
     throw error;

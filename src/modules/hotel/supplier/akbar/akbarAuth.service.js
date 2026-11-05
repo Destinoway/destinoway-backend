@@ -493,7 +493,10 @@ import dns from "node:dns/promises";
 import axios from "axios";
 import AkbarToken from "./akbarToken.model.js";
 
-import { logHotelEvent } from "../../hotel/utils/hotelObservability.js";
+import {
+  logHotelEvent,
+  logSupplierApiExchange,
+} from "../../hotel/utils/hotelObservability.js";
 
 const AKBAR_TOKEN_DOCUMENT_ID = "hotel";
 const AKBAR_TOKEN_TTL = 10 * 24 * 60 * 60;
@@ -610,7 +613,11 @@ const readMongoToken = async (context = {}) => {
       Math.floor((record.expiresAt.getTime() - Date.now()) / 1000)
     );
 
-    return { token: record.token, ttlSeconds };
+    return {
+      token: record.token,
+      clientId: record.clientId ?? null,
+      ttlSeconds,
+    };
   } catch (error) {
     if (error.statusCode) throw error;
 
@@ -619,7 +626,7 @@ const readMongoToken = async (context = {}) => {
   }
 };
 
-const saveMongoToken = async (token, context = {}) => {
+const saveMongoToken = async (token, clientId, context = {}) => {
   const startedAt = performance.now();
   const expiresAt = new Date(Date.now() + AKBAR_TOKEN_TTL * 1000);
 
@@ -628,7 +635,14 @@ const saveMongoToken = async (token, context = {}) => {
     await AkbarToken.collection.updateOne(
       { _id: AKBAR_TOKEN_DOCUMENT_ID },
       {
-        $set: { token, expiresAt },
+        $set: {
+          token,
+          expiresAt,
+          clientId:
+            clientId === undefined || clientId === null || String(clientId).trim() === ""
+              ? null
+              : String(clientId).trim(),
+        },
         $unset: {
           encryptedToken: "",
           iv: "",
@@ -678,23 +692,30 @@ const createAndCacheToken = async (context = {}) => {
   let data;
 
   try {
-    const response = await axios.post(
-      signatureUrl.toString(),
+    const payload = {
+      MerchantID: process.env.AKBAR_MERCHANT_ID,
+      ApiKey: process.env.AKBAR_API_KEY,
+      ClientID: process.env.AKBAR_CLIENT_ID,
+      Password: process.env.AKBAR_PASSWORD,
+      AgentCode: process.env.AKBAR_AGENT_CODE,
+      BrowserKey: process.env.AKBAR_BROWSER_KEY,
+      Key: process.env.AKBAR_KEY,
+    };
+    const headers = { "Content-Type": "application/json" };
+    const response = await logSupplierApiExchange(
       {
-        MerchantID: process.env.AKBAR_MERCHANT_ID,
-        ApiKey: process.env.AKBAR_API_KEY,
-        ClientID: process.env.AKBAR_CLIENT_ID,
-        Password: process.env.AKBAR_PASSWORD,
-        AgentCode: process.env.AKBAR_AGENT_CODE,
-        BrowserKey: process.env.AKBAR_BROWSER_KEY,
-        Key: process.env.AKBAR_KEY,
+        operation: "signature",
+        correlationId: context.correlationId,
+        method: "POST",
+        endpoint: signatureUrl.toString(),
+        headers,
+        request: { body: payload },
       },
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        timeout: AKBAR_SIGNATURE_TIMEOUT_MS,
-      }
+      () =>
+        axios.post(signatureUrl.toString(), payload, {
+          headers,
+          timeout: AKBAR_SIGNATURE_TIMEOUT_MS,
+        }),
     );
 
     data = response.data;
@@ -719,7 +740,7 @@ const createAndCacheToken = async (context = {}) => {
     throw error;
   }
 
-  await saveMongoToken(data.Token, context);
+  await saveMongoToken(data.Token, data.ClientID, context);
 
 
   return data.Token;
@@ -772,6 +793,43 @@ export const getAKBARToken = async ({
   } finally {
     tokenRefreshPromise = undefined;
   }
+};
+
+export const getAKBARSignatureClientID = async ({
+  operation = "retrieve_booking",
+  correlationId,
+} = {}) => {
+  const context = {
+    tokenRequestedBy: operation,
+    correlationId,
+    processId: process.pid,
+  };
+
+  let storedToken = await readMongoToken(context);
+  if (!storedToken?.clientId) {
+    if (!tokenRefreshPromise) {
+      tokenRefreshPromise = createAndCacheToken(context);
+    }
+    const pendingRefresh = tokenRefreshPromise;
+    try {
+      await pendingRefresh;
+    } finally {
+      if (tokenRefreshPromise === pendingRefresh) {
+        tokenRefreshPromise = undefined;
+      }
+    }
+    storedToken = await readMongoToken(context);
+  }
+
+  if (!storedToken?.clientId) {
+    const error = new Error(
+      "AKBAR Signature response did not include ClientID required for RetrieveBooking",
+    );
+    error.statusCode = 502;
+    throw error;
+  }
+
+  return storedToken.clientId;
 };
 
 export const refreshAKBARTokenIfDue = async () => {

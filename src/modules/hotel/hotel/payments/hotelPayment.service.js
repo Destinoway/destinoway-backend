@@ -389,6 +389,8 @@ const retrieveAndSaveAkbarBookingDetails = async ({
   correlationId,
 }) => {
   try {
+    const itineraryResponse = booking.itineraryResponse?.data ?? booking.itineraryResponse ?? {};
+    const itineraryTui = itineraryResponse.TUI ?? itineraryResponse.Tui;
     const response = await tracePaymentStep(
       correlationId,
       "supplier.retrieve_booking",
@@ -400,6 +402,7 @@ const retrieveAndSaveAkbarBookingDetails = async ({
       () =>
         retrieveAkbarHotelBooking({
           transactionId: booking.transactionId,
+          tui: itineraryTui,
           bookingId: booking._id,
           correlationId,
         })

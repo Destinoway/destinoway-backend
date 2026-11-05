@@ -3,7 +3,6 @@ import HotelItinerary, {
 } from "./hotelItinerary.model.js";
 import { createAkbarHotelItineraryAPI } from "./adapters/akbar/api/createHotelItinerary.api.js";
 import { getHotelPriceVerificationContext } from "../priceVerify/services/hotelPriceVerify.service.js";
-import { randomUUID } from "node:crypto";
 import Coupon from "../../../promotionEngine/coupon.model.js";
 import { findBestCouponFromList } from "../../../promotionEngine/promotion.service.js";
 import {
@@ -64,6 +63,7 @@ const mapContactInfo = (contactInfo) => ({
   FName: contactInfo.firstName.trim(),
   LName: contactInfo.lastName.trim(),
   Mobile: contactInfo.mobile.trim(),
+  Phone: contactInfo.phone?.trim() ?? "",
   // Akbar sends booking vouchers and notifications to ContactInfo.Email.
   // Route those messages to our inbox; the guest email is stored separately
   // and used by our own booking confirmation email.
@@ -72,10 +72,12 @@ const mapContactInfo = (contactInfo) => ({
   State: contactInfo.state.trim(),
   City: contactInfo.city.trim(),
   PIN: contactInfo.pin.trim(),
-  GSTCompanyName: "",
-  GSTTIN: "",
-  GSTMobile: "",
-  GSTEmail: "",
+  GSTCompanyName: contactInfo.gstCompanyName?.trim() ?? "",
+  GSTTIN: contactInfo.gstTin?.trim() ?? "",
+  GSTMobile: contactInfo.gstMobile?.trim() ?? "",
+  GSTEmail: contactInfo.gstEmail?.trim() ?? "",
+  GSTAddress: contactInfo.gstAddress?.trim() ?? "",
+  GSTState: contactInfo.gstState?.trim() ?? "",
   UpdateProfile: true,
   IsGuest: false,
   CountryCode: process.env.AKBAR_COUNTRY_CODE || "IN",
@@ -169,7 +171,7 @@ const getOccupancyGuestDetails = (occupancy, submittedRoom, pricingOccupancy) =>
 };
 
 const mapSupplierGuest = (guest) => ({
-  GuestID: randomUUID(),
+  GuestID: "0",
   Operation: "U",
   Title: guest.title.trim(),
   FirstName: guest.firstName.trim(),
@@ -177,7 +179,7 @@ const mapSupplierGuest = (guest) => ({
   LastName: guest.lastName.trim(),
   MobileNo: guest.mobileNo?.trim() ?? "",
   PaxType: guest.paxType,
-  Age: guest.paxType === "C" ? String(guest.age) : "",
+  Age: guest.paxType === "A" ? "25" : String(guest.age),
   Email: guest.email?.trim() ?? "",
   Pan: guest.pan?.trim() ?? "",
 });

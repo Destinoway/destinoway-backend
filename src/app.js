@@ -84,7 +84,7 @@ app.use("/api/v1/hotelSearch", hotelSearch);
 app.use("/api/v1", support);
 //app.use("/api/v1", grievanceRedressal);
 // app.use("/api/v1/payment", paymentRoutes);
-app.use("/api/v1/newsletter", newsletter);
+//app.use("/api/v1/newsletter", newsletter);
 app.use("/api/v1/destination", destination);
 app.use("/api/v1/tax", tax);
 app.use("/api/v1/couponCode", couponCode);

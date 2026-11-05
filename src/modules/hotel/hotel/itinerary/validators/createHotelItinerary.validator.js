@@ -38,6 +38,15 @@ export const validateCreateHotelItineraryRequest = (req, res, next) => {
     "city",
     "pin",
   ];
+  const optionalContactFields = [
+    "phone",
+    "gstCompanyName",
+    "gstTin",
+    "gstMobile",
+    "gstEmail",
+    "gstAddress",
+    "gstState",
+  ];
 
   if (
     !contactInfo ||
@@ -50,6 +59,21 @@ export const validateCreateHotelItineraryRequest = (req, res, next) => {
       success: false,
       message:
         "contactInfo must include title, firstName, lastName, mobile, email, address, state, city and pin",
+      data: null,
+      meta: null,
+    });
+  }
+
+  if (
+    optionalContactFields.some(
+      (field) =>
+        contactInfo?.[field] !== undefined &&
+        typeof contactInfo[field] !== "string",
+    )
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "Optional contactInfo fields must be strings",
       data: null,
       meta: null,
     });

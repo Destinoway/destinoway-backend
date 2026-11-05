@@ -10,6 +10,10 @@ const akbarTokenSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    clientId: {
+      type: String,
+      default: null,
+    },
     expiresAt: {
       type: Date,
       required: true,

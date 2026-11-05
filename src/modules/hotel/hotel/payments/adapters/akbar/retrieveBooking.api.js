@@ -1,5 +1,8 @@
 import axios from "axios";
-import { getAKBARToken } from "../../../../supplier/akbar/akbarAuth.service.js";
+import {
+  getAKBARSignatureClientID,
+  getAKBARToken,
+} from "../../../../supplier/akbar/akbarAuth.service.js";
 import { logSupplierApiExchange } from "../../../utils/hotelObservability.js";
 
 const getRetrieveBookingEndpoint = () => {
@@ -34,21 +37,26 @@ const unwrapSupplierResponse = (response) =>
 
 export const retrieveAkbarHotelBooking = async ({
   transactionId,
+  tui,
   bookingId,
   correlationId,
 }) => {
   const endpoint = getRetrieveBookingEndpoint();
-  const clientId = process.env.AKBAR_CLIENT_ID;
-
-  if (!clientId) {
-    const error = new Error("AKBAR_CLIENT_ID is not configured");
-    error.statusCode = 503;
-    throw error;
-  }
+  const clientId = await getAKBARSignatureClientID({
+    operation: "retrieve_booking_client_id",
+    correlationId,
+  });
 
   const referenceNumber = String(transactionId ?? "").trim();
   if (!referenceNumber) {
     const error = new Error("AKBAR itinerary TransactionID is missing");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const tuiValue = String(tui ?? "").trim();
+  if (!tuiValue) {
+    const error = new Error("AKBAR CreateItinerary TUI is missing");
     error.statusCode = 409;
     throw error;
   }
@@ -58,7 +66,7 @@ export const retrieveAkbarHotelBooking = async ({
     correlationId,
   });
   const payload = {
-    TUI: null,
+    TUI: tuiValue,
     ReferenceType: "T",
     ReferenceNumber: referenceNumber,
     ServiceType: null,
