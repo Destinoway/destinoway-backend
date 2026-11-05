@@ -110,6 +110,21 @@ export const logSupplierApiExchange = async ({
   }
 };
 
+export const logSupplierCredentialContext = async ({
+  operation,
+  correlationId,
+  credentials,
+}) => {
+  await writeSupplierApiLog({
+    event: "credential_context",
+    supplier: "AKBAR",
+    operation,
+    correlationId: correlationId ?? null,
+    credentialSource: "MongoDB token cache",
+    credentials: redactSupplierLogValue(credentials),
+  });
+};
+
 export const maskSupplierTracingKey = (value) => {
   if (typeof value !== "string" || value.length === 0) {
     return null;

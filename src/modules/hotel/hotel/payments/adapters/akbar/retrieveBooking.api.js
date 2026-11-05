@@ -3,7 +3,10 @@ import {
   getAKBARSignatureClientID,
   getAKBARToken,
 } from "../../../../supplier/akbar/akbarAuth.service.js";
-import { logSupplierApiExchange } from "../../../utils/hotelObservability.js";
+import {
+  logSupplierApiExchange,
+  logSupplierCredentialContext,
+} from "../../../utils/hotelObservability.js";
 
 const getRetrieveBookingEndpoint = () => {
   const configuredUrl = process.env.START_PAY_URL;
@@ -64,6 +67,14 @@ export const retrieveAkbarHotelBooking = async ({
   const token = await getAKBARToken({
     operation: "retrieve_booking",
     correlationId,
+  });
+  await logSupplierCredentialContext({
+    operation: "retrieve_booking_signature_credentials",
+    correlationId,
+    credentials: {
+      Token: token,
+      ClientID: clientId,
+    },
   });
   const payload = {
     TUI: tuiValue,
