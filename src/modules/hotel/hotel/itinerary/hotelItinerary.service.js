@@ -137,17 +137,21 @@ const getOccupancyGuestDetails = (occupancy, submittedRoom, pricingOccupancy) =>
     );
   }
 
-  // Akbar expects GuestCode child ages in the same order as the verified
-  // pricing occupancy. Keep guest details in submitted order, but take each
-  // child's age from that authoritative occupancy so the two representations
-  // cannot drift apart.
-  const childAges = Array.isArray(pricingOccupancy?.childAges)
+  // Keep each guest's age paired with the guest order from the original
+  // search/submission. Some supplier price-verification responses sort child
+  // ages, so their indexes cannot safely be applied to the named guests.
+  const verifiedChildAges = Array.isArray(pricingOccupancy?.childAges)
     ? pricingOccupancy.childAges
     : occupancy.childAges;
   const children = submittedRoom.children.map((guest, index) => ({
     ...guest,
-    age: Number(childAges?.[index] ?? guest.age),
+    age: Number(guest.age ?? occupancy.childAges?.[index] ?? verifiedChildAges?.[index]),
   }));
+  // Supplier GuestCode ages follow verified occupancy order, which can differ
+  // from the order of named child guest details above.
+  const guestCodeChildAges = verifiedChildAges?.length
+    ? verifiedChildAges
+    : children.map((guest) => guest.age);
 
   return {
     guestCode: [
@@ -159,7 +163,7 @@ const getOccupancyGuestDetails = (occupancy, submittedRoom, pricingOccupancy) =>
         : "",
       submittedRoom.children.length
         ? `${submittedRoom.children.length}:C:${children
-            .map((guest) => guest.age)
+            .map((guest, index) => guestCodeChildAges[index] ?? guest.age)
             .join(":")}|`
         : "",
     ].join(""),
