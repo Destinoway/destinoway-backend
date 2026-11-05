@@ -1,11 +1,10 @@
+import { appendFile, mkdir } from "node:fs/promises";
+import path from "node:path";
+
 export const logHotelEvent = () => {};
 
 // Keep the wrapper API for callers while running the operation without emitting logs.
 export const traceHotelPaymentStep = ({ operation }) => operation();
-
-const supplierHotelLogCounts = new Map();
-const MAX_SUPPLIER_HOTEL_DETAILS = 10;
-
 
 const toPlainHeaders = (headers = {}) =>
   typeof headers?.toJSON === "function" ? headers.toJSON() : headers;
@@ -34,79 +33,29 @@ const redactSupplierLogValue = (value, fieldName = "") => {
 const redactSupplierLogHeaders = (headers) =>
   redactSupplierLogValue(toPlainHeaders(headers));
 
-const limitHotelDetailsForLog = (
-  value,
-  hotelLogKey,
-  parentKey = "",
-  counts = { included: 0, omitted: 0 },
-  includeHotelDetails = true,
-) => {
-  if (Array.isArray(value)) {
-    if (/^(hotels|hotellist)$/i.test(parentKey)) {
-      if (!includeHotelDetails) {
-        counts.omitted += value.length;
-        return [];
-      }
-      let state = supplierHotelLogCounts.get(hotelLogKey);
-      if (!state) {
-        if (supplierHotelLogCounts.size >= 1000) {
-          const oldestKey = supplierHotelLogCounts.keys().next().value;
-          supplierHotelLogCounts.delete(oldestKey);
-        }
-        state = { hotelIds: new Set(), anonymousCount: 0 };
-      }
-      const included = [];
-      for (const hotel of value) {
-        const identity =
-          hotel?.id ??
-          hotel?.hotelId ??
-          hotel?.supplierHotelId ??
-          hotel?.supplierHotelID ??
-          hotel?.HotelId ??
-          hotel?.HotelID;
-        const identityKey = identity == null ? null : String(identity);
-        const alreadyLogged = identityKey && state.hotelIds.has(identityKey);
-        if (alreadyLogged || state.hotelIds.size + state.anonymousCount < MAX_SUPPLIER_HOTEL_DETAILS) {
-          included.push(hotel);
-          counts.included += 1;
-          if (identityKey) state.hotelIds.add(identityKey);
-          else state.anonymousCount += 1;
-        } else {
-          counts.omitted += 1;
-        }
-      }
-      supplierHotelLogCounts.set(hotelLogKey, state);
-      return included.map((item) =>
-        limitHotelDetailsForLog(item, hotelLogKey, "", counts, includeHotelDetails),
-      );
-    }
-    return value.map((item) =>
-      limitHotelDetailsForLog(item, hotelLogKey, "", counts, includeHotelDetails),
-    );
-  }
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, child]) => [
-        key,
-        limitHotelDetailsForLog(child, hotelLogKey, key, counts, includeHotelDetails),
-      ]),
-    );
-  }
-  return value;
-};
-
-const writeSupplierApiLog = (event) => {
-  console.info(JSON.stringify({
+const writeSupplierApiLog = async (event) => {
+  const line = JSON.stringify({
     timestamp: new Date().toISOString(),
     source: "supplier_api",
     ...event,
-  }));
+  });
+  // PM2 may truncate very large console lines. Keep the full exchange in JSONL.
+  // Override the path in deployment if the application runs from another cwd.
+  const logFile = path.resolve(
+    process.env.AKBAR_API_LOG_FILE || "logs/akbar-api-exchanges.jsonl",
+  );
+  try {
+    await mkdir(path.dirname(logFile), { recursive: true });
+    await appendFile(logFile, `${line}\n`, { encoding: "utf8", mode: 0o600 });
+  } catch (error) {
+    // Logging must not take down a supplier booking/search request.
+    console.error("[supplier_api] could not append exchange log", error.message);
+  }
+  console.info(line);
 };
 
-export const resetSupplierHotelLogLimit = (hotelLogKey) => {
-  if (!hotelLogKey) return;
-  supplierHotelLogCounts.delete(String(hotelLogKey));
-};
+// Retained as a no-op for existing imports; complete supplier responses are logged.
+export const resetSupplierHotelLogLimit = () => {};
 
 export const logSupplierApiExchange = async ({
   supplier = "AKBAR",
@@ -118,8 +67,7 @@ export const logSupplierApiExchange = async ({
   headers = {},
   request = null,
 }, execute) => {
-  const logKey = String(hotelLogKey ?? correlationId ?? endpoint);
-  writeSupplierApiLog({
+  await writeSupplierApiLog({
     event: "request",
     supplier,
     operation,
@@ -132,20 +80,7 @@ export const logSupplierApiExchange = async ({
 
   try {
     const response = await execute();
-    const hotelCounts = { included: 0, omitted: 0 };
-    const responseData = limitHotelDetailsForLog(
-      response.data,
-      logKey,
-      "",
-      hotelCounts,
-      [
-        "hotel_search_content",
-        "hotel_search_rate",
-        "hotel_details_content",
-        "hotel_details_rooms",
-      ].includes(operation),
-    );
-    writeSupplierApiLog({
+    await writeSupplierApiLog({
       event: "response",
       supplier,
       operation,
@@ -154,34 +89,12 @@ export const logSupplierApiExchange = async ({
       endpoint,
       status: response.status,
       headers: redactSupplierLogHeaders(response.headers),
-      response: redactSupplierLogValue(responseData),
-      ...(hotelCounts.included || hotelCounts.omitted
-        ? {
-            hotelDetailsIncludedInThisResponse: hotelCounts.included,
-            hotelDetailsOmittedFromThisResponse: hotelCounts.omitted,
-            maxUniqueHotelDetailsPerSearch: MAX_SUPPLIER_HOTEL_DETAILS,
-          }
-        : {}),
+      response: redactSupplierLogValue(response.data),
     });
     return response;
   } catch (error) {
     const errorResponse = error.response;
-    const hotelCounts = { included: 0, omitted: 0 };
-    const responseData = errorResponse
-      ? limitHotelDetailsForLog(
-          errorResponse.data,
-          logKey,
-          "",
-          hotelCounts,
-          [
-            "hotel_search_content",
-            "hotel_search_rate",
-            "hotel_details_content",
-            "hotel_details_rooms",
-          ].includes(operation),
-        )
-      : null;
-    writeSupplierApiLog({
+    await writeSupplierApiLog({
       event: "error",
       supplier,
       operation,
@@ -190,7 +103,7 @@ export const logSupplierApiExchange = async ({
       endpoint,
       status: errorResponse?.status ?? null,
       headers: redactSupplierLogHeaders(errorResponse?.headers),
-      response: redactSupplierLogValue(responseData),
+      response: redactSupplierLogValue(errorResponse?.data ?? null),
       error: error.message,
     });
     throw error;

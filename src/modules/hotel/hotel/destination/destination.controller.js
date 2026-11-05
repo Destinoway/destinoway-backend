@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { searchDestinationService } from "./destination.service.js";
 
 export const searchDestination = async (req, res) => {
@@ -11,7 +12,9 @@ export const searchDestination = async (req, res) => {
       });
     }
 
-    const data = await searchDestinationService(searchInput.trim());
+    const data = await searchDestinationService(searchInput.trim(), {
+      correlationId: randomUUID(),
+    });
 
     return res.status(200).json({
       success: true,
