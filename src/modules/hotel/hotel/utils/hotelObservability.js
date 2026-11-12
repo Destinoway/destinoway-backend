@@ -9,12 +9,17 @@ export const traceHotelPaymentStep = ({ operation }) => operation();
 const toPlainHeaders = (headers = {}) =>
   typeof headers?.toJSON === "function" ? headers.toJSON() : headers;
 
+// Preserve the full supplier exchange while keeping reusable credentials and
+// payment secrets out of persistent logs. Match common camelCase and
+// underscore/hyphen variants (for example accessToken and search-tracing-key).
 const SENSITIVE_LOG_FIELD =
-  /^(authorization|proxy-authorization|cookie|set-cookie|password|apikey|api_key|secret|key|browserkey|token|rmssignature|cvv|pan|gsttin)$/i;
+  /(authorization|proxy.?authorization|cookie|password|secret|api.?key|browser.?key|auth.?header|credential|token|(^|[-_])key($|[-_])|rmssignature|cvv|pan|gsttin)/i;
 
 const redactSupplierLogValue = (value, fieldName = "") => {
   if (SENSITIVE_LOG_FIELD.test(fieldName)) {
-    return value == null || value === "" ? value : "[REDACTED]";
+    return value == null || value === ""
+      ? { redacted: true, present: false }
+      : { redacted: true, present: true };
   }
   if (Array.isArray(value)) {
     return value.map((item) => redactSupplierLogValue(item));
@@ -72,6 +77,7 @@ export const logSupplierApiExchange = async ({
     supplier,
     operation,
     correlationId: correlationId ?? null,
+    hotelLogKey: hotelLogKey ?? null,
     method: String(method).toUpperCase(),
     endpoint,
     headers: redactSupplierLogHeaders(headers),
@@ -85,6 +91,7 @@ export const logSupplierApiExchange = async ({
       supplier,
       operation,
       correlationId: correlationId ?? null,
+      hotelLogKey: hotelLogKey ?? null,
       method: String(method).toUpperCase(),
       endpoint,
       status: response.status,
@@ -99,6 +106,7 @@ export const logSupplierApiExchange = async ({
       supplier,
       operation,
       correlationId: correlationId ?? null,
+      hotelLogKey: hotelLogKey ?? null,
       method: String(method).toUpperCase(),
       endpoint,
       status: errorResponse?.status ?? null,
