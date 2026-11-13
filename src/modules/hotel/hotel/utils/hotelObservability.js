@@ -13,7 +13,7 @@ const toPlainHeaders = (headers = {}) =>
 // payment secrets out of persistent logs. Match common camelCase and
 // underscore/hyphen variants (for example accessToken and search-tracing-key).
 const SENSITIVE_LOG_FIELD =
-  /(authorization|proxy.?authorization|cookie|password|secret|api.?key|browser.?key|auth.?header|credential|token|(^|[-_])key($|[-_])|rmssignature|cvv|pan|gsttin)/i;
+  /(authorization|proxy.?authorization|cookie|password|secret|api.?key|browser.?key|auth.?header|credential|token|key|rmssignature|cvv|pan|gsttin)/i;
 
 const redactSupplierLogValue = (value, fieldName = "") => {
   if (SENSITIVE_LOG_FIELD.test(fieldName)) {
