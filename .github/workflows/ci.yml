@@ -1,3 +1,4 @@
+
 name: Backend CI/CD
 
 on:
@@ -14,10 +15,9 @@ on:
       - main
 
 jobs:
-  # ============================================================
-  # CI
-  # Runs for PRs and pushes to develop, uat and main
-  # ============================================================
+  # ==========================================
+  # CI - Runs for PRs and pushes
+  # ==========================================
   ci:
     name: Backend CI
     runs-on: ubuntu-latest
@@ -34,9 +34,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: package-lock.json
 
-      - name: Verify Node.js and npm
+      - name: Verify Node.js
         run: |
           node --version
           npm --version
@@ -47,162 +46,105 @@ jobs:
       - name: Run lint
         run: npm run lint
 
-      - name: Build project
+      - name: Validate project
         run: npm run build
 
-
-  # ============================================================
-  # DEV CD
-  # Runs only after successful push to develop
-  # ============================================================
-  deploy-dev:
-    name: Deploy Backend to DEV
+  # ==========================================
+  # UAT CD - Deploy only after push to uat
+  # ==========================================
+  deploy-uat:
+    name: Deploy Backend to UAT
     runs-on: ubuntu-latest
 
-    # Wait for CI to finish successfully
     needs: ci
 
-    # Deploy only for push to develop
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/uat'
 
     permissions:
       contents: read
       id-token: write
 
     steps:
-      # --------------------------------------------------------
-      # Configure AWS using GitHub OIDC
-      # --------------------------------------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::056580203067:role/GitHubActions-Destinoway-Dev-Deploy
+          role-to-assume: ${{ secrets.AWS_UAT_ROLE_ARN }}
           aws-region: ap-south-1
 
-      # --------------------------------------------------------
-      # Verify AWS authentication
-      # --------------------------------------------------------
       - name: Verify AWS identity
-        run: |
-          aws sts get-caller-identity
+        run: aws sts get-caller-identity
 
-      # --------------------------------------------------------
-      # Prepare deployment script
-      # --------------------------------------------------------
-      - name: Prepare DEV deployment script
+      - name: Prepare UAT deployment script
         shell: bash
         run: |
-          cat > deploy-dev.sh <<'EOF'
+          cat > deploy-uat.sh <<'EOF'
           #!/bin/bash
-
           set -e
-
-          echo "========================================"
-          echo "Starting Destinoway DEV deployment"
-          echo "========================================"
 
           APP_DIR="/home/ubuntu/apps/destinoway-backend"
 
-          echo "Application directory:"
-          echo "$APP_DIR"
+          echo "Starting Destinoway UAT deployment"
 
           cd "$APP_DIR"
 
-          echo ""
-          echo "Current Git status:"
-          git status
+          echo "Fetching latest UAT code..."
+          git fetch origin uat
 
-          echo ""
-          echo "Fetching latest develop branch..."
-          git fetch origin develop
+          echo "Updating UAT working tree..."
+          git reset --hard origin/uat
 
-          echo ""
-          echo "Resetting working tree to origin/develop..."
-          git reset --hard origin/develop
+          echo "Installing production dependencies..."
+          npm ci --omit=dev
 
-          echo ""
-          echo "Installing dependencies..."
-          npm ci
+          echo "Restarting UAT PM2 application..."
+          pm2 restart destinoway-uat-api
 
-          echo ""
-          echo "Restarting PM2 application..."
-          pm2 restart destinoway-backend
-
-          echo ""
           echo "Saving PM2 configuration..."
           pm2 save
 
-          echo ""
-          echo "PM2 status:"
+          echo "Checking PM2 status..."
           pm2 status
 
-          echo ""
-          echo "Checking application logs..."
-          pm2 logs destinoway-backend --lines 20 --nostream
+          echo "Checking recent application logs..."
+          pm2 logs destinoway-uat-api --lines 30 --nostream
 
-          echo ""
-          echo "========================================"
-          echo "DEV deployment completed successfully"
-          echo "========================================"
+          echo "UAT deployment completed"
           EOF
 
-          chmod +x deploy-dev.sh
-
-          echo "Deployment script prepared."
-
-      # --------------------------------------------------------
-      # Encode deployment script
-      # --------------------------------------------------------
       - name: Encode deployment script
         shell: bash
         run: |
-          DEPLOY_SCRIPT_BASE64=$(base64 -w 0 deploy-dev.sh)
-
+          DEPLOY_SCRIPT_BASE64=$(base64 -w 0 deploy-uat.sh)
           echo "DEPLOY_SCRIPT_BASE64=$DEPLOY_SCRIPT_BASE64" >> "$GITHUB_ENV"
 
-          echo "Deployment script encoded successfully."
-
-      # --------------------------------------------------------
-      # Send deployment command to DEV EC2
-      # --------------------------------------------------------
-      - name: Deploy to DEV EC2 via SSM
+      - name: Deploy to UAT EC2 via SSM
         shell: bash
         run: |
           set -e
 
-          echo "========================================"
-          echo "Sending deployment command to DEV EC2"
-          echo "========================================"
+          INSTANCE_ID="i-04c47e99b900f38e0"
 
           COMMAND_ID=$(aws ssm send-command \
-            --instance-ids "i-070f25a421e2d336c" \
+            --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
-            --comment "Deploy Destinoway backend DEV from develop" \
+            --comment "Deploy Destinoway backend UAT from uat branch" \
             --parameters "commands=[\"echo '$DEPLOY_SCRIPT_BASE64' | base64 -d | sudo -iu ubuntu bash\"]" \
             --query "Command.CommandId" \
             --output text)
 
           echo "SSM Command ID: $COMMAND_ID"
 
-          echo ""
-          echo "Waiting for deployment to complete..."
+          echo "Waiting for UAT deployment..."
 
           aws ssm wait command-executed \
             --command-id "$COMMAND_ID" \
-            --instance-id "i-070f25a421e2d336c"
+            --instance-id "$INSTANCE_ID"
 
-          echo ""
-          echo "========================================"
-          echo "DEV deployment completed"
-          echo "========================================"
-
-          echo ""
           echo "Deployment output:"
-          echo "----------------------------------------"
 
           aws ssm get-command-invocation \
             --command-id "$COMMAND_ID" \
-            --instance-id "i-070f25a421e2d336c" \
+            --instance-id "$INSTANCE_ID" \
             --query '{
               Status: Status,
               StandardOutput: StandardOutputContent,
@@ -210,12 +152,6 @@ jobs:
             }' \
             --output json
 
-          echo "----------------------------------------"
-
-      # --------------------------------------------------------
-      # Final verification
-      # --------------------------------------------------------
-      - name: Verify DEV deployment
-        shell: bash
-        run: |
-          echo "DEV deployment workflow finished successfully."
+      - name: UAT deployment completed
+        run: echo "Destinoway UAT deployment workflow finished."
+ 
