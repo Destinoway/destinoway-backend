@@ -28,8 +28,6 @@ export const verifyOTP = asyncHandler(async (req, res) => {
   const mobile = normalizeMobile(req.body.mobile);
   const otp = String(req.body.otp || "");
 
-  console.log("🔍 VERIFY LOGIN INPUT:", mobile, otp);
-
   if (!mobile || mobile.length !== 10 || !otp) {
     return sendError(res, "Invalid mobile or OTP", 400);
   }

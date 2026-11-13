@@ -1,344 +1,183 @@
 import Coupon from "./coupon.model.js";
+import { clearHomeCouponsCache } from "./homeCoupons.service.js";
 
-/*
-=========================================
-CREATE COUPON (ADMIN)
-=========================================
-*/
+const roundCurrency = (value) => Number(value.toFixed(2));
 
-export const createCouponService = async (payload) => {
-  const coupon = await Coupon.create(payload);
-
-  return coupon;
-};
-
-/*
-=========================================
-AUTO FIND BEST COUPON
-=========================================
-*/
-
-export const findBestCoupon =
-  async ({
-    module,
-    bookingAmount,
-    serviceTax,
-  }) => {
-const now = new Date();
-    const coupons =
-      await Coupon.find({
-        applicableModules: {
-          $in: [module],
-        },
-        isAutoApply: true,
-        isActive: true,
-       
+export const getAutoApplyCoupons = async (module = "hotel") => {
+  const now = new Date();
+  return Coupon.find({
+    applicableModules: module,
+    isAutoApply: true,
+    isActive: true,
     "validity.startDate": { $lte: now },
     "validity.endDate": { $gte: now },
-  });
+    $or: [{ expiresAt: null }, { expiresAt: { $gte: now } }],
+  }).lean();
+};
 
+export const findBestCouponFromList = ({
+  coupons = [],
+  bookingAmount = 0,
+  serviceTax = 0,
+}) => {
+  const amount = Number(bookingAmount) || 0;
+  const tax = Number(serviceTax) || 0;
   let bestCoupon = null;
   let bestDiscount = 0;
-
-  let availableCoupons = [];
-
-  const maxAllowedDiscount = serviceTax * 0.7;
+  const availableCoupons = [];
 
   for (const coupon of coupons) {
-    // minimum amount validation
-    if (bookingAmount < coupon.minAmount) {
+    if (amount < Number(coupon.minAmount ?? 0)) continue;
+    if (
+      coupon.usageLimit !== null &&
+      coupon.usageLimit !== undefined &&
+      Number(coupon.usedCount ?? 0) >= Number(coupon.usageLimit)
+    ) {
       continue;
     }
 
-    // expiry check
-    if (coupon.expiresAt && coupon.expiresAt < new Date()) {
-      continue;
-    }
+    let discount =
+      coupon.discountType === "flat"
+        ? Number(coupon.discountValue)
+        : (amount * Number(coupon.discountValue)) / 100;
 
-    let discount = 0;
+    const capPercent = Number(coupon.maxDiscountPercentOfServiceTax ?? 70);
+    const maxAllowedDiscount = (tax * capPercent) / 100;
+    discount = roundCurrency(Math.max(0, Math.min(discount, maxAllowedDiscount, amount)));
 
-    // flat discount
-    if (coupon.discountType === "flat") {
-      discount = coupon.discountValue;
-    }
+    if (discount <= 0) continue;
 
-    // percentage discount
-    if (coupon.discountType === "percent") {
-      discount = (bookingAmount * coupon.discountValue) / 100;
-    }
-
-    // max cap = 70% of service tax
-    if (discount > maxAllowedDiscount) {
-      discount = maxAllowedDiscount;
-    }
-
-    // push all available coupons
     availableCoupons.push({
       code: coupon.code,
       title: coupon.title,
+      image: coupon.image ?? null,
       discount,
+      discountType: coupon.discountType,
+      discountValue: coupon.discountValue,
     });
 
-    // choose best coupon
     if (discount > bestDiscount) {
       bestDiscount = discount;
-
       bestCoupon = coupon;
     }
   }
 
-  return {
-    bestCoupon,
-    bestDiscount,
-    availableCoupons,
-  };
+  return { bestCoupon, bestDiscount, availableCoupons };
 };
 
-/*
-=========================================
-MANUAL APPLY COUPON
-=========================================
-*/
-
-export const applyManualCoupon = async ({ booking, couponCode, module }) => {
-  const coupon = await Coupon.findOne({
-    code: couponCode,
-    isActive: true,
-  });
-
-  if (!coupon) {
-    throw new Error("Invalid coupon");
-  }
-
-  // module check
-  if (!coupon.applicableModules.includes(module)) {
-    throw new Error("Coupon not valid for this module");
-  }
-
-  // expiry check
-  if (coupon.expiresAt && coupon.expiresAt < new Date()) {
-    throw new Error("Coupon expired");
-  }
-
-  let discount = 0;
-
-  if (coupon.discountType === "flat") {
-    discount = coupon.discountValue;
-  }
-
-  if (coupon.discountType === "percent") {
-    discount = (booking.pricing.finalSellingPrice * coupon.discountValue) / 100;
-  }
-
-  const maxAllowedDiscount = booking.pricing.serviceTaxAmount * 0.7;
-
-  if (discount > maxAllowedDiscount) {
-    discount = maxAllowedDiscount;
-  }
-
-  booking.offer = {
-    couponCode: coupon.code,
-
-    couponDiscount: discount,
-
-    autoDiscount: discount,
-  };
-
-  booking.payableAmount = booking.pricing.finalSellingPrice - discount;
-
-  await booking.save();
-
-  return booking;
+export const findBestCoupon = async ({
+  module = "hotel",
+  bookingAmount,
+  serviceTax,
+}) => {
+  const coupons = await getAutoApplyCoupons(module);
+  return findBestCouponFromList({ coupons, bookingAmount, serviceTax });
 };
 
-export const giftcard = async () => {
-  const now = new Date();
+const asServiceError = (message, statusCode = 400) =>
+  Object.assign(new Error(message), { statusCode });
 
-  const coupons = await Coupon.find({
-    isActive: true,
-    $or: [
-      // validity nahi hai to bhi show karo
-      { validity: { $exists: false } },
-
-      // validity object hai lekin endDate nahi hai
-      { "validity.endDate": { $exists: false } },
-
-      // sirf non-expired coupons
-      {
-        "validity.endDate": {
-          $gte: now,
-        },
-      },
-    ],
-  }).sort({ createdAt: -1 });
-
-  return coupons.map((coupon) => {
-    const obj = coupon.toObject();
-
-    obj.comingSoon =
-      obj.validity?.startDate &&
-      new Date(obj.validity.startDate) > now;
-
-    return obj;
-  });
-};
-
-export const getAllCouponsService = async (queryParams = {}) => {
-  const {
-    isActive,
-    module,
-    startDate,
-    endDate,
-    search,
-    page = 1,
-    limit = 10,
-  } = queryParams;
-
-  let filter = {};
-
-  const pageNumber = Number(page);
-
-  const limitNumber = Number(limit);
-
-  const skip = (pageNumber - 1) * limitNumber;
-
-  /* ==========================
-       SEARCH BY CODE / TITLE
-    ========================== */
-
-  if (search) {
-    filter.$or = [
-      {
-        code: {
-          $regex: search,
-          $options: "i",
-        },
-      },
-
-      {
-        title: {
-          $regex: search,
-          $options: "i",
-        },
-      },
-    ];
-  }
-
-  /* ==========================
-       STATUS FILTER
-    ========================== */
-
-  if (isActive !== undefined) {
-    filter.isActive = isActive === "true";
-  }
-
-  /* ==========================
-       MODULE FILTER
-    ========================== */
-
-  if (module) {
-    filter.applicableModules = module;
-  }
-
-  /* ==========================
-       DATE FILTER
-    ========================== */
-
-  if (startDate || endDate) {
-    if (startDate) {
-      filter["validity.startDate"] = {
-        $gte: new Date(startDate),
-      };
-    }
-
-    if (endDate) {
-      filter["validity.endDate"] = {
-        $lte: new Date(endDate),
-      };
-    }
-  }
-
-  /* ==========================
-       GET TOTAL COUNT
-    ========================== */
-
-  const totalCoupons = await Coupon.countDocuments(filter);
-
-  /* ==========================
-       FETCH DATA
-    ========================== */
-
-  const coupons = await Coupon.find(filter)
-    .sort({
-      createdAt: -1,
-    })
-    .skip(skip)
-    .limit(limitNumber);
-
-  return {
-    coupons,
-
-    pagination: {
-      totalRecords: totalCoupons,
-
-      currentPage: pageNumber,
-
-      totalPages: Math.ceil(totalCoupons / limitNumber),
-
-      limit: limitNumber,
-    },
-  };
-};
-// /*
-// ====================================
-// GET SINGLE COUPON
-// ====================================
-// */
-export const getSingleCouponService = async (couponId) => {
-  const coupon = await Coupon.findById(couponId);
-
-  if (!coupon) {
-    throw new Error("Coupon not found");
-  }
-
-  return coupon;
-};
-
-/*
-====================================
-UPDATE COUPON
-====================================
-*/
-export const updateCouponAdminService = async (couponId, payload) => {
-  const coupon = await Coupon.findByIdAndUpdate(couponId, payload, {
-    new: true,
-  });
-
-  if (!coupon) {
-    throw new Error("Coupon not found");
-  }
-
-  return coupon;
-};
-export const updateCouponStatusService = async (couponId, isActive) => {
-  const coupon = await Coupon.findByIdAndUpdate(
-    couponId,
-    { isActive },
-    { new: true },
+const syncDraftItinerariesForCoupon = async (previousCode, coupon) => {
+  if (!previousCode) return;
+  const HotelItinerary = (await import("../hotel/hotel/itinerary/hotelItinerary.model.js")).default;
+  const { updateHotelItineraryCoupon } = await import(
+    "../hotel/hotel/itinerary/hotelItinerary.service.js"
   );
+  const itineraries = await HotelItinerary.find({
+    itineraryStatus: "draft",
+    "offer.couponCode": previousCode,
+  }).select("_id userId").lean();
 
-  if (!coupon) {
-    throw new Error("Coupon not found");
+  for (const itinerary of itineraries) {
+    try {
+      await updateHotelItineraryCoupon({
+        itineraryId: itinerary._id,
+        userId: itinerary.userId,
+        couponCode: coupon.code,
+      });
+    } catch (error) {
+      if (error.message !== "Coupon is invalid or not applicable") throw error;
+      await updateHotelItineraryCoupon({
+        itineraryId: itinerary._id,
+        userId: itinerary.userId,
+        couponCode: null,
+      });
+    }
   }
+};
 
+export const createCouponService = async (payload) => {
+  try {
+    const coupon = await Coupon.create({
+      ...payload,
+      code: String(payload.code ?? "").trim().toUpperCase(),
+    });
+    clearHomeCouponsCache();
+    return coupon;
+  } catch (error) {
+    if (error.code === 11000) throw asServiceError("Coupon code already exists", 409);
+    throw error;
+  }
+};
+
+export const getAllCouponsService = async (query = {}) => {
+  const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, Number.parseInt(query.limit, 10) || 20));
+  const filter = {};
+  if (query.isActive !== undefined) filter.isActive = query.isActive === "true";
+  if (query.module) filter.applicableModules = query.module;
+  if (query.search) filter.code = { $regex: String(query.search).trim(), $options: "i" };
+
+  const [coupons, total] = await Promise.all([
+    Coupon.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+    Coupon.countDocuments(filter),
+  ]);
+  return { coupons, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
+};
+
+export const getSingleCouponService = async (id) => {
+  const coupon = await Coupon.findById(id);
+  if (!coupon) throw asServiceError("Coupon not found", 404);
   return coupon;
 };
-export const deleteCouponAdminService = async (couponId) => {
-  const coupon = await Coupon.findByIdAndDelete(couponId);
 
-  if (!coupon) {
-    throw new Error("Coupon not found");
+export const updateCouponAdminService = async (id, payload) => {
+  const updates = { ...payload };
+  if (updates.code !== undefined) updates.code = String(updates.code).trim().toUpperCase();
+  try {
+    const previousCoupon = await Coupon.findById(id).select("code").lean();
+    const coupon = await Coupon.findByIdAndUpdate(id, updates, {
+      new: true,
+      runValidators: true,
+    });
+    if (!coupon) throw asServiceError("Coupon not found", 404);
+    clearHomeCouponsCache();
+    await syncDraftItinerariesForCoupon(previousCoupon?.code, coupon);
+    return coupon;
+  } catch (error) {
+    if (error.code === 11000) throw asServiceError("Coupon code already exists", 409);
+    throw error;
   }
+};
 
+export const updateCouponStatusService = async (id, isActive) => {
+  if (typeof isActive !== "boolean") {
+    throw asServiceError("isActive must be a boolean");
+  }
+  const coupon = await Coupon.findByIdAndUpdate(
+    id,
+    { $set: { isActive } },
+    { new: true, runValidators: true },
+  );
+  if (!coupon) throw asServiceError("Coupon not found", 404);
+  clearHomeCouponsCache();
+  await syncDraftItinerariesForCoupon(coupon.code, coupon);
   return coupon;
+};
+
+export const deleteCouponAdminService = async (id) => {
+  const coupon = await Coupon.findByIdAndDelete(id);
+  if (!coupon) throw asServiceError("Coupon not found", 404);
+  clearHomeCouponsCache();
+  return { id: coupon._id };
 };

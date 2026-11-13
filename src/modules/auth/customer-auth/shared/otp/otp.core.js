@@ -28,16 +28,12 @@ export const sendOtp = async (type, value) => {
     expiresAt: Date.now() + 5 * 60 * 1000,
   });
 
-  console.log(`📲 OTP for ${key}: ${otp}`);
-
   return otp; // ✅ THIS IS CRITICAL
 };
 export const verifyOtp = async (type, value, inputOtp) => {
   const key = buildKey(type, value);
 
   const record = otpStore.get(key);
-
-  console.log("🔍 VERIFY:", key, inputOtp, record);
 
   if (!record) {
     throw new Error("OTP not found");

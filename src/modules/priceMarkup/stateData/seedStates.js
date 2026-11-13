@@ -8,7 +8,6 @@ const seedStates = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
 
-    console.log("🌍 Fetching countries + states...");
 
     const res = await fetch(
       "https://countriesnow.space/api/v0.1/countries/states"
@@ -31,10 +30,8 @@ const seedStates = async () => {
     await State.deleteMany();
     await State.insertMany(statesArray);
 
-    console.log(`✅ ${statesArray.length} States Seeded`);
     process.exit();
   } catch (err) {
-    console.error(err);
     process.exit(1);
   }
 };

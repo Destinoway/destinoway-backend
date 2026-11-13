@@ -35,7 +35,6 @@ async function run() {
   try {
     await mongoose.connect(MONGO_URI);
 
-    console.log("Mongo connected");
 
     const txn = await PaymentTransaction.create({
       transactionId: "txn_001",
@@ -51,11 +50,9 @@ async function run() {
       currency: "INR",
     });
 
-    console.log(txn);
 
     await mongoose.disconnect();
   } catch (error) {
-    console.error(error);
   }
 }
 

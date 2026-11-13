@@ -14,17 +14,14 @@ export const uploadToS3 = async (file) => {
 
   const command = new PutObjectCommand({
     Bucket: process.env.AWS_S3_BUCKET,
-
     Key: fileKey,
-
     Body: file.buffer,
-
     ContentType: file.mimetype,
   });
 
   await s3.send(command);
 
-  const url = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
+  const url = `https://${process.env.AWS_CLOUDFRONT_DOMAIN}/${fileKey}`;
 
   return {
     url,

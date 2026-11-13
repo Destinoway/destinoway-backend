@@ -9,8 +9,6 @@ export const findOrCreateAndMergeUser = async ({
   provider,
 }) => {
   try {
-    console.log("🟡 AUTH SERVICE HIT");
-    console.log("📥 INPUT:", { email, mobile, googleId, provider });
 
     if (email) email = email.toLowerCase().trim();
     if (mobile) mobile = mobile.trim();
@@ -27,7 +25,6 @@ export const findOrCreateAndMergeUser = async ({
       if (userByGoogle) return userByGoogle;
 
       if (userByEmail) {
-        console.log("🔗 LINKING GOOGLE → EMAIL USER");
 
         userByEmail.googleId = googleId;
         userByEmail.avatar = userByEmail.avatar || avatar;
@@ -57,7 +54,6 @@ export const findOrCreateAndMergeUser = async ({
 
     if (provider === "otp") {
       if (userByMobile) {
-        console.log("✅ USER FOUND BY MOBILE");
 
         userByMobile.isMobileVerified = true;
 
@@ -81,7 +77,6 @@ export const findOrCreateAndMergeUser = async ({
 
     if (provider === "email") {
       if (userByEmail) {
-        console.log("✅ USER FOUND BY EMAIL");
 
         userByEmail.isEmailVerified = true;
 
@@ -104,7 +99,6 @@ export const findOrCreateAndMergeUser = async ({
 
     throw new Error("Invalid auth provider");
   } catch (err) {
-    console.log("❌ AUTH SERVICE ERROR:", err.message);
     throw err;
   }
 };

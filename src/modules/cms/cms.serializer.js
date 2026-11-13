@@ -7,6 +7,9 @@ export const serializeCMSPage = (page) => {
 
   return {
     ...obj,
+    canonicalUrl: obj.canonicalUrl ?? "",
+    schema: obj.schema ?? null,
+    featuredImageAlt: obj.featuredImageAlt ?? "",
     url: buildCMSUrl(obj),
   };
 };

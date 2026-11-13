@@ -21,40 +21,35 @@ const createAdmin = async () => {
     }
 
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ MongoDB connected");
     const adminRole = await Role.findOne({
       name: "admin",
       type: "admin",
     });
 
     if (!adminRole) {
-      console.log("❌ Admin role not found. Create role first.");
       process.exit(1);
     }
 
     const existingAdmin = await User.findOne({
-      email: "admin@panjourney.com",
+      email: "admin@destinoway.com",
     });
 
     if (existingAdmin) {
-      console.log("⚠️ Admin already exists");
       process.exit();
     }
 
     const hashedPassword = await bcrypt.hash("Admin@123", 10);
     await User.create({
       name: "Super Admin",
-      email: "admin@panjourney.com",
+      email: "admin@destinoway.com",
       password: hashedPassword,
       role: adminRole._id,
       provider: "local",
       isEmailVerified: true,
       type: "admin", // ✅ ADD THIS
     });
-    console.log("🎉 Admin created successfully");
     process.exit();
   } catch (error) {
-    console.error("❌ Error:", error.message);
     process.exit(1);
   }
 };

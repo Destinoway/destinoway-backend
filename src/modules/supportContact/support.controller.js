@@ -46,7 +46,6 @@ export const getAllSupport = async (req, res) => {
 
 export const getSingleSupport = async (req, res) => {
   try {
-    console.log(req.params); 
     // should print { supportType: 'contact_us' }
 
     const result = await getSingleSupportService(
@@ -62,22 +61,7 @@ export const getSingleSupport = async (req, res) => {
     return sendError(res, error.message, 404);
   }
 };
-// GET SINGLE
-// export const getSingleSupport = async (req, res) => {
-//   try {
-//     const result = await getSingleSupportService(
-//       req.params.id
-//     );
 
-//     return sendSuccess(
-//       res,
-//       "Support fetched successfully",
-//       result
-//     );
-//   } catch (error) {
-//     return sendError(res, error.message, 404);
-//   }
-// };
 
 
 // UPDATE

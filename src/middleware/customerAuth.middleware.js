@@ -17,11 +17,7 @@ export const protectCustomer = async (req, res, next) => {
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log("🧠 DECODED:", decoded);
-      console.log("⏱ EXP:", decoded.exp * 1000);
-      console.log("🕒 NOW:", Date.now());
     } catch (err) {
-      console.log("❌ JWT VERIFY ERROR:", err.message);
 
       return res.status(401).json({
         success: false,
@@ -56,7 +52,6 @@ export const protectCustomer = async (req, res, next) => {
 
     next();
   } catch (err) {
-    console.log("❌ AUTH MIDDLEWARE ERROR:", err.message);
 
     return res.status(500).json({
       success: false,
