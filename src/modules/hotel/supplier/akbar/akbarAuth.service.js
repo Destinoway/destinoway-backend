@@ -501,7 +501,6 @@ import {
 const AKBAR_TOKEN_DOCUMENT_ID = "hotel";
 const AKBAR_TOKEN_TTL = 10 * 24 * 60 * 60;
 const AKBAR_TOKEN_REFRESH_WINDOW_SECONDS = 60 * 60;
-const AKBAR_SIGNATURE_TIMEOUT_MS = 30000;
 
 let tokenRefreshPromise;
 
@@ -714,7 +713,6 @@ const createAndCacheToken = async (context = {}) => {
       () =>
         axios.post(signatureUrl.toString(), payload, {
           headers,
-          timeout: AKBAR_SIGNATURE_TIMEOUT_MS,
         }),
     );
 

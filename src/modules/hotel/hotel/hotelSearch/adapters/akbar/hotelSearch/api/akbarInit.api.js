@@ -30,7 +30,6 @@ export const akbarInitAPI = async (payload, { correlationId } = {}) => {
     () =>
       axios.post(endpoint, payload, {
         headers,
-        timeout: 30000,
       }),
   );
 
