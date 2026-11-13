@@ -39,8 +39,18 @@ export const createCMSValidation = Joi.object({
 
   metaTitle: Joi.string().allow(""),
   metaDescription: Joi.string().allow(""),
+  canonicalUrl: Joi.string()
+    .trim()
+    .max(2048)
+    .pattern(/^(https?:\/\/\S+|\/\S*)$/i)
+    .allow("")
+    .messages({
+      "string.pattern.base":
+        '"canonicalUrl" must be an absolute http(s) URL or a path starting with "/"',
+    }),
   description: Joi.string().allow(""),
   featuredImage: Joi.string().allow(""),
+  featuredImageAlt: Joi.string().trim().max(500).allow(""),
   keywords: Joi.array().items(Joi.string()),
   schema: Joi.any(),
   data: Joi.object(),

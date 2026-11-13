@@ -4,6 +4,9 @@
   "description": "Pan Journey is a hotel booking platform backend API that enables users to search, view, and book hotels with features like authentication, booking management, cashback handling, and admin operations.",
   "main": "src/server.js",
   "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "keywords": [
     "hotel-booking",
     "travel-platform",
@@ -21,6 +24,7 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "build": "echo \"No build step required for Express\"",
+    "test:cms": "node --test src/modules/cms/cms.seo.test.js",
     "lint": "echo \"Add ESLint later\""
   },
   "dependencies": {

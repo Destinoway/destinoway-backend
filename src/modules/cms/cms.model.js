@@ -48,12 +48,22 @@ createdBy: {
       type: String,
       default: "",
     },
+    canonicalUrl: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     description: {
       type: String,
       default: "",
     },
     featuredImage: {
       type: String,
+      default: "",
+    },
+    featuredImageAlt: {
+      type: String,
+      trim: true,
       default: "",
     },
 
@@ -63,10 +73,9 @@ createdBy: {
       },
     ],
 
-    schema: {
-      type: mongoose.Schema.Types.Mixed,
-      default: null,
-    },
+    // The legacy `schema` key is intentionally not declared: a path named `schema`
+    // clashes with Mongoose's `doc.schema`. It is read from raw objects and
+    // written via setSchemaField() in cms.service.js.
 
     data: {
       type: mongoose.Schema.Types.Mixed,

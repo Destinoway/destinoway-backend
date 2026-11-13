@@ -1,9 +1,10 @@
 export const resolveRule = ({
   hotelId,
+  cityId,
   cityName,
   stateName,
   countryCode,
-  rules,
+  rules = [],
   normalizeCity = false,
 }) => {
   // HOTEL
@@ -29,8 +30,9 @@ export const resolveRule = ({
   found = rules.find(
     (r) =>
       r.level === "city" &&
-      r.cityName?.trim().toLowerCase() ===
-        finalCity?.trim().toLowerCase()
+      ((cityId && String(r.cityId) === String(cityId)) ||
+        (r.cityName?.trim().toLowerCase() ===
+          finalCity?.trim().toLowerCase()))
   );
 
   if (found) return found;

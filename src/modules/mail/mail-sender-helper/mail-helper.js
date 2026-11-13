@@ -1,4 +1,4 @@
-import transporter from "../../../config/mailer.js";
+import { sendMail as sendMicrosoft365Mail } from "../../../config/mailer.js";
 
 export const sendMail = async ({
   to,
@@ -7,8 +7,7 @@ export const sendMail = async ({
   attachments = [],
 }) => {
 
-  return transporter.sendMail({
-    from: process.env.GMAIL_USER,
+  return sendMicrosoft365Mail({
     to,
     subject,
     html,

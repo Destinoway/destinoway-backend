@@ -11,8 +11,14 @@ import {
   getCMSTemplates,
   updateCMSPage,
   previewCMSSlug,
-  getAllBlogsService
+  getAllBlogsService,
+  checkCMSMetadata,
 } from "./cms.service.js";
+import {
+  getCMSPageRedirects,
+  resolveCMSRedirect,
+} from "./cms.redirect.service.js";
+import ApiError from "../../utils/response/ApiError.js";
 
 export const createCMS = asyncHandler(async (req, res) => {
   const payload = {
@@ -73,4 +79,25 @@ export const getAllBlogsController = asyncHandler(async (req, res) => {
   const data = await getAllBlogsService(req.query);
 
   sendSuccess(res, "Blogs fetched successfully", data);
+});
+
+export const checkMetadata = asyncHandler(async (req, res) => {
+  const data = await checkCMSMetadata(req.query);
+  sendSuccess(res, "Metadata checked successfully", data);
+});
+
+// Permanent redirect for a retired public path; the Location is always an internal path.
+export const resolveRedirect = asyncHandler(async (req, res) => {
+  const redirect = await resolveCMSRedirect(req.query.path);
+
+  if (!redirect) {
+    throw new ApiError(404, "Redirect not found");
+  }
+
+  res.redirect(redirect.statusCode, redirect.location);
+});
+
+export const getPageRedirects = asyncHandler(async (req, res) => {
+  const data = await getCMSPageRedirects(req.params.id);
+  sendSuccess(res, "CMS redirects fetched successfully", data);
 });

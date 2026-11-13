@@ -43,7 +43,6 @@ export const seedCountries = async () => {
     // always same folder as countrySeeder.js
     const filePath = path.join(__dirname, "countries.json");
 
-    console.log("Reading:", filePath);
 
     const countries = JSON.parse(
       fs.readFileSync(filePath, "utf-8")
@@ -52,8 +51,6 @@ export const seedCountries = async () => {
     await Country.deleteMany({});
     await Country.insertMany(countries);
 
-    console.log("✅ Countries inserted");
   } catch (error) {
-    console.log(error);
   }
 };

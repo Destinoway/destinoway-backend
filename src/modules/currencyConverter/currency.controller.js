@@ -29,7 +29,6 @@ export const getCurrencies = async (req, res) => {
       200,
     );
   } catch (error) {
-    console.log("Currency List Error:", error.message);
 
     return sendError(
       res,
