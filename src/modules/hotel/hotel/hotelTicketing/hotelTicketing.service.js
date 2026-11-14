@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getAuthHeader } from "../../../config/supplierApi.js";
+import { getAuthHeader } from "../../../../config/supplierApi.js";
 
 export const hotelTicketingService = async ({
   bookingRefNo,
