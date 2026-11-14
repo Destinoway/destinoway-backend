@@ -67,7 +67,6 @@ export const akbarHotelContentAPI = async ({
           axios.get(url, {
             params,
             headers,
-            timeout: 60000,
           }),
       );
 

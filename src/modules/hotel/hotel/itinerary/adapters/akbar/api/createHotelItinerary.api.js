@@ -171,7 +171,7 @@ export const createAkbarHotelItineraryAPI = async ({
         headers,
         request: { body: payload },
       },
-      () => axios.post(itineraryUrl, payload, { headers, timeout: 60000 }),
+      () => axios.post(itineraryUrl, payload, { headers }),
     );
     return response.data;
   } catch (error) {
