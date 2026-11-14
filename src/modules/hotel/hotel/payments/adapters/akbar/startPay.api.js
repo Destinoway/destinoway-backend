@@ -615,7 +615,6 @@ export const startAkbarHotelPay = async ({
         },
         () => axios.post(endpoint.toString(), payload, {
           headers,
-          timeout: 60000,
         }),
       );
     } catch (error) {

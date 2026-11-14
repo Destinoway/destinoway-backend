@@ -98,8 +98,6 @@ export const akbarHotelRateAPIWithPolling = async (
         () =>
           axios.get(url, {
             headers,
-            // Individual HTTP request timeout. There is no overall polling timeout.
-            timeout: 60000,
           }),
       );
 

@@ -97,7 +97,7 @@ export const cancelAkbarHotelBooking = async ({
         headers,
         request: { body: payload },
       },
-      () => axios.post(endpoint.toString(), payload, { headers, timeout: 60000 }),
+      () => axios.post(endpoint.toString(), payload, { headers }),
     );
     return response.data;
   } catch (error) {

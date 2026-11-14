@@ -30,7 +30,7 @@ export const hotelContentAPI = async ({
       headers,
       request: null,
     },
-    () => axios.get(url, { headers, timeout: 60000 }),
+    () => axios.get(url, { headers }),
   );
 
   return response.data;
