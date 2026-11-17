@@ -57,7 +57,7 @@ app.use(
       "https://panjourney.com",
       "https://dev.destinoway.com",
       "https://uat.destinoway.com",
-      "https://uat-admin.destinoway.com/",
+      "https://uat-admin.destinoway.com",
       "https://dev-admin.destinoway.com",
       "https://develop.d1kvqncg9r5rhb.amplifyapp.com"
     ],
