@@ -1,0 +1,568 @@
+Source: case-01-raw.jsonl. Captured redactions are preserved; no missing values have been reconstructed.
+
+Exchange 1 of 1
+Operation: hotel_details_rooms
+Correlation ID: d5e4920b-3d7a-496e-ba64-b521bc1c477c
+Request timestamp (UTC): 2026-11-13T06:23:32.784Z
+Response timestamp (UTC): 2026-11-13T06:24:22.145Z
+Method: GET
+Endpoint: https://travelportalapi.benzyinfotech.com/api/hotels/search/result/80cfbf6c-9226-4abb-bc4c-b75dc0a4010d.xK1p0IOwBYovhpulxsj1SQ/39778998/rooms
+
+Request Headers:
+{
+  "Authorization": {
+    "redacted": true,
+    "present": true
+  },
+  "search-tracing-key": {
+    "redacted": true,
+    "present": true
+  }
+}
+
+Request (body / query parameters as captured; null means no captured payload):
+null
+
+Response Status: 200
+
+Response Headers:
+{
+  "cache-control": "no-store",
+  "transfer-encoding": "chunked",
+  "content-type": "application/json; charset=utf-8",
+  "vary": "Accept-Encoding",
+  "server": "Microsoft-IIS/10.0",
+  "x-powered-by": "ASP.NET",
+  "x-server": "1",
+  "date": "Fri, 13 Nov 2026 06:26:33 GMT"
+}
+
+Response Body:
+{
+  "recommendations": [
+    {
+      "id": "252e1821-230c-4553-87ec-e2ded945d5a4",
+      "roomGroup": [
+        {
+          "id": "f3b1a8c9-37b7-46e7-9450-0291d73b8839",
+          "code": null,
+          "availability": 1,
+          "description": "Room Only || Provider Rate Id: 1451531416",
+          "needsPriceCheck": true,
+          "isPackageRate": null,
+          "providerId": "394V4",
+          "providerName": "CleartripAPI",
+          "isPreffered": false,
+          "room": {
+            "id": "e663501d-0cb6-483c-bc1c-dbb7b856969f",
+            "standardRoomId": "3",
+            "standardRoomName": "Deluxe Non A/C Room",
+            "name": "Deluxe Non A/C Room",
+            "description": null,
+            "beds": [],
+            "smokingAllowed": false,
+            "facilities": [],
+            "images": [
+              {
+                "url": "https://static-images.webbeds.com/0/image/886934dc-d681-4e8f-b694-dbc5314cc302.jpg",
+                "caption": "room",
+                "category": null,
+                "type": null
+              },
+              {
+                "url": "https://static-images.webbeds.com/0/image/e2fd5778-1ddf-4b2f-9cc8-97ae85ba8808.jpg",
+                "caption": "room",
+                "category": null,
+                "type": null
+              },
+              {
+                "url": "https://static-images.webbeds.com/0/image/8bc07291-aaad-4d41-8695-1fee00471cc8.jpg",
+                "caption": "room",
+                "category": null,
+                "type": null
+              },
+              {
+                "url": "https://static-images.webbeds.com/0/image/613cc9de-2ea7-4fb1-a8be-2ba4a8efc468.jpeg",
+                "caption": "room",
+                "category": null,
+                "type": null
+              },
+              {
+                "url": "https://static-images.webbeds.com/0/image/9cd901aa-9c54-4c1e-a826-4b3daa97f95b.jpg",
+                "caption": "room",
+                "category": null,
+                "type": null
+              },
+              {
+                "url": "https://static-images.webbeds.com/0/image/dc888058-32b9-4ad0-97dd-73f3a1b2aec6.jpeg",
+                "caption": "room",
+                "category": null,
+                "type": null
+              }
+            ],
+            "maxGuestAllowed": null,
+            "maxAdultAllowed": null,
+            "maxChildrenAllowed": null,
+            "area": null,
+            "views": null,
+            "type": null
+          },
+          "otherProviderRates": null,
+          "roomCount": 1,
+          "occupancies": {
+            "redacted": true,
+            "present": true
+          },
+          "type": "published",
+          "baseRate": 1330.13,
+          "totalRate": 1409.65,
+          "tcsOnTotal": 0,
+          "minSellingRate": 0,
+          "publishedRate": 2029.05,
+          "taxes": [
+            {
+              "amount": 79.52,
+              "description": "TAX",
+              "type": null
+            }
+          ],
+          "fees": null,
+          "discounts": [
+            {
+              "amount": -309.7,
+              "description": "DISCOUNT",
+              "type": null
+            }
+          ],
+          "otherRateComponents": [
+            {
+              "amount": 133.01,
+              "description": "Agency Markup applied on BaseFare",
+              "type": "AgencyMarkup"
+            }
+          ],
+          "hotelServiceCharge": 0,
+          "commission": null,
+          "dailyRates": [
+            {
+              "amount": 1639.83,
+              "date": "2026-11-18T00:00:00Z",
+              "taxIncluded": false,
+              "discount": -309.7
+            }
+          ],
+          "pointEquivalent": 0,
+          "refundability": "Refundable",
+          "refundable": true,
+          "allGuestsInfoRequired": true,
+          "onlineCancellable": false,
+          "specialRequestSupported": true,
+          "payAtHotel": false,
+          "cardRequired": false,
+          "policies": null,
+          "boardBasis": {
+            "description": "Room Only",
+            "type": "RoomOnly"
+          },
+          "offers": [],
+          "cancellationPolicies": [
+            {
+              "text": null,
+              "rules": [
+                {
+                  "value": 0,
+                  "valueType": "Amount",
+                  "estimatedValue": 0,
+                  "start": "2026-11-13T06:23:33.999Z",
+                  "end": "2026-11-17T06:30:00Z"
+                },
+                {
+                  "value": 1410,
+                  "valueType": "Amount",
+                  "estimatedValue": 1410,
+                  "start": "2026-11-17T06:30:00Z",
+                  "end": "2026-11-18T06:30:00Z"
+                }
+              ]
+            }
+          ],
+          "includes": [
+            "Room Only"
+          ],
+          "additionalCharges": null,
+          "depositRequired": false,
+          "gstAllowed": true,
+          "depositAmount": null,
+          "guaranteeRequired": false,
+          "gstOnCommission": 0,
+          "bookNowPayLaterDate": null,
+          "conversionRate": null,
+          "travelType": "D",
+          "additionalInformation": null,
+          "ratePerNight": 1409.65
+        }
+      ],
+      "total": 1409.65,
+      "publishedRate": 2029.05,
+      "groupId": 3,
+      "isHold": true,
+      "isGSTInvoiceAvailable": false,
+      "isPANRequired": {
+        "redacted": true,
+        "present": true
+      }
+    },
+    {
+      "id": "54abf051-8842-43a1-9193-c46fef51dfad",
+      "roomGroup": [
+        {
+          "id": "54abf051-8842-43a1-9193-c46fef51dfad",
+          "code": null,
+          "availability": 1,
+          "description": null,
+          "needsPriceCheck": true,
+          "isPackageRate": false,
+          "providerId": "1017india",
+          "providerName": "TravclanAPI",
+          "isPreffered": false,
+          "room": {
+            "id": "48e188cc-ea2d-4ad7-9780-27f8bdaa7dfc",
+            "standardRoomId": "1",
+            "standardRoomName": "Deluxe Room",
+            "name": "Deluxe Room",
+            "description": "Deluxe Non A/C Room",
+            "beds": [],
+            "smokingAllowed": false,
+            "facilities": [],
+            "images": [
+              {
+                "url": "https://rukmini-ct.flixcart.com/w_2048,f_auto,q_auto/ct-hotel-images/places/hotels/cms/4671/4671517/images/image_4671517_863bdd07-3a53-4086-8e2e-2182d5921703.png",
+                "caption": null,
+                "category": null,
+                "type": null
+              },
+              {
+                "url": "https://rukmini-ct.flixcart.com/w_2048,f_auto,q_auto/ct-hotel-images/places/hotels/cms/4671/4671517/images/image_4671517_803f6efc-0896-4650-a9e0-8caf1031e4ee.png",
+                "caption": null,
+                "category": null,
+                "type": null
+              },
+              {
+                "url": "https://rukmini-ct.flixcart.com/w_2048,f_auto,q_auto/ct-hotel-images/places/hotels/cms/4671/4671517/images/image_4671517_0b7a25f9-8e1e-4bc3-9679-77176f069f09.jpeg",
+                "caption": null,
+                "category": null,
+                "type": null
+              },
+              {
+                "url": "https://rukmini-ct.flixcart.com/w_2048,f_auto,q_auto/ct-hotel-images/places/hotels/cms/4671/4671517/images/image_4671517_863bdd07-3a53-4086-8e2e-2182d5921703.png",
+                "caption": null,
+                "category": null,
+                "type": null
+              },
+              {
+                "url": "https://rukmini-ct.flixcart.com/w_2048,f_auto,q_auto/ct-hotel-images/places/hotels/cms/4671/4671517/images/image_4671517_803f6efc-0896-4650-a9e0-8caf1031e4ee.png",
+                "caption": null,
+                "category": null,
+                "type": null
+              },
+              {
+                "url": "https://rukmini-ct.flixcart.com/w_2048,f_auto,q_auto/ct-hotel-images/places/hotels/cms/4671/4671517/images/image_4671517_0b7a25f9-8e1e-4bc3-9679-77176f069f09.jpeg",
+                "caption": null,
+                "category": null,
+                "type": null
+              }
+            ],
+            "maxGuestAllowed": null,
+            "maxAdultAllowed": null,
+            "maxChildrenAllowed": null,
+            "area": null,
+            "views": null,
+            "type": null
+          },
+          "otherProviderRates": null,
+          "roomCount": 1,
+          "occupancies": {
+            "redacted": true,
+            "present": true
+          },
+          "type": "published",
+          "baseRate": 1424,
+          "totalRate": 1424,
+          "tcsOnTotal": 0,
+          "minSellingRate": 0,
+          "publishedRate": 2029.05,
+          "taxes": [
+            {
+              "amount": 0,
+              "description": null,
+              "type": null
+            }
+          ],
+          "fees": null,
+          "discounts": [
+            {
+              "amount": 7,
+              "description": "AffiliateDiscount",
+              "type": null
+            }
+          ],
+          "otherRateComponents": [
+            {
+              "amount": 142.4,
+              "description": "Agency Markup applied on BaseFare",
+              "type": "AgencyMarkup"
+            }
+          ],
+          "hotelServiceCharge": 0,
+          "commission": null,
+          "dailyRates": null,
+          "pointEquivalent": 0,
+          "refundability": "Refundable",
+          "refundable": true,
+          "allGuestsInfoRequired": true,
+          "onlineCancellable": false,
+          "specialRequestSupported": false,
+          "payAtHotel": false,
+          "cardRequired": false,
+          "policies": [
+            {
+              "type": "Extra Guest Info",
+              "text": "We don't guarantee an Extra Bed for Extra guests, it is subject to availability of the hotel and may be chargeable as well."
+            }
+          ],
+          "boardBasis": {
+            "description": "Room Only",
+            "type": "RoomOnly"
+          },
+          "offers": [],
+          "cancellationPolicies": [
+            {
+              "text": null,
+              "rules": [
+                {
+                  "value": 0,
+                  "valueType": "Amount",
+                  "estimatedValue": 0,
+                  "start": "2026-11-13T06:23:35.129Z",
+                  "end": "2026-11-15T06:30:00Z"
+                },
+                {
+                  "value": 1422,
+                  "valueType": "Amount",
+                  "estimatedValue": 1422,
+                  "start": "2026-11-15T06:31:00Z",
+                  "end": "2026-11-18T06:30:00Z"
+                }
+              ]
+            }
+          ],
+          "includes": [
+            "Room Only"
+          ],
+          "additionalCharges": null,
+          "depositRequired": false,
+          "gstAllowed": false,
+          "depositAmount": null,
+          "guaranteeRequired": false,
+          "gstOnCommission": 0,
+          "bookNowPayLaterDate": null,
+          "conversionRate": null,
+          "travelType": "D",
+          "additionalInformation": null,
+          "ratePerNight": 1424
+        }
+      ],
+      "total": 1424,
+      "publishedRate": 2029.05,
+      "groupId": 1,
+      "isHold": true,
+      "isGSTInvoiceAvailable": false,
+      "isPANRequired": {
+        "redacted": true,
+        "present": true
+      }
+    },
+    {
+      "id": "55f51deb-8069-41d6-b529-4de9ca0f3a24",
+      "roomGroup": [
+        {
+          "id": "3ed44aad-c3c3-4197-b16f-bc402fadc19b",
+          "code": null,
+          "availability": 1,
+          "description": "Room Only || Provider Rate Id: 1451531416",
+          "needsPriceCheck": true,
+          "isPackageRate": null,
+          "providerId": "394V4",
+          "providerName": "CleartripAPI",
+          "isPreffered": false,
+          "room": {
+            "id": "8b82c213-884e-4a73-8dfb-6504626216a0",
+            "standardRoomId": "2",
+            "standardRoomName": "Deluxe AC Room",
+            "name": "Deluxe AC Room",
+            "description": null,
+            "beds": [],
+            "smokingAllowed": false,
+            "facilities": [],
+            "images": [
+              {
+                "url": "https://static-images.webbeds.com/0/image/886934dc-d681-4e8f-b694-dbc5314cc302.jpg",
+                "caption": "room",
+                "category": null,
+                "type": null
+              },
+              {
+                "url": "https://static-images.webbeds.com/0/image/e2fd5778-1ddf-4b2f-9cc8-97ae85ba8808.jpg",
+                "caption": "room",
+                "category": null,
+                "type": null
+              },
+              {
+                "url": "https://static-images.webbeds.com/0/image/8bc07291-aaad-4d41-8695-1fee00471cc8.jpg",
+                "caption": "room",
+                "category": null,
+                "type": null
+              },
+              {
+                "url": "https://static-images.webbeds.com/0/image/613cc9de-2ea7-4fb1-a8be-2ba4a8efc468.jpeg",
+                "caption": "room",
+                "category": null,
+                "type": null
+              },
+              {
+                "url": "https://static-images.webbeds.com/0/image/9cd901aa-9c54-4c1e-a826-4b3daa97f95b.jpg",
+                "caption": "room",
+                "category": null,
+                "type": null
+              },
+              {
+                "url": "https://static-images.webbeds.com/0/image/dc888058-32b9-4ad0-97dd-73f3a1b2aec6.jpeg",
+                "caption": "room",
+                "category": null,
+                "type": null
+              }
+            ],
+            "maxGuestAllowed": null,
+            "maxAdultAllowed": null,
+            "maxChildrenAllowed": null,
+            "area": null,
+            "views": null,
+            "type": null
+          },
+          "otherProviderRates": null,
+          "roomCount": 1,
+          "occupancies": {
+            "redacted": true,
+            "present": true
+          },
+          "type": "published",
+          "baseRate": 1596.16,
+          "totalRate": 1691.58,
+          "tcsOnTotal": 0,
+          "minSellingRate": 0,
+          "publishedRate": 2434.86,
+          "taxes": [
+            {
+              "amount": 95.42,
+              "description": "TAX",
+              "type": null
+            }
+          ],
+          "fees": null,
+          "discounts": [
+            {
+              "amount": -371.64,
+              "description": "DISCOUNT",
+              "type": null
+            }
+          ],
+          "otherRateComponents": [
+            {
+              "amount": 159.62,
+              "description": "Agency Markup applied on BaseFare",
+              "type": "AgencyMarkup"
+            }
+          ],
+          "hotelServiceCharge": 0,
+          "commission": null,
+          "dailyRates": [
+            {
+              "amount": 1967.8,
+              "date": "2026-11-18T00:00:00Z",
+              "taxIncluded": false,
+              "discount": -371.64
+            }
+          ],
+          "pointEquivalent": 0,
+          "refundability": "Refundable",
+          "refundable": true,
+          "allGuestsInfoRequired": true,
+          "onlineCancellable": false,
+          "specialRequestSupported": true,
+          "payAtHotel": false,
+          "cardRequired": false,
+          "policies": null,
+          "boardBasis": {
+            "description": "Room Only",
+            "type": "RoomOnly"
+          },
+          "offers": [],
+          "cancellationPolicies": [
+            {
+              "text": null,
+              "rules": [
+                {
+                  "value": 0,
+                  "valueType": "Amount",
+                  "estimatedValue": 0,
+                  "start": "2026-11-13T06:23:33.999Z",
+                  "end": "2026-11-17T06:30:00Z"
+                },
+                {
+                  "value": 1692,
+                  "valueType": "Amount",
+                  "estimatedValue": 1692,
+                  "start": "2026-11-17T06:30:00Z",
+                  "end": "2026-11-18T06:30:00Z"
+                }
+              ]
+            }
+          ],
+          "includes": [
+            "Room Only"
+          ],
+          "additionalCharges": null,
+          "depositRequired": false,
+          "gstAllowed": true,
+          "depositAmount": null,
+          "guaranteeRequired": false,
+          "gstOnCommission": 0,
+          "bookNowPayLaterDate": null,
+          "conversionRate": null,
+          "travelType": "D",
+          "additionalInformation": null,
+          "ratePerNight": 1691.58
+        }
+      ],
+      "total": 1691.58,
+      "publishedRate": 2434.86,
+      "groupId": 2,
+      "isHold": true,
+      "isGSTInvoiceAvailable": false,
+      "isPANRequired": {
+        "redacted": true,
+        "present": true
+      }
+    }
+  ],
+  "stayPeriod": {
+    "start": "11/18/2026",
+    "end": "11/19/2026"
+  },
+  "searchId": "80cfbf6c-9226-4abb-bc4c-b75dc0a4010d.xK1p0IOwBYovhpulxsj1SQ",
+  "searchTracingKey": {
+    "redacted": true,
+    "present": false
+  },
+  "status": "success"
+}

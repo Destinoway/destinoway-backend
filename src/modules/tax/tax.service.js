@@ -1,5 +1,46 @@
 import TaxRule from "./tax.model.js";
 
+const roundCurrency = (value) => Number(value.toFixed(2));
+
+export const calculateTaxForRule = ({ amount, taxRule }) => {
+  if (!taxRule || !Number.isFinite(Number(amount))) {
+    return { taxAmount: 0, taxPercentage: 0 };
+  }
+
+  const taxableAmount = Number(amount);
+
+  if (taxRule.ruleType === "flat") {
+    const taxAmount =
+      taxRule.taxType === "fixed"
+        ? Number(taxRule.taxValue ?? 0)
+        : (taxableAmount * Number(taxRule.taxValue ?? 0)) / 100;
+
+    return {
+      taxAmount: roundCurrency(taxAmount),
+      taxPercentage:
+        taxRule.taxType === "percentage" ? Number(taxRule.taxValue) : 0,
+    };
+  }
+
+  if (taxRule.ruleType === "slab") {
+    const selectedSlab = (taxRule.slabs ?? [])
+      .filter((slab) => taxableAmount >= Number(slab.minAmount))
+      .sort((a, b) => Number(b.minAmount) - Number(a.minAmount))[0];
+
+    if (!selectedSlab) {
+      return { taxAmount: 0, taxPercentage: 0 };
+    }
+
+    const taxPercentage = Number(selectedSlab.taxValue ?? 0);
+    return {
+      taxAmount: roundCurrency((taxableAmount * taxPercentage) / 100),
+      taxPercentage,
+    };
+  }
+
+  return { taxAmount: 0, taxPercentage: 0 };
+};
+
 export const calculateTax = async ({
   amount,
   countryCode,
@@ -12,68 +53,7 @@ export const calculateTax = async ({
     isActive: true,
   });
 
-  if (!taxRule) {
-    return {
-      taxAmount: 0,
-      taxPercentage: 0,
-    };
-  }
-
-  /*
-    FLAT TAX
-  */
-
-  if (taxRule.ruleType === "flat") {
-
-    const tax =
-      (amount * taxRule.taxValue) / 100;
-
-    return {
-      taxAmount: tax,
-      taxPercentage: taxRule.taxValue,
-    };
-  }
-
-
-  /*
-    SLAB TAX
-  */
-
-  if (taxRule.ruleType === "slab") {
-
-    // eligible slabs
-    const matchedSlabs =
-      taxRule.slabs.filter(
-        (slab) => amount > slab.minAmount
-      );
-
-    if (!matchedSlabs.length) {
-      return {
-        taxAmount: 0,
-        taxPercentage: 0,
-      };
-    }
-
-    // highest threshold first
-    matchedSlabs.sort(
-      (a, b) => b.minAmount - a.minAmount
-    );
-
-    const finalSlab = matchedSlabs[0];
-
-    const taxAmount =
-      (amount * finalSlab.taxValue) / 100;
-
-    return {
-      taxAmount,
-      taxPercentage: finalSlab.taxValue,
-    };
-  }
-
-  return {
-    taxAmount: 0,
-    taxPercentage: 0,
-  };
+  return calculateTaxForRule({ amount, taxRule });
 };
 
 export default calculateTax;

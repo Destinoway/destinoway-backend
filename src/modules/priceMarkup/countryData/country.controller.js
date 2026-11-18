@@ -25,7 +25,6 @@ export const getCountries = async (req, res) => {
     );
 
   } catch (err) {
-    console.error(err);
     return sendError(
       res,
       "Failed to fetch countries",

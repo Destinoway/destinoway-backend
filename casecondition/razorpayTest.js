@@ -7,5 +7,3 @@ const result = await gateway.createOrder({
 
   currency: "INR",
 });
-
-console.log(result);

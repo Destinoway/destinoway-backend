@@ -28,9 +28,7 @@ cron.schedule("*/5 * * * *", async () => {
       }
     );
 
-    console.log("✅ Markup cron executed");
 
   } catch (err) {
-    console.error("❌ Markup cron error", err);
   }
 });

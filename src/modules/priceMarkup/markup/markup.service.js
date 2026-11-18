@@ -31,8 +31,6 @@ export const getMarkup = async ({
 
 const normalizedHotelId = normalizeHotelId(hotelId);
 
-console.log("incoming hotel =", hotelId);
-console.log("normalized hotel =", normalizedHotelId);
 
 let markup = await Markup.findOne({
   level: "hotel",
@@ -50,7 +48,6 @@ let markup = await Markup.findOne({
     });
   }
 
-console.log("incoming cityName =", cityName);
   // 3 state
   if (!markup) {
     markup = await Markup.findOne({
@@ -68,7 +65,6 @@ console.log("incoming cityName =", cityName);
       isActive: true,
     });
   }
-  console.log("incoming countryName =", countryCode);
 
   // 5 worldwide
   if (!markup) {

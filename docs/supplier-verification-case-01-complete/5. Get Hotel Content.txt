@@ -1,0 +1,407 @@
+Source: case-01-raw.jsonl. Captured redactions are preserved; no missing values have been reconstructed.
+
+Exchange 1 of 1
+Operation: hotel_details_content
+Correlation ID: d5e4920b-3d7a-496e-ba64-b521bc1c477c
+Request timestamp (UTC): 2026-11-13T06:23:32.751Z
+Response timestamp (UTC): 2026-11-13T06:23:33.784Z
+Method: GET
+Endpoint: https://travelportalapi.benzyinfotech.com/api/hotels/80cfbf6c-9226-4abb-bc4c-b75dc0a4010d.xK1p0IOwBYovhpulxsj1SQ/39778998/content
+
+Request Headers:
+{
+  "Authorization": {
+    "redacted": true,
+    "present": true
+  },
+  "search-tracing-key": {
+    "redacted": true,
+    "present": true
+  }
+}
+
+Request (body / query parameters as captured; null means no captured payload):
+null
+
+Response Status: 200
+
+Response Headers:
+{
+  "cache-control": "no-store",
+  "transfer-encoding": "chunked",
+  "content-type": "application/json; charset=utf-8",
+  "vary": "Accept-Encoding",
+  "server": "Microsoft-IIS/10.0",
+  "x-powered-by": "ASP.NET",
+  "x-server": "1",
+  "date": "Fri, 13 Nov 2026 06:25:44 GMT"
+}
+
+Response Body:
+{
+  "hotel": {
+    "id": "39778998",
+    "name": "Hotel Sargam",
+    "relevanceScore": 0,
+    "providerFamily": "DOTW",
+    "providerHotelId": "1857928",
+    "language": "en-US",
+    "providerName": "DOTW",
+    "geoCode": {
+      "lat": 18.545912,
+      "long": 73.88781
+    },
+    "neighbourhoods": [],
+    "contact": {
+      "address": {
+        "line1": "CTS 1289/2 Pune - Nagar Road Yerwada",
+        "line2": null,
+        "destinationCode": "2114",
+        "city": "PUNE",
+        "state": null,
+        "country": "IN",
+        "postalCode": null
+      },
+      "phones": [
+        "88880829290"
+      ],
+      "faxes": null,
+      "emails": null,
+      "website": null
+    },
+    "chainCode": null,
+    "chainName": null,
+    "type": "",
+    "website": null,
+    "descriptions": [
+      {
+        "type": "Name",
+        "text": "Hotel Sargam"
+      }
+    ],
+    "category": "",
+    "starRating": 4,
+    "facilityGroups": [
+      {
+        "id": 14,
+        "groupId": 14,
+        "name": "Restaurant"
+      },
+      {
+        "id": 59,
+        "groupId": 59,
+        "name": "Air Conditioning"
+      }
+    ],
+    "facilities": [
+      {
+        "id": 719,
+        "groupId": 59,
+        "name": "Air conditioning"
+      },
+      {
+        "id": 646,
+        "groupId": 0,
+        "name": "Concierge"
+      },
+      {
+        "id": 641,
+        "groupId": 14,
+        "name": "Restaurant"
+      }
+    ],
+    "nearByAttractions": [],
+    "images": [
+      {
+        "caption": "hotel",
+        "category": "Hotel",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/7ab84133-ef04-4abe-be97-890cd5853b1f.jpg"
+      },
+      {
+        "caption": "hotel",
+        "category": "Hotel",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/3f5065ed-15d6-4975-ab76-f2de0b43271c.jpg"
+      },
+      {
+        "caption": "hotel",
+        "category": "Hotel",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/b88acdee-50a1-4910-9d72-7566dbe9d0d2.jpg"
+      },
+      {
+        "caption": "room",
+        "category": "Rooms",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/886934dc-d681-4e8f-b694-dbc5314cc302.jpg"
+      },
+      {
+        "caption": "room",
+        "category": "Rooms",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/e2fd5778-1ddf-4b2f-9cc8-97ae85ba8808.jpg"
+      },
+      {
+        "caption": "room",
+        "category": "Rooms",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/8bc07291-aaad-4d41-8695-1fee00471cc8.jpg"
+      },
+      {
+        "caption": "restaurant-cafeteria",
+        "category": "Restaurant-cafeteria",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/7adcc274-945c-4ab4-b901-a98d5e570102.jpg"
+      },
+      {
+        "caption": "restaurant-cafeteria",
+        "category": "Restaurant-cafeteria",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/3ef94fd7-c946-4b4c-beed-c88a90655c1a.jpg"
+      },
+      {
+        "caption": "restaurant-cafeteria",
+        "category": "Restaurant-cafeteria",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/8628e669-c6a5-48aa-b860-552219d9abba.jpg"
+      },
+      {
+        "caption": "restaurant-cafeteria",
+        "category": "Restaurant-cafeteria",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/5ae47f3a-8529-447f-820e-09086db2204e.jpg"
+      },
+      {
+        "caption": "restaurant-cafeteria",
+        "category": "Restaurant-cafeteria",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/1a3fc699-db52-42c2-8f5b-01d7ff4d1dd7.jpg"
+      },
+      {
+        "caption": "restaurant-cafeteria",
+        "category": "Restaurant-cafeteria",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/a3b8f3b7-5158-4570-aa02-36dfa13f975b.jpg"
+      },
+      {
+        "caption": "lounge",
+        "category": "Lounge",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/c2c759d5-eab7-4b4e-b457-05181acd2fd3.jpg"
+      },
+      {
+        "caption": "lounge",
+        "category": "Lounge",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/7868aa3d-a96d-4db6-9e77-a21a0ab41154.jpg"
+      },
+      {
+        "caption": "lobby",
+        "category": "Lobby",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/99b13ffe-d3cf-44c4-81ea-f969728810c4.jpg"
+      },
+      {
+        "caption": "lobby",
+        "category": "Lobby",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/843b8085-9b45-47f4-9ea5-0dcc14be6e7f.jpg"
+      },
+      {
+        "caption": "lobby",
+        "category": "Lobby",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/8a3b882b-b20d-4d8f-a3a3-1adf3ece9af7.jpg"
+      },
+      {
+        "caption": "amenities",
+        "category": "Amenities",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/7ada292d-4ae3-4cf6-a2cd-bc096dfe9159.jpg"
+      },
+      {
+        "caption": "surroundings",
+        "category": "Surroundings",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/8328d6b8-ce0e-4266-a85e-5e0e42114de5.jpg"
+      },
+      {
+        "caption": "hotel",
+        "category": "Hotel",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/46c5d003-2035-44ce-94b8-5b43e082e7bc.jpeg"
+      },
+      {
+        "caption": "room",
+        "category": "Rooms",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/613cc9de-2ea7-4fb1-a8be-2ba4a8efc468.jpeg"
+      },
+      {
+        "caption": "room",
+        "category": "Rooms",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/9cd901aa-9c54-4c1e-a826-4b3daa97f95b.jpg"
+      },
+      {
+        "caption": "lobby",
+        "category": "Lobby",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/501ce7fb-7569-46a3-9e52-f8190ffd3d22.jpg"
+      },
+      {
+        "caption": "amenities",
+        "category": "Amenities",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/9e240b8d-6c65-4f7c-9a6e-dd44c468dd71.jpg"
+      },
+      {
+        "caption": "amenities",
+        "category": "Amenities",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/e61da075-259d-4a93-b4a3-311eb7c04339.jpg"
+      },
+      {
+        "caption": "room",
+        "category": "Rooms",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/dc888058-32b9-4ad0-97dd-73f3a1b2aec6.jpeg"
+      },
+      {
+        "caption": "lounge",
+        "category": "Lounge",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/81ae1c89-d24b-4df6-81ea-566493851518.jpg"
+      },
+      {
+        "caption": "lobby",
+        "category": "Lobby",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/9c5c595e-d668-40fd-8bd9-bbf4a2e3d880.jpeg"
+      },
+      {
+        "caption": "amenities",
+        "category": "Amenities",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/72c3bc86-880f-44fa-b16b-e126e4f5a0ad.jpg"
+      },
+      {
+        "caption": "bathroom",
+        "category": "Bathroom",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/f63e2152-5593-4d0c-94fb-fb99637a5c32.jpg"
+      },
+      {
+        "caption": "other",
+        "category": "Other",
+        "type": null,
+        "roomCodes": [],
+        "size": "Standard",
+        "url": "https://static-images.webbeds.com/0/image/106ba5fb-66f5-4a47-a618-e272cdb6308b.jpeg"
+      }
+    ],
+    "policies": [],
+    "fees": [],
+    "reviews": [
+      {
+        "provider": "DOTW",
+        "count": 1,
+        "rating": 3.5,
+        "url": "",
+        "reviews": null
+      }
+    ],
+    "checkinInfo": {
+      "beginTime": "12:00 PM",
+      "endTime": null,
+      "instructions": null,
+      "specialInstructions": [
+        "We never guarantee on Extra Bed for Extra Adult, It will be subject to availability and may be Chargeable also.",
+        "During Christmas & New year ,Hotel May Request You to pay for Gala Dinner Charges at the time of Check-inn.",
+        "These additional charge are not included in the booking amount and will be collected directly at the hotel.",
+        "Tourism Taxes, City Taxes, Resort Fee, Etc Hotel May request You to pay at the time of Check-inn(Local Currency).",
+        "As per the hotel policy, there might be peak season and long weekend surcharges, which would be payable by guest directly at the hotel.",
+        "In case of peak dates or technical issues causing the hotel to be sold out, an alternative hotel of equal booking value or a full refund will be provided."
+      ],
+      "minAge": 18
+    },
+    "checkoutInfo": {
+      "time": "12:00 PM"
+    },
+    "heroImage": "https://static-images.webbeds.com/0/image/7ab84133-ef04-4abe-be97-890cd5853b1f.jpg",
+    "distance": 0,
+    "locationName": null,
+    "mappings": null,
+    "destinationCode": null,
+    "line1": null,
+    "city": null
+  },
+  "curatedHotels": {
+    "id": "39778998",
+    "name": "Hotel Sargam",
+    "ratings": "3",
+    "addressLine1": "C.T.S 1289/2 Gunjan Chowk"
+  },
+  "status": "success"
+}

@@ -239,7 +239,6 @@ async function makeRequest(id) {
 }
 
 async function run() {
-  console.time("LOAD_TEST");
 
   const results = [];
 
@@ -258,12 +257,8 @@ async function run() {
 
     results.push(...batchResults);
 
-    console.log(
-      `Completed ${results.length}/${TOTAL_REQUESTS}`
-    );
   }
 
-  console.timeEnd("LOAD_TEST");
 
   const success = results.filter((r) => r.success);
   const failed = results.filter((r) => !r.success);
@@ -276,20 +271,7 @@ async function run() {
   const min = Math.min(...times);
   const max = Math.max(...times);
 
-  console.log("\n========== RESULT ==========");
-  console.log(`📤 Total Requests : ${TOTAL_REQUESTS}`);
-  console.log(`✅ Success : ${success.length}`);
-  console.log(`❌ Failed  : ${failed.length}`);
-  console.log(
-    `📉 Error Rate : ${(
-      (failed.length / TOTAL_REQUESTS) *
-      100
-    ).toFixed(2)}%`
-  );
 
-  console.log(`⚡ Avg Response : ${avg.toFixed(2)} ms`);
-  console.log(`🚀 Fastest : ${min} ms`);
-  console.log(`🐢 Slowest : ${max} ms`);
 }
 
 run();

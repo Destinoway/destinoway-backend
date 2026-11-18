@@ -17,19 +17,21 @@ import hotelSearch from "./modules/hotel/hotel/hotelSearch/routes/hotelSearch.ro
 import busRoutes from "./modules/bus/bus.routes.js";
 //import dashboardhotelsearch from "./modules/dashboardHotels/hotel.routes.js";
 import masterRoutes from "./modules/master-data/masterData.routes.js";
-// import grievanceRedressal from "./modules/grievanceRedressal/grievanceRedressal.routes.js";
-// import hotelSearch from "./modules/hotel/hotel.route.js";
-//import hotelDetails from "./modules/hotel/hotelDetails/hotel.routes.js";
-// import invoiceRoutes from "./modules/hotel/invoice/invoice.route.js";
-// import paymentRoutes from "./modules/payments/payment.routes.js";
 
+import hotelDetailsRoutes from "./modules/hotel/hotel/hotelDetail/routes/hotelDetails.routes.js";
+import hotelPriceVerifyRoutes from "./modules/hotel/hotel/priceVerify/routes/hotelPriceVerify.routes.js";
+import hotelItineraryRoutes from "./modules/hotel/hotel/itinerary/hotelItinerary.routes.js";
+import hotelItineraryPricingRoutes from "./modules/hotel/hotel/itinerary/hotelItineraryPricing.routes.js";
+import hotelRequeryRoutes from "./modules/hotel/hotel/hotelRequery/requery.route.js";
+import hotelPaymentRoutes from "./modules/hotel/hotel/payments/hotelPayment.routes.js";
+import adminHotelBookingRoutes from "./modules/hotel/adminBookings/adminHotelBookings.routes.js";
 import gatewayroutewebhook from "./modules/gateways/routes/webhook.routes.js";
 import homecontent from "./modules/HomeContent/homeContent.route.js";
 import mediaRoutes from "./modules/media/media.routes.js";
 import countryRoutes from "./modules/priceMarkup/countryData/country.routes.js";
 import markeupRoutes from "./modules/priceMarkup/markup/markup.routes.js";
 import stateRoutes from "./modules/priceMarkup/stateData/state.routes.js";
-// import couponCode from "./modules/promotionEngine/promotion.routes.js";
+import couponCode from "./modules/promotionEngine/promotion.routes.js";
 import roleRoutes from "./modules/role/role.routes.js";
 import support from "./modules/supportContact/support.routes.js";
 import tax from "./modules/tax/tax.route.js";
@@ -41,7 +43,6 @@ import testRoutes from "./test.routes.js";
 const app = express();
 app.set("trust proxy", 1);
 app.use((req, res, next) => {
-  console.log("📡 REQUEST HIT:", req.method, req.url);
   next();
 });
 app.use(
@@ -49,11 +50,16 @@ app.use(
     origin: [
       "http://localhost:3000",
       "http://localhost:3001",
+      "http://localhost:8000",
+      "https://uat.d38tnqy8q9rbjf.amplifyapp.com",
       "http://main.d1lddnidhuqzni.amplifyapp.com",
       "https://main.d2s4wo3hb5kyyq.amplifyapp.com",
       "https://www.panjourney.com",
       "https://panjourney.com",
       "https://dev.destinoway.com",
+      "https://uat.destinoway.com",
+      "https://uat-admin.destinoway.com",
+      "https://dev-admin.destinoway.com",
       "https://develop.d1kvqncg9r5rhb.amplifyapp.com"
     ],
     credentials: true,
@@ -66,7 +72,15 @@ app.use(cookieParser());
 //   "/api/v1/payment/webhook",
 //   express.raw({ type: "application/json" })
 // );
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, res, body) => {
+      if (req.path.startsWith("/api/v1/hotel-payments/webhooks/")) {
+        req.rawBody = Buffer.from(body);
+      }
+    },
+  })
+);
 app.use(express.static("public"));
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/media", mediaRoutes);
@@ -75,10 +89,10 @@ app.use("/api/v1/bus", busRoutes);
 app.use("/api/v1", support);
 //app.use("/api/v1", grievanceRedressal);
 // app.use("/api/v1/payment", paymentRoutes);
-app.use("/api/v1/newsletter", newsletter);
+//app.use("/api/v1/newsletter", newsletter);
 app.use("/api/v1/destination", destination);
 app.use("/api/v1/tax", tax);
-// app.use("/api/v1/couponCode", couponCode);
+app.use("/api/v1/couponCode", couponCode);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/homecontent", homecontent);
 app.use("/api/v1/cms", cmsRoutes);
@@ -92,6 +106,13 @@ app.use("/api/v1/customer/profile", profileRoutes);
 app.use("/api/v1/markup", markeupRoutes);
 app.use("/api/v1/currency", currencyRoutes);
 app.use("/api/v1/newsletter", newsletter);
+app.use("/api/v1/hotelDetails", hotelDetailsRoutes);
+app.use("/api/v1/hotelDetails", hotelPriceVerifyRoutes);
+app.use("/api/v1/hotelDetails", hotelItineraryPricingRoutes);
+app.use("/api/v1/hoteltempBooking", hotelItineraryRoutes);
+app.use("/api/v1", hotelRequeryRoutes);
+app.use("/api/v1/hotel-payments", hotelPaymentRoutes);
+app.use("/api/v1/admin", adminHotelBookingRoutes);
 
 app.use("/api/v1/masterData", masterRoutes);
 app.use("/api/v1/customer", customerProfileRoutes);
