@@ -1,5 +1,5 @@
 import axios from "axios";
-import redisClient from "../../../../config/redis.js";
+import AkbarBusToken from "./akbarBusToken.model.js";
 
 // =========================================================
 // AKBAR BUS AUTH (Signature API)
@@ -8,18 +8,18 @@ import redisClient from "../../../../config/redis.js";
 //   - Token    : JWT (valid ~100 days in test env)
 //   - ClientID : encrypted id that must be sent in EVERY bus API
 //
-// Both are cached together in Redis as one "session".
+// Both are saved in MongoDB "akbartokens" collection, doc _id "bus"
+// (same collection hotel uses with _id "hotel").
 // =========================================================
 
-const SESSION_KEY = "AKBAR:bus:session";
-
-// Refresh the token this long before the JWT actually expires.
-const EXPIRY_BUFFER_SECONDS = 24 * 60 * 60; // 1 day
-
-// Used only if the JWT has no readable "exp".
-const FALLBACK_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
-
 const SIGNATURE_TIMEOUT_MS = 20000;
+
+// Keep the token for 10 days (same as hotel), then get a new one.
+const TOKEN_TTL_SECONDS = 10 * 24 * 60 * 60; // 10 days
+
+// Safety: if AKBAR's JWT expires sooner than 10 days,
+// refresh 1 day before that instead.
+const EXPIRY_BUFFER_SECONDS = 24 * 60 * 60; // 1 day
 
 // If several requests need a token at the same time, only one
 // Signature call is made and the others wait for it.
@@ -38,50 +38,59 @@ const getJwtExpiry = (token) => {
   }
 };
 
-const readCachedSession = async () => {
+const toSeconds = (date) => (date ? Math.floor(date.getTime() / 1000) : null);
+
+const readStoredSession = async () => {
   try {
-    const cached = await redisClient.get(SESSION_KEY);
+    const record = await AkbarBusToken.findById("bus").lean();
 
-    if (!cached) return null;
+    if (!record?.token || !record?.clientId) return null;
 
-    const session = JSON.parse(cached);
+    // expiresAt is already the refresh time, so just compare with now.
+    if (!record.expiresAt || record.expiresAt <= new Date()) return null;
 
-    if (!session?.token || !session?.clientId) return null;
-
-    // Treat as expired if it's within the buffer window.
-    const nowSeconds = Math.floor(Date.now() / 1000);
-
-    if (
-      session.expiresAt &&
-      session.expiresAt - EXPIRY_BUFFER_SECONDS <= nowSeconds
-    ) {
-      return null;
-    }
-
-    return session;
+    return {
+      token: record.token,
+      clientId: record.clientId,
+      expiresAt: toSeconds(record.expiresAt),
+      createdAt: toSeconds(record.updatedAt || record.createdAt),
+    };
   } catch (error) {
-    // Redis down / bad JSON: just fetch a fresh token.
-    console.error("AKBAR BUS: Redis read failed:", error.message);
+    // DB issue: fall back to a fresh Signature call.
+    console.error("AKBAR BUS: token read from DB failed:", error.message);
     return null;
   }
 };
 
-const saveSession = async (session) => {
+const saveSession = async ({ token, clientId }) => {
+  const jwtExpiry = getJwtExpiry(token);
   const nowSeconds = Math.floor(Date.now() / 1000);
 
-  const ttl = session.expiresAt
-    ? session.expiresAt - nowSeconds - EXPIRY_BUFFER_SECONDS
-    : FALLBACK_TTL_SECONDS;
+  const tenDaysLater = nowSeconds + TOKEN_TTL_SECONDS;
 
-  if (ttl <= 0) return;
+  const refreshAtSeconds = jwtExpiry
+    ? Math.min(tenDaysLater, jwtExpiry - EXPIRY_BUFFER_SECONDS)
+    : tenDaysLater;
+
+  const expiresAt = new Date(refreshAtSeconds * 1000);
 
   try {
-    await redisClient.set(SESSION_KEY, JSON.stringify(session), {
-      EX: ttl,
-    });
+    await AkbarBusToken.findByIdAndUpdate(
+      "bus",
+      { token, clientId, expiresAt },
+      { upsert: true, setDefaultsOnInsert: true },
+    );
   } catch (error) {
-    console.error("AKBAR BUS: Redis write failed:", error.message);
+    // Token is still usable for this request even if saving failed.
+    console.error("AKBAR BUS: token save to DB failed:", error.message);
   }
+
+  return {
+    token,
+    clientId,
+    expiresAt: refreshAtSeconds,
+    createdAt: nowSeconds,
+  };
 };
 
 const callSignatureAPI = async () => {
@@ -130,13 +139,7 @@ const callSignatureAPI = async () => {
     throw error;
   }
 
-  return {
-    token: data.Token,
-    clientId: data.ClientID,
-    tui: data.TUI || null,
-    expiresAt: getJwtExpiry(data.Token),
-    createdAt: Math.floor(Date.now() / 1000),
-  };
+  return { token: data.Token, clientId: data.ClientID };
 };
 
 const createNewSession = async () => {
@@ -144,10 +147,10 @@ const createNewSession = async () => {
     inFlightSignature = (async () => {
       console.log("AKBAR BUS: calling Signature API for a new token");
 
-      const session = await callSignatureAPI();
-      await saveSession(session);
+      const signature = await callSignatureAPI();
+      const session = await saveSession(signature);
 
-      console.log("AKBAR BUS: new token saved");
+      console.log("AKBAR BUS: new token saved to DB");
       return session;
     })().finally(() => {
       inFlightSignature = null;
@@ -158,17 +161,17 @@ const createNewSession = async () => {
 };
 
 /**
- * Returns { token, clientId, tui, expiresAt, createdAt, source }.
- * source = "cache" | "signature"
+ * Returns { token, clientId, expiresAt, createdAt, source }.
+ * source = "db" | "signature"
  *
- * forceRefresh: ignore the cached token (used after a 401).
+ * forceRefresh: ignore the stored token (used after a 401).
  */
 export const getAkbarBusSession = async ({ forceRefresh = false } = {}) => {
   if (!forceRefresh) {
-    const cached = await readCachedSession();
+    const stored = await readStoredSession();
 
-    if (cached) {
-      return { ...cached, source: "cache" };
+    if (stored) {
+      return { ...stored, source: "db" };
     }
   }
 
@@ -177,12 +180,12 @@ export const getAkbarBusSession = async ({ forceRefresh = false } = {}) => {
 };
 
 /**
- * Removes the cached session (e.g. when AKBAR rejects the token).
+ * Removes the stored token (e.g. when AKBAR rejects it).
  */
 export const clearAkbarBusSession = async () => {
   try {
-    await redisClient.del(SESSION_KEY);
+    await AkbarBusToken.deleteOne({ _id: "bus" });
   } catch (error) {
-    console.error("AKBAR BUS: Redis delete failed:", error.message);
+    console.error("AKBAR BUS: token delete from DB failed:", error.message);
   }
 };
