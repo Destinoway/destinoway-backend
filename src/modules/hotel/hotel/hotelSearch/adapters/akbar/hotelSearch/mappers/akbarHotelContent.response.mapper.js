@@ -1,98 +1,60 @@
-// export const mapAkbarHotelContentResponse = (response) => {
-//   const hotels = response?.hotels || [];
+export const mapAkbarHotelContentResponse = (
+  response
+) => {
+  const hotels =
+    response?.hotels || [];
 
-//   return hotels.map((hotel) => ({
-//     hotelId: null,
+  return hotels
+    .filter((hotel) => hotel?.id)
+    .map((hotel) => ({
+      supplier: "AKBAR",
 
-//     supplier: "AKBAR",
+      supplierHotelId:
+        String(hotel.id),
 
-//     supplierHotelId: hotel.id || null,
+      name:
+        hotel.name || null,
 
-//     name: hotel.name || null,
+      starRating:
+        hotel.starRating ?? null,
 
-//     starRating:
-//       hotel.starRating ??
-//       hotel.star ??
-//       null,
+      address:
+        hotel.address || null,
 
-//     address:
-//       hotel.address || null,
+      distance:
+        hotel.distance ?? null,
 
-//     city:
-//       hotel.city || null,
+      heroImage:
+        hotel.heroImage || null,
 
-//     country:
-//       hotel.country || null,
+      facilities:
+        hotel.facilities || [],
 
-//     images:
-//       hotel.images || [],
+      geoCode:
+        hotel.geoCode || null,
 
-//     rawSupplierData: hotel,
-//   }));
-// };
+      provider:
+        hotel.provider || null,
 
-export const mapAkbarHotelContentResponse = (response) => {
-  const hotels = response?.hotels || [];
+      userReview:
+        hotel.userReview || null,
 
-  const mappedHotels = hotels.map((hotel) => ({
-    hotelId: null,
+      relevanceScore:
+        hotel.relevanceScore ??
+        null,
 
-    supplier: "AKBAR",
+      chainName:
+        hotel.chainName || null,
 
-    supplierHotelId: hotel.id || null,
+      propertyType:
+        hotel.propertyType || null,
 
-    name: hotel.name || null,
+      images:
+        hotel.images || [],
 
-    starRating:
-      hotel.starRating ??
-      hotel.star ??
-      null,
+      isSoldOut:
+        hotel.isSoldOut ?? false,
 
-    address:
-      hotel.address || null,
-
-    city:
-      hotel.city || null,
-
-    country:
-      hotel.country || null,
-
-    images:
-      hotel.images || [],
-
-    rawSupplierData: hotel,
-  }));
-
-  // ========================================
-  // MAPPER DEBUG
-  // ========================================
-
-  console.log(
-    "========== AKBAR CONTENT MAPPER DEBUG =========="
-  );
-
-  console.log(
-    "RAW HOTEL COUNT:",
-    hotels.length
-  );
-
-  console.log(
-    "MAPPED HOTEL COUNT:",
-    mappedHotels.length
-  );
-
-  console.log(
-    "MAPPED HOTEL SAMPLE:",
-    mappedHotels.slice(0, 3).map((hotel) => ({
-      supplierHotelId: hotel.supplierHotelId,
-      name: hotel.name,
-      city: hotel.city,
-    }))
-  );
-
-  console.log(
-    "================================================="
-  );
-
-  return mappedHotels;
+      rawSupplierData: hotel,
+    }));
 };

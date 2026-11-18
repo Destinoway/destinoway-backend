@@ -1,164 +1,104 @@
-
-// import axios from "axios";
-// import { getAKBARToken } from "../../../../../../supplier/akbar/akbarAuth.service.js";
-
-// export const akbarHotelContentAPI = async ({
-//   searchId,
-//   searchTracingKey,
-//   limit = 50,
-//   offset = -1,
-// }) => {
-//   console.log("========== AKBAR CONTENT API START ==========");
-
-//   console.log("Search ID:", searchId);
-//   console.log("Search Tracing Key:", searchTracingKey);
-//   console.log("Content Limit:", limit);
-//   console.log("Content Offset:", offset);
-
-//   const token = await getAKBARToken();
-
-//   console.log("AKBAR Token received:", !!token);
-
-//   const url = `${process.env.AKBAR_HOTEL_API_URL}/api/hotels/search/result/${searchId}/content`;
-
-//   console.log("AKBAR CONTENT URL:", url);
-
-//   try {
-//     const apiStart = performance.now();
-
-//     const response = await axios.get(url, {
-//       params: {
-//         limit,
-//         offset,
-//         filterdata: false,
-//       },
-
-//       headers: {
-//         Authorization: `Bearer ${token}`,
-//         "search-tracing-key": searchTracingKey,
-//       },
-
-//       timeout: 30000,
-//     });
-
-//     const apiEnd = performance.now();
-
-//     console.log(
-//       `⏱️ AKBAR CONTENT API TIME: ${(apiEnd - apiStart).toFixed(2)} ms`
-//     );
-
-//     console.log("========== AKBAR CONTENT RESPONSE ==========");
-
-//     console.log("CONTENT STATUS:", response.status);
-
-//     console.log(
-//       "CONTENT SEARCH STATUS:",
-//       response.data?.searchStatus
-//     );
-
-//     console.log(
-//       "CONTENT HOTEL COUNT:",
-//       response.data?.hotels?.length || 0
-//     );
-
-//     console.log(
-//       "CONTENT TOTAL:",
-//       response.data?.total ?? null
-//     );
-
-//     console.log(
-//       "CONTENT ID SAMPLE:",
-//       response.data?.hotels?.slice(0, 10).map((hotel) => ({
-//         id: hotel.id,
-//         name: hotel.name,
-//       }))
-//     );
-
-//     console.log("=============================================");
-
-//     return response.data;
-//   } catch (error) {
-//     console.error("========== AKBAR CONTENT API ERROR ==========");
-
-//     console.error("Message:", error.message);
-//     console.error("Status:", error.response?.status);
-
-//     console.error(
-//       "Response:",
-//       JSON.stringify(error.response?.data, null, 2)
-//     );
-
-//     console.error("=============================================");
-
-//     throw error;
-//   }
-// };
-
-
 import axios from "axios";
 import { getAKBARToken } from "../../../../../../supplier/akbar/akbarAuth.service.js";
+import {
+  logSupplierApiExchange,
+} from "../../../../../../hotel/utils/hotelObservability.js";
+
+const sleep = (ms) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+const isFailureResponse = (data) => {
+  const status = String(data?.status || "").toLowerCase();
+  const searchStatus = String(data?.searchStatus || "").toLowerCase();
+
+  return (
+    status === "failure" ||
+    status === "failed" ||
+    status === "error" ||
+    searchStatus === "failure" ||
+    searchStatus === "failed" ||
+    searchStatus === "error"
+  );
+};
 
 export const akbarHotelContentAPI = async ({
   searchId,
+  correlationId,
   searchTracingKey,
   limit,
   offset,
+  shouldContinue,
 }) => {
-  const token = await getAKBARToken();
+  const url =
+    `${process.env.AKBAR_HOTEL_API_URL}` +
+    `/api/hotels/search/result/${searchId}/content`;
 
-  const url = `${process.env.AKBAR_HOTEL_API_URL}/api/hotels/search/result/${searchId}/content`;
+  let attempt = 0;
 
-  console.log("🏨 AKBAR CONTENT START");
-  console.log("Search ID:", searchId);
-  console.log("Limit:", limit);
-  console.log("Offset:", offset);
+  while (true) {
+    attempt++;
 
-  try {
-    const apiStart = performance.now();
+    if (shouldContinue) {
+      const active = await shouldContinue();
 
-    const response = await axios.get(url, {
-      params: {
-        limit,
-        offset,
-        filterdata: false,
-      },
-      headers: {
+      if (!active) {
+        return null;
+      }
+    }
+
+    const token = await getAKBARToken();
+    try {
+      const params = { limit, offset, filterdata: false };
+      const headers = {
         Authorization: `Bearer ${token}`,
         "search-tracing-key": searchTracingKey,
-      },
-      timeout: 30000,
-    });
+      };
+      const response = await logSupplierApiExchange(
+        {
+          operation: "hotel_search_content",
+          correlationId,
+          hotelLogKey: correlationId ?? searchId,
+          method: "GET",
+          endpoint: url,
+          headers,
+          request: { params },
+        },
+        () =>
+          axios.get(url, {
+            params,
+            headers,
+          }),
+      );
 
-    const apiEnd = performance.now();
+      const data = response.data;
+      const hotels = data?.hotels || [];
 
-    const hotels = response.data?.hotels || [];
+      const total =
+        data?.total ??
+        data?.Count ??
+        data?.count ??
+        0;
 
-    const total =
-      response.data?.total ??
-      response.data?.Count ??
-      response.data?.count ??
-      0;
+      if (isFailureResponse(data)) {
+        throw new Error(
+          `AKBAR content search failed: ${
+            data?.searchStatus || data?.status || "Unknown error"
+          }`
+        );
+      }
 
-    console.log(
-      `⏱️ AKBAR CONTENT API TIME (${offset}): ${(apiEnd - apiStart).toFixed(
-        2
-      )} ms`
-    );
+      // First content call can return 200 + empty data while supplier
+      // is still preparing content. Keep polling until content arrives.
+      // For later pages, an empty page means pagination is finished.
+      if (hotels.length > 0 || total > 0 || offset !== -1) {
+        return data;
+      }
 
-    console.log("✅ AKBAR CONTENT STATUS:", response.status);
-    console.log("📦 CONTENT HOTELS RECEIVED:", hotels.length);
-    console.log("📊 CONTENT TOTAL:", total);
 
-    return response.data;
-  } catch (error) {
-    console.error("❌ AKBAR CONTENT ERROR");
+      await sleep(1000);
+    } catch (error) {
 
-    console.error("Message:", error.message);
-    console.error("Status:", error.response?.status);
-    console.error("Response:", error.response?.data);
-    console.error("URL:", error.config?.url);
-    console.error("Params:", error.config?.params);
-
-    throw error;
+      throw error;
+    }
   }
 };

@@ -4,8 +4,8 @@ import {
   mapAkbarDestinationResponse,
 } from "./adapters/akbar/akbarDestination.mapper.js";
 
-export const searchDestinationService = async (searchInput) => {
-  const response = await searchAKBARDestinationAPI(searchInput);
+export const searchDestinationService = async (searchInput, { correlationId } = {}) => {
+  const response = await searchAKBARDestinationAPI(searchInput, { correlationId });
 
   return mapAkbarDestinationResponse(response);
 };

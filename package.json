@@ -24,6 +24,7 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "build": "echo \"No build step required for Express\"",
+    "test:cms": "node --test src/modules/cms/cms.seo.test.js",
     "lint": "echo \"Add ESLint later\""
   },
   "dependencies": {

@@ -18,7 +18,6 @@ export const getStatesByCountry = async (req, res) => {
     );
 
   } catch (err) {
-    console.error(err);
     return sendError(
       res,
       "Failed to fetch states",

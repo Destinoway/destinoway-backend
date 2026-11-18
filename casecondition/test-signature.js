@@ -18,5 +18,3 @@ const signature =
     )
     .update(body)
     .digest("hex");
-
-console.log(signature);

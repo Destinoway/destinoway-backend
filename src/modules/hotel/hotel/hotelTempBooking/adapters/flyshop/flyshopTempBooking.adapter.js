@@ -61,22 +61,9 @@ export const createTempBookingAPI = async (payload) => {
     ...mappedPayload,
   };
 
-  console.log(
-    "=========================================="
-  );
 
-  console.log(
-    "FLYSHOP TEMP BOOKING REQUEST"
-  );
 
-  console.dir(
-    supplierPayload,
-    { depth: null }
-  );
 
-  console.log(
-    "=========================================="
-  );
 
   const { data } =
     await supplierAPI.post(

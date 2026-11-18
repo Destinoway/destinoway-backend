@@ -1,0 +1,411 @@
+Source: case-01-raw.jsonl. Captured redactions are preserved; no missing values have been reconstructed.
+
+Exchange 1 of 2
+Operation: hotel_price_verify
+Correlation ID: d5e4920b-3d7a-496e-ba64-b521bc1c477c
+Request timestamp (UTC): 2026-11-13T06:24:25.240Z
+Response timestamp (UTC): 2026-11-13T06:24:26.663Z
+Method: GET
+Endpoint: https://travelportalapi.benzyinfotech.com/api/hotels/search/80cfbf6c-9226-4abb-bc4c-b75dc0a4010d.xK1p0IOwBYovhpulxsj1SQ/39778998/price/CleartripAPI/252e1821-230c-4553-87ec-e2ded945d5a4
+
+Request Headers:
+{
+  "Authorization": {
+    "redacted": true,
+    "present": true
+  },
+  "search-tracing-key": {
+    "redacted": true,
+    "present": true
+  }
+}
+
+Request (body / query parameters as captured; null means no captured payload):
+null
+
+Response Status: 200
+
+Response Headers:
+{
+  "cache-control": "no-store",
+  "transfer-encoding": "chunked",
+  "content-type": "application/json; charset=utf-8",
+  "vary": "Accept-Encoding",
+  "server": "Microsoft-IIS/10.0",
+  "x-powered-by": "ASP.NET",
+  "x-server": "1",
+  "date": "Fri, 13 Nov 2026 06:26:37 GMT"
+}
+
+Response Body:
+{
+  "hotelId": "39778998",
+  "roomGroup": [
+    {
+      "id": "f3b1a8c9-37b7-46e7-9450-0291d73b8839",
+      "code": null,
+      "availability": 1,
+      "description": "Room Only || Provider Rate Id: 1451531416",
+      "needsPriceCheck": true,
+      "isPackageRate": null,
+      "providerId": "394V4",
+      "providerName": "CleartripAPI",
+      "isPreffered": null,
+      "room": {
+        "id": "e663501d-0cb6-483c-bc1c-dbb7b856969f",
+        "standardRoomId": "",
+        "standardRoomName": "Deluxe Non A/C Room",
+        "name": "Deluxe Non A/C Room",
+        "description": null,
+        "beds": [],
+        "smokingAllowed": false,
+        "facilities": [],
+        "images": null,
+        "maxGuestAllowed": null,
+        "maxAdultAllowed": null,
+        "maxChildrenAllowed": null,
+        "area": null,
+        "views": null,
+        "type": null
+      },
+      "otherProviderRates": null,
+      "roomCount": 1,
+      "occupancies": {
+        "redacted": true,
+        "present": true
+      },
+      "type": "published",
+      "baseRate": 1330.13,
+      "totalRate": 1409.65,
+      "tcsOnTotal": 0,
+      "minSellingRate": 0,
+      "publishedRate": 2029.05,
+      "taxes": [
+        {
+          "amount": 79.52,
+          "description": "TAX",
+          "type": null
+        }
+      ],
+      "fees": null,
+      "discounts": [
+        {
+          "amount": -309.7,
+          "description": "DISCOUNT",
+          "type": null
+        }
+      ],
+      "otherRateComponents": [
+        {
+          "amount": 133.01,
+          "description": "Agency Markup applied on BaseFare",
+          "type": "AgencyMarkup"
+        }
+      ],
+      "hotelServiceCharge": 0,
+      "commission": null,
+      "dailyRates": [
+        {
+          "amount": 1639.83,
+          "date": "2026-11-18T00:00:00Z",
+          "taxIncluded": false,
+          "discount": -309.7
+        }
+      ],
+      "pointEquivalent": 0,
+      "refundability": "Refundable",
+      "refundable": true,
+      "allGuestsInfoRequired": true,
+      "onlineCancellable": false,
+      "specialRequestSupported": true,
+      "payAtHotel": false,
+      "cardRequired": false,
+      "policies": null,
+      "boardBasis": {
+        "description": "Room Only",
+        "type": "RoomOnly"
+      },
+      "offers": [],
+      "cancellationPolicies": [
+        {
+          "text": null,
+          "rules": [
+            {
+              "value": 0,
+              "valueType": "Amount",
+              "estimatedValue": 0,
+              "start": "2026-11-13T06:24:26.207Z",
+              "end": "2026-11-17T06:30:00Z"
+            },
+            {
+              "value": 1410,
+              "valueType": "Amount",
+              "estimatedValue": 1410,
+              "start": "2026-11-17T06:30:00Z",
+              "end": "2026-11-18T06:30:00Z"
+            }
+          ]
+        }
+      ],
+      "includes": [
+        "Room Only"
+      ],
+      "additionalCharges": null,
+      "depositRequired": false,
+      "gstAllowed": true,
+      "depositAmount": null,
+      "guaranteeRequired": false,
+      "gstOnCommission": 0,
+      "bookNowPayLaterDate": null,
+      "conversionRate": null,
+      "travelType": "D",
+      "additionalInformation": null,
+      "ratePerNight": 0
+    }
+  ],
+  "priceId": "c83353a3-6c20-44a7-8e85-f86357384425",
+  "isPotentialSuspect": false,
+  "suspectCategory": null,
+  "stayPeriod": {
+    "start": "11/18/2026 12:00:00 AM",
+    "end": "11/19/2026 12:00:00 AM"
+  },
+  "priceInfo": null,
+  "agentCode": null,
+  "ishold": true,
+  "holdreleasedate": "11/16/2026 6:30:00 AM",
+  "mappings": [
+    {
+      "fieldName": "HotelName",
+      "prevValue": "Hotel Sargam",
+      "currentValue": "Hotel Sargam, Nagar Road"
+    },
+    {
+      "fieldName": "HotelAddress",
+      "prevValue": "CTS 1289/2 Pune - Nagar Road Yerwada",
+      "currentValue": "1289/2, Nagar Road, Airport Rd, Yerawada, Pune, Maharashtra 411006"
+    },
+    {
+      "fieldName": "HotelCity",
+      "prevValue": "PUNE",
+      "currentValue": "Pune"
+    },
+    {
+      "fieldName": "HotelStarRating",
+      "prevValue": "4",
+      "currentValue": "3"
+    }
+  ],
+  "isGSTInvoiceAvailable": false,
+  "isPANRequired": {
+    "redacted": true,
+    "present": true
+  },
+  "status": "success"
+}
+
+================================================================================
+
+Exchange 2 of 2
+Operation: hotel_price_verify
+Correlation ID: d5e4920b-3d7a-496e-ba64-b521bc1c477c
+Request timestamp (UTC): 2026-11-13T06:24:48.657Z
+Response timestamp (UTC): 2026-11-13T06:24:50.330Z
+Method: GET
+Endpoint: https://travelportalapi.benzyinfotech.com/api/hotels/search/80cfbf6c-9226-4abb-bc4c-b75dc0a4010d.xK1p0IOwBYovhpulxsj1SQ/39778998/price/CleartripAPI/252e1821-230c-4553-87ec-e2ded945d5a4
+
+Request Headers:
+{
+  "Authorization": {
+    "redacted": true,
+    "present": true
+  },
+  "search-tracing-key": {
+    "redacted": true,
+    "present": true
+  }
+}
+
+Request (body / query parameters as captured; null means no captured payload):
+null
+
+Response Status: 200
+
+Response Headers:
+{
+  "cache-control": "no-store",
+  "transfer-encoding": "chunked",
+  "content-type": "application/json; charset=utf-8",
+  "vary": "Accept-Encoding",
+  "server": "Microsoft-IIS/10.0",
+  "x-powered-by": "ASP.NET",
+  "x-server": "1",
+  "date": "Fri, 13 Nov 2026 06:27:01 GMT"
+}
+
+Response Body:
+{
+  "hotelId": "39778998",
+  "roomGroup": [
+    {
+      "id": "f3b1a8c9-37b7-46e7-9450-0291d73b8839",
+      "code": null,
+      "availability": 1,
+      "description": "Room Only || Provider Rate Id: 1451531416",
+      "needsPriceCheck": true,
+      "isPackageRate": null,
+      "providerId": "394V4",
+      "providerName": "CleartripAPI",
+      "isPreffered": null,
+      "room": {
+        "id": "e663501d-0cb6-483c-bc1c-dbb7b856969f",
+        "standardRoomId": "",
+        "standardRoomName": "Deluxe Non A/C Room",
+        "name": "Deluxe Non A/C Room",
+        "description": null,
+        "beds": [],
+        "smokingAllowed": false,
+        "facilities": [],
+        "images": null,
+        "maxGuestAllowed": null,
+        "maxAdultAllowed": null,
+        "maxChildrenAllowed": null,
+        "area": null,
+        "views": null,
+        "type": null
+      },
+      "otherProviderRates": null,
+      "roomCount": 1,
+      "occupancies": {
+        "redacted": true,
+        "present": true
+      },
+      "type": "published",
+      "baseRate": 1330.13,
+      "totalRate": 1409.65,
+      "tcsOnTotal": 0,
+      "minSellingRate": 0,
+      "publishedRate": 2029.05,
+      "taxes": [
+        {
+          "amount": 79.52,
+          "description": "TAX",
+          "type": null
+        }
+      ],
+      "fees": null,
+      "discounts": [
+        {
+          "amount": -309.7,
+          "description": "DISCOUNT",
+          "type": null
+        }
+      ],
+      "otherRateComponents": [
+        {
+          "amount": 133.01,
+          "description": "Agency Markup applied on BaseFare",
+          "type": "AgencyMarkup"
+        }
+      ],
+      "hotelServiceCharge": 0,
+      "commission": null,
+      "dailyRates": [
+        {
+          "amount": 1639.83,
+          "date": "2026-11-18T00:00:00Z",
+          "taxIncluded": false,
+          "discount": -309.7
+        }
+      ],
+      "pointEquivalent": 0,
+      "refundability": "Refundable",
+      "refundable": true,
+      "allGuestsInfoRequired": true,
+      "onlineCancellable": false,
+      "specialRequestSupported": true,
+      "payAtHotel": false,
+      "cardRequired": false,
+      "policies": null,
+      "boardBasis": {
+        "description": "Room Only",
+        "type": "RoomOnly"
+      },
+      "offers": [],
+      "cancellationPolicies": [
+        {
+          "text": null,
+          "rules": [
+            {
+              "value": 0,
+              "valueType": "Amount",
+              "estimatedValue": 0,
+              "start": "2026-11-13T06:24:49.864Z",
+              "end": "2026-11-17T06:30:00Z"
+            },
+            {
+              "value": 1410,
+              "valueType": "Amount",
+              "estimatedValue": 1410,
+              "start": "2026-11-17T06:30:00Z",
+              "end": "2026-11-18T06:30:00Z"
+            }
+          ]
+        }
+      ],
+      "includes": [
+        "Room Only"
+      ],
+      "additionalCharges": null,
+      "depositRequired": false,
+      "gstAllowed": true,
+      "depositAmount": null,
+      "guaranteeRequired": false,
+      "gstOnCommission": 0,
+      "bookNowPayLaterDate": null,
+      "conversionRate": null,
+      "travelType": "D",
+      "additionalInformation": null,
+      "ratePerNight": 0
+    }
+  ],
+  "priceId": "9e26a097-e29d-4e3a-99ba-b96c7580f528",
+  "isPotentialSuspect": false,
+  "suspectCategory": null,
+  "stayPeriod": {
+    "start": "11/18/2026 12:00:00 AM",
+    "end": "11/19/2026 12:00:00 AM"
+  },
+  "priceInfo": null,
+  "agentCode": null,
+  "ishold": true,
+  "holdreleasedate": "11/16/2026 6:30:00 AM",
+  "mappings": [
+    {
+      "fieldName": "HotelName",
+      "prevValue": "Hotel Sargam",
+      "currentValue": "Hotel Sargam, Nagar Road"
+    },
+    {
+      "fieldName": "HotelAddress",
+      "prevValue": "CTS 1289/2 Pune - Nagar Road Yerwada",
+      "currentValue": "1289/2, Nagar Road, Airport Rd, Yerawada, Pune, Maharashtra 411006"
+    },
+    {
+      "fieldName": "HotelCity",
+      "prevValue": "PUNE",
+      "currentValue": "Pune"
+    },
+    {
+      "fieldName": "HotelStarRating",
+      "prevValue": "4",
+      "currentValue": "3"
+    }
+  ],
+  "isGSTInvoiceAvailable": false,
+  "isPANRequired": {
+    "redacted": true,
+    "present": true
+  },
+  "status": "success"
+}

@@ -1,0 +1,447 @@
+Source: case-01-raw.jsonl. Captured redactions are preserved; no missing values have been reconstructed.
+
+Exchange 1 of 1
+Operation: retrieve_booking
+Correlation ID: 9499ec00-f008-4757-83c4-030967c3c8db
+Request timestamp (UTC): 2026-11-13T06:26:47.981Z
+Response timestamp (UTC): 2026-11-13T06:26:48.131Z
+Method: POST
+Endpoint: https://b2bapiflights.benzyinfotech.com/Utils/RetrieveBooking
+
+Request Headers:
+{
+  "Content-Type": "application/json",
+  "Authorization": {
+    "redacted": true,
+    "present": true
+  }
+}
+
+Request (body / query parameters as captured; null means no captured payload):
+{
+  "body": {
+    "TUI": "200beb7f-e22d-4f40-bd52-b81e65de5bd5|325594fc-efc5-4955-b0cf-264de8b838d6|20261113115702",
+    "ReferenceType": "T",
+    "ReferenceNumber": "260152323",
+    "ServiceType": null,
+    "ClientID": "FVI6V120g22Ei5ztGK0FIQ==",
+    "RequestMode": "RB",
+    "Contact": null,
+    "Name": null
+  }
+}
+
+Response Status: 200
+
+Response Headers:
+{
+  "cache-control": "no-cache",
+  "pragma": "no-cache",
+  "transfer-encoding": "chunked",
+  "content-type": "application/json; charset=utf-8",
+  "expires": "-1",
+  "vary": "Accept-Encoding",
+  "x-server": "1",
+  "x-tui": "200beb7f-e22d-4f40-bd52-b81e65de5bd5|55521b4b-c9fa-4cf9-a29a-5d198f63ffb5|20261113115859",
+  "x-requesttime": "13-11-2026 11:58:59.560",
+  "x-responsetime": "13-11-2026 11:58:59.654",
+  "x-powered-by": "",
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "*",
+  "date": "Fri, 13 Nov 2026 06:28:59 GMT"
+}
+
+Response Body:
+{
+  "EncryptionKey": {
+    "redacted": true,
+    "present": true
+  },
+  "TUI": "200beb7f-e22d-4f40-bd52-b81e65de5bd5|1861f413-0986-4166-93ee-8498f0bbd876|20261113115859",
+  "TransactionId": 260152323,
+  "ServiceType": "HTL",
+  "BookingConfirmationId": "TestBooking",
+  "BookNowPayLaterDate": "2026-11-16",
+  "BookingStatus": "B0",
+  "HoldBooking": false,
+  "CurrentStatus": "B0",
+  "CheckInDate": "2026-11-18",
+  "CheckOutDate": "2026-11-19",
+  "CheckInTime": "12:00 PM",
+  "CheckOutTime": "11:00 AM",
+  "FinYearID": "19",
+  "HotelConfirmationNumber": "",
+  "BookingConfirmedByUser": "",
+  "HoldEnabled": true,
+  "DRefNo": "",
+  "OfflineAgentCode": "",
+  "ItineraryType": "Normal",
+  "GrossFare": 1542.66,
+  "NetFare": 1409.65,
+  "PaymentType": "",
+  "PaymentStatus": "I8",
+  "PaymentMode": "",
+  "Nationality": "",
+  "CountryOfResidence": "",
+  "IssuedDate": "2026-11-13 11:57:05 AM",
+  "IsBadlyMapped": "False",
+  "SuspectCategory": "",
+  "TravelingFor": "",
+  "GateWayCode": "",
+  "GateWayCharge": 0,
+  "IsBilled": false,
+  "CancellationID": 250001696,
+  "PaxCount": 1,
+  "InvoiceDate": "13-11-2026",
+  "ExchangeRate": 0,
+  "CorporateDefaultCurrency": "",
+  "HotelInfo": {
+    "Code": "39778998",
+    "Name": "Hotel Sargam, Nagar Road",
+    "heroimage": "https://rukmini-ct.flixcart.com/w_2048,f_auto,q_auto/ct-hotel-images/places/hotels/cms/4671/4671517/images/image_4671517_1c502a38-36b4-430d-8263-d16eb34ee878.png",
+    "Latitude": "18.545927",
+    "Longitude": "73.887695",
+    "LocationName": "",
+    "Distance": 0,
+    "AllowedCreditCards": "",
+    "AllowedCountries": "",
+    "SpecialRequestSupported": "False",
+    "LeadPaxInfoRequired": "False",
+    "IsCardRequired": "False",
+    "GuaranteeRequired": "False",
+    "Phone": "+91-7447443320",
+    "StarRating": "3",
+    "HotelAddress": {
+      "City": "Pune",
+      "State": "Maharashtra",
+      "Country": "IN",
+      "ZIP": "411006",
+      "AddressLine1": "1289/2, Nagar Road, Airport Rd, Yerawada, Pune, Maharashtra 411006",
+      "AddressLine2": ""
+    }
+  },
+  "Rooms": [
+    {
+      "HotelConfirmationNumber": "",
+      "ID": "22658",
+      "RoomId": "e663501d-0cb6-483c-bc1c-dbb7b856969f",
+      "GuestCode": "|1|1:A:25|",
+      "RoomGroupId": "f3b1a8c9-37b7-46e7-9450-0291d73b8839",
+      "Name": "Deluxe Non A/C Room",
+      "Description": "",
+      "Capacity": "1",
+      "NumberOfAdults": "1",
+      "NumberOfChildren": "0",
+      "NumberOfExtraBeds": "0",
+      "SupplierConfirmationNumber": "TestBooking",
+      "SupplierId": "0",
+      "RecommendationId": "252e1821-230c-4553-87ec-e2ded945d5a4",
+      "Refundable": "True",
+      "Guests": [
+        {
+          "Title": "Mr",
+          "FirstName": "gsgs",
+          "LastName": "gsdgs",
+          "Email": "info@destinoway.com",
+          "MobileNumber": "1234567890",
+          "PaxType": "A",
+          "Age": "25",
+          "AadharNo": "",
+          "Pan": {
+            "redacted": true,
+            "present": false
+          },
+          "Passport": "",
+          "PanVerified": {
+            "redacted": true,
+            "present": true
+          }
+        }
+      ],
+      "RoomRates": [
+        {
+          "Taxes": "",
+          "TransactionFee": 0,
+          "GstOnTransactionFee": 0,
+          "TaxesAndCharges": 79.52,
+          "TDSOnDiscount": 0,
+          "TotalRate": 1409.65,
+          "BaseRate": 1330.13,
+          "GrossRate": 1542.66,
+          "Discount": 0,
+          "ServiceCharge": 0,
+          "Commission": 0,
+          "TDSOnCommission": 0,
+          "PromoAmount": 0,
+          "AddonMarkup": 0,
+          "AddonDiscount": 0,
+          "AgentMarkup": 133.01,
+          "VATOnMarkup": 0,
+          "VATOnBFTax": 0,
+          "VATTotal": 0,
+          "TCSTotal": 0,
+          "Tax": {
+            "Description": "tax_and_service_fee",
+            "Amount": 79.52
+          },
+          "AdditionalCharges": {
+            "Amount": 0,
+            "Description": "",
+            "Currency": "",
+            "Type": "",
+            "Unit": "",
+            "Frequency": "",
+            "Text": ""
+          }
+        }
+      ],
+      "CancellationPolicy": [
+        {
+          "text": "Cancellation charge from 2026-11-13 06:24:53 AM to 2026-11-17 06:30:00 AM is INR: 0",
+          "policy": "",
+          "fromDate": "2026-11-13 06:24:53 AM",
+          "toDate": "2026-11-17 06:30:00 AM",
+          "amount": "0"
+        },
+        {
+          "text": "Cancellation charge from 2026-11-17 06:30:00 AM to 2026-11-18 06:30:00 AM is INR: 1410",
+          "policy": "",
+          "fromDate": "2026-11-17 06:30:00 AM",
+          "toDate": "2026-11-18 06:30:00 AM",
+          "amount": "1410"
+        }
+      ],
+      "RoomFacilities": [],
+      "RoomInclusions": [
+        {
+          "name": "Room Only"
+        }
+      ],
+      "RoomBoardBasis": [
+        {
+          "name": "Room Only"
+        }
+      ],
+      "RoomPolicies": []
+    }
+  ],
+  "HotelFacilities": [
+    {
+      "name": "Air conditioning"
+    },
+    {
+      "name": "Cctv"
+    },
+    {
+      "name": "Elevator"
+    },
+    {
+      "name": "Housekeeping"
+    },
+    {
+      "name": "Parking"
+    },
+    {
+      "name": "Power back up"
+    },
+    {
+      "name": "Room service"
+    },
+    {
+      "name": "24-hour front desk"
+    },
+    {
+      "name": "24-hour security"
+    },
+    {
+      "name": "Multilingual staff"
+    },
+    {
+      "name": "Newspaper"
+    },
+    {
+      "name": "Lobby"
+    },
+    {
+      "name": ""
+    }
+  ],
+  "ContactInfo": {
+    "Title": "MR",
+    "FName": "Benzy Infotech",
+    "LName": "",
+    "Mobile": "12xxxxxx90",
+    "Phone": "",
+    "Email": "infx@xxxxxxoway.com",
+    "Address": "fdfd",
+    "CountryCode": "IN",
+    "State": "fdfsdf",
+    "City": "fdsf",
+    "PIN": "123456",
+    "GSTCompanyName": {
+      "redacted": true,
+      "present": false
+    },
+    "GSTTIN": {
+      "redacted": true,
+      "present": false
+    },
+    "GSTMobile": "",
+    "GSTEmail": "",
+    "GSTAddress": "",
+    "GSTState": "",
+    "UpdateProfile": false,
+    "IsGuest": false,
+    "MobileCountryCode": "+91"
+  },
+  "MoreInfo": [
+    {
+      "Field1": "",
+      "Field2": "",
+      "Field3": "",
+      "Field4": "",
+      "Code": "CheckinSpecialInstructions",
+      "Description": "We never guarantee on Extra Bed for Extra Adult, It will be subject to availability and may be Chargeable also.",
+      "Name": "CheckinSpecialInstructions"
+    },
+    {
+      "Field1": "",
+      "Field2": "",
+      "Field3": "",
+      "Field4": "",
+      "Code": "CheckinSpecialInstructions",
+      "Description": "During Christmas & New year ,Hotel May Request You to pay for Gala Dinner Charges at the time of Check-inn.",
+      "Name": "CheckinSpecialInstructions"
+    },
+    {
+      "Field1": "",
+      "Field2": "",
+      "Field3": "",
+      "Field4": "",
+      "Code": "CheckinSpecialInstructions",
+      "Description": "These additional charge are not included in the booking amount and will be collected directly at the hotel.",
+      "Name": "CheckinSpecialInstructions"
+    },
+    {
+      "Field1": "",
+      "Field2": "",
+      "Field3": "",
+      "Field4": "",
+      "Code": "CheckinSpecialInstructions",
+      "Description": "Tourism Taxes, City Taxes, Resort Fee, Etc Hotel May request You to pay at the time of Check-inn(Local Currency).",
+      "Name": "CheckinSpecialInstructions"
+    },
+    {
+      "Field1": "",
+      "Field2": "",
+      "Field3": "",
+      "Field4": "",
+      "Code": "CheckinSpecialInstructions",
+      "Description": "As per the hotel policy, there might be peak season and long weekend surcharges, which would be payable by guest directly at the hotel.",
+      "Name": "CheckinSpecialInstructions"
+    },
+    {
+      "Field1": "",
+      "Field2": "",
+      "Field3": "",
+      "Field4": "",
+      "Code": "CheckinSpecialInstructions",
+      "Description": "In case of peak dates or technical issues causing the hotel to be sold out, an alternative hotel of equal booking value or a full refund will be provided.",
+      "Name": "CheckinSpecialInstructions"
+    },
+    {
+      "Field1": "",
+      "Field2": "",
+      "Field3": "",
+      "Field4": "",
+      "Code": "CheckinTime",
+      "Description": "Check-In Time is 12:00 PM",
+      "Name": "CheckinTime"
+    },
+    {
+      "Field1": "",
+      "Field2": "",
+      "Field3": "",
+      "Field4": "",
+      "Code": "CheckoutTime",
+      "Description": "Check-Out Time is 11:00 AM",
+      "Name": "CheckoutTime"
+    },
+    {
+      "Field1": "",
+      "Field2": "",
+      "Field3": "",
+      "Field4": "",
+      "Code": "Policy",
+      "Description": "Unmarried couples allowed",
+      "Name": "Guest Profile"
+    },
+    {
+      "Field1": "",
+      "Field2": "",
+      "Field3": "",
+      "Field4": "",
+      "Code": "Policy",
+      "Description": "Local ids are allowed\nAcceptable ID Proofs are Passport, Aadhar, Driving Licencse, and Govt. ID\nIDs of the same city at the property are allowed",
+      "Name": "Acceptable Identity Proofs"
+    },
+    {
+      "Field1": "",
+      "Field2": "",
+      "Field3": "",
+      "Field4": "",
+      "Code": "Policy",
+      "Description": "Check-in: 12 PM Check-out: 11 AM\nChildren above 5years shall be chargeable. Check-in and Check-out Time 12 noon Local guest not allowed International guests must carry a valid Passport and Visa. Without which neither check in shall be permitted nor refund.",
+      "Name": "Custom Policy"
+    }
+  ],
+  "ItineryStatus": {
+    "Remarks": "",
+    "BookingStatus": "B0",
+    "CurrentStatus": "B0",
+    "ServiceType": "HTL",
+    "StatusDetails": [
+      {
+        "Status": "B0",
+        "PaxSectorID": ""
+      }
+    ]
+  },
+  "Rules": null,
+  "Promo": [
+    {
+      "Code": "",
+      "Amount": 0,
+      "EmployeeID": null,
+      "ConvenienceFee": 0
+    }
+  ],
+  "Auxiliaries": [
+    {
+      "Code": "",
+      "EmployeeID": null,
+      "Amount": 0
+    }
+  ],
+  "PaymentSummary": [],
+  "Remarks": [
+    {
+      "RecievedDate": "13 Nov'26/ 11:57 AM",
+      "Remarks": "BookingStatus is I8 and CurrentStatus I8 saved",
+      "Status": "",
+      "RecievedFrom": ""
+    }
+  ],
+  "ApprovalStatus": null,
+  "RejectedApprover": "",
+  "RejectedReason": "",
+  "ApprovalEmployeeList": null,
+  "TravellerDocumentList": [],
+  "Attachment": null,
+  "ExchangeCurrencyList": null,
+  "IsVIP": false,
+  "Code": "200",
+  "Msg": [
+    "Success"
+  ]
+}

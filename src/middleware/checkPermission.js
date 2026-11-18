@@ -23,8 +23,6 @@ export const checkPermission = (module, action) => {
         return sendError(res, "Unauthorized", 401);
       }
 
-      console.log("USER:", user);
-      console.log("ROLE PERMISSIONS:", user.role?.permissions);
 
       // ✅ user active
       if (!user.isActive) {
@@ -53,7 +51,6 @@ export const checkPermission = (module, action) => {
 
       next();
     } catch (error) {
-      console.error(error);
       return sendError(res, "Server error", 500);
     }
   };

@@ -26,16 +26,11 @@ export const subscribeNewsletter = async (req, res) => {
     // Send confirmation email
     try {
       await transporter.sendMail({
-        from: `"Pan Journey" <${process.env.GMAIL_USER}>`,
         to: email,
         subject: "Welcome to Pan Journey Newsletter!",
         html: newsletterSubscriptionTemplate(),
       });
     } catch (mailError) {
-      console.error(
-        "Newsletter confirmation email failed:",
-        mailError.message
-      );
     }
 
     return sendSuccess(

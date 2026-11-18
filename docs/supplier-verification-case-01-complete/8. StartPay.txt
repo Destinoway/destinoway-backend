@@ -1,0 +1,130 @@
+Source: case-01-raw.jsonl. Captured redactions are preserved; no missing values have been reconstructed.
+
+Exchange 1 of 1
+Operation: start_payment
+Correlation ID: 9499ec00-f008-4757-83c4-030967c3c8db
+Request timestamp (UTC): 2026-11-13T06:25:58.508Z
+Response timestamp (UTC): 2026-11-13T06:26:47.949Z
+Method: POST
+Endpoint: https://b2bapiflights.benzyinfotech.com/Payment/StartPay
+
+Request Headers:
+{
+  "Content-Type": "application/json",
+  "Authorization": {
+    "redacted": true,
+    "present": true
+  }
+}
+
+Request (body / query parameters as captured; null means no captured payload):
+{
+  "body": {
+    "SID": null,
+    "TUI": "200beb7f-e22d-4f40-bd52-b81e65de5bd5|325594fc-efc5-4955-b0cf-264de8b838d6|20261113115702",
+    "ClientID": "bitest",
+    "Email": "gfg@gmail.com",
+    "Promo": null,
+    "TransactionID": 260152323,
+    "PaymentType": "",
+    "BankCode": "",
+    "GateWayCode": "",
+    "MerchantID": 300,
+    "PaymentAmount": 1409.65,
+    "PaymentCharge": 0,
+    "Card": {
+      "Number": "",
+      "Expiry": "",
+      "CVV": {
+        "redacted": true,
+        "present": false
+      },
+      "CHName": "",
+      "FName": null,
+      "LName": null,
+      "Address": "",
+      "City": "",
+      "State": "",
+      "Country": "",
+      "PIN": "",
+      "International": false,
+      "SaveCard": false,
+      "EMIMonths": "0",
+      "Token": {
+        "redacted": true,
+        "present": false
+      },
+      "NumberAlias": null
+    },
+    "VPA": "",
+    "CardAlias": "",
+    "QuickPay": null,
+    "RMSSignature": {
+      "redacted": true,
+      "present": false
+    },
+    "TargetCurrency": "",
+    "TargetAmount": 0,
+    "ThirdPartyInfo": null,
+    "Hold": false,
+    "TripType": null,
+    "Authorization": {
+      "redacted": true,
+      "present": true
+    },
+    "QTransactionID": 0,
+    "NetAmount": 1409.65,
+    "OnlinePayment": false,
+    "DepositPayment": true,
+    "ReleaseDate": "/Date(-62135596800000)/",
+    "BrowserKey": {
+      "redacted": true,
+      "present": true
+    },
+    "BrowserKeyFromToken": {
+      "redacted": true,
+      "present": true
+    },
+    "AgentInfo": "b2bIndiaDeals"
+  }
+}
+
+Response Status: 200
+
+Response Headers:
+{
+  "cache-control": "no-cache",
+  "pragma": "no-cache",
+  "transfer-encoding": "chunked",
+  "content-type": "application/json; charset=utf-8",
+  "expires": "-1",
+  "vary": "Accept-Encoding",
+  "x-server": "1",
+  "x-tui": "200beb7f-e22d-4f40-bd52-b81e65de5bd5|67cd8118-3678-45c4-8b61-2ac9d3737e1c|20261113115859",
+  "x-requesttime": "13-11-2026 11:58:10.168",
+  "x-responsetime": "13-11-2026 11:58:59.467",
+  "x-powered-by": "",
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "*",
+  "date": "Fri, 13 Nov 2026 06:28:59 GMT"
+}
+
+Response Body:
+{
+  "TUI": "200beb7f-e22d-4f40-bd52-b81e65de5bd5|67cd8118-3678-45c4-8b61-2ac9d3737e1c|20261113115859",
+  "Code": "200",
+  "Msg": [
+    "Success"
+  ],
+  "PaymentID": null,
+  "TransactionID": 260152323,
+  "RedirectMode": "R",
+  "PostData": null,
+  "CRSPNR": "TestBooking",
+  "BookStatus": "B0",
+  "TUTransactionID": 0,
+  "ClientID": "bitest",
+  "GatewayCode": "",
+  "RedirectUrl": "https://b2bapiportal.benzyinfotech.com/hotel/hotelconfirmation/200beb7f-e22d-4f40-bd52-b81e65de5bd5|67cd8118-3678-45c4-8b61-2ac9d3737e1c|20261113115859/260152323",
+  "CFOrderId": null
+}

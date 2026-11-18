@@ -58,14 +58,9 @@ import axios from "axios";
 import { getAKBARToken } from "../../../../supplier/akbar/akbarAuth.service.js";
 
 export const searchAKBARDestinationAPI = async (searchInput) => {
-  console.log("🔍 AKBAR AUTOSUGGEST START");
-  console.log("Search Input:", searchInput);
 
   const token = await getAKBARToken();
 
-  console.log("✅ AKBAR token received");
-  console.log("AKBAR API URL:", process.env.AKBAR_HOTEL_API_URL);
-  console.log("Calling AKBAR AutoSuggest API...");
 
   try {
     const { data } = await axios.get(
@@ -81,17 +76,9 @@ export const searchAKBARDestinationAPI = async (searchInput) => {
       },
     );
 
-    console.log("✅ AKBAR AUTOSUGGEST SUCCESS");
-    console.log("Response received");
 
     return data;
   } catch (error) {
-    console.error("❌ AKBAR AUTOSUGGEST ERROR");
-    console.error("Message:", error.message);
-    console.error("Status:", error.response?.status);
-    console.error("Response:", error.response?.data);
-    console.error("URL:", error.config?.url);
-    console.error("Params:", error.config?.params);
 
     throw error;
   }
