@@ -93,8 +93,31 @@ const saveSession = async ({ token, clientId }) => {
   };
 };
 
+// Removes spaces, wrapping quotes and trailing "/" from an env URL.
+const cleanUrl = (value) =>
+  String(value || "")
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .replace(/\/+$/, "");
+
+// AKBAR_BUS_SIGNATURE_URL (optional) = full Signature URL, if AKBAR
+// hosts it somewhere else. Default: <AKBAR_BUS_API_URL>/Utils/Signature
+const getSignatureUrl = () =>
+  cleanUrl(process.env.AKBAR_BUS_SIGNATURE_URL) ||
+  `${cleanUrl(process.env.AKBAR_BUS_API_URL)}/Utils/Signature`;
+
+// "host/path" only, safe to show in errors/logs.
+const safeUrl = (url) => {
+  try {
+    const { host, pathname } = new URL(url);
+    return `${host}${pathname}`;
+  } catch {
+    return "invalid URL";
+  }
+};
+
 const callSignatureAPI = async () => {
-  const url = `${process.env.AKBAR_BUS_API_URL}/Utils/Signature`;
+  const url = getSignatureUrl();
 
   let data;
 
@@ -123,7 +146,7 @@ const callSignatureAPI = async () => {
     const signatureError = new Error(
       timedOut
         ? "AKBAR bus signature timed out (server not reachable - check IP whitelisting)"
-        : `AKBAR bus signature failed${status ? ` (HTTP ${status})` : `: ${error.message}`}`,
+        : `AKBAR bus signature failed${status ? ` (HTTP ${status})` : `: ${error.message}`} at ${safeUrl(url)}`,
     );
     signatureError.statusCode = timedOut ? 504 : 502;
     throw signatureError;

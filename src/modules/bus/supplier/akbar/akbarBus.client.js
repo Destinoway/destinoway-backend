@@ -46,7 +46,13 @@ const toBusError = (error, path) => {
  * @returns response data from AKBAR
  */
 export const akbarBusPost = async (path, buildBody, options = {}) => {
-  const url = `${process.env.AKBAR_BUS_API_URL}${path}`;
+  // Trim spaces/quotes and trailing "/" so we never build "//api/...".
+  const baseUrl = String(process.env.AKBAR_BUS_API_URL || "")
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .replace(/\/+$/, "");
+
+  const url = `${baseUrl}${path}`;
   const timeout = options.timeout || DEFAULT_TIMEOUT_MS;
 
   const send = async (session) => {
