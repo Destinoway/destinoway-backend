@@ -1,5 +1,7 @@
 import axios from "axios";
+import { randomUUID } from "node:crypto";
 import AkbarBusToken from "./akbarBusToken.model.js";
+import { logBusEvent } from "../../utils/busLogger.js";
 
 // =========================================================
 // AKBAR BUS AUTH (Signature API)
@@ -106,11 +108,11 @@ const getSignatureUrl = () =>
   cleanUrl(process.env.AKBAR_BUS_SIGNATURE_URL) ||
   `${cleanUrl(process.env.AKBAR_BUS_API_URL)}/Utils/Signature`;
 
-// "host/path" only, safe to show in errors/logs.
+// Exclude URL credentials, query parameters and fragments from errors/logs.
 const safeUrl = (url) => {
   try {
-    const { host, pathname } = new URL(url);
-    return `${host}${pathname}`;
+    const { origin, pathname } = new URL(url);
+    return `${origin}${pathname}`;
   } catch {
     return "invalid URL";
   }
@@ -118,30 +120,55 @@ const safeUrl = (url) => {
 
 const callSignatureAPI = async () => {
   const url = getSignatureUrl();
+  const exchangeId = randomUUID();
+  const startedAt = Date.now();
+  const headers = { "Content-Type": "application/json" };
+  const payload = {
+    MerchantID: process.env.AKBAR_BUS_MERCHANT_ID,
+    ApiKey: process.env.AKBAR_BUS_API_KEY,
+    ClientID: process.env.AKBAR_BUS_CLIENT_ID,
+    Password: process.env.AKBAR_BUS_PASSWORD,
+    AgentCode: process.env.AKBAR_BUS_AGENT_CODE || "",
+    BrowserKey: process.env.AKBAR_BUS_BROWSER_KEY,
+    Key: process.env.AKBAR_BUS_KEY,
+    IsMasked: true,
+  };
+  const context = { exchangeId, method: "POST", endpoint: safeUrl(url) };
+
+  await logBusEvent("request", {
+    ...context,
+    headers,
+    request: { body: payload },
+    timeoutMs: SIGNATURE_TIMEOUT_MS,
+  });
 
   let data;
 
   try {
-    ({ data } = await axios.post(
-      url,
-      {
-        MerchantID: process.env.AKBAR_BUS_MERCHANT_ID,
-        ApiKey: process.env.AKBAR_BUS_API_KEY,
-        ClientID: process.env.AKBAR_BUS_CLIENT_ID,
-        Password: process.env.AKBAR_BUS_PASSWORD,
-        AgentCode: process.env.AKBAR_BUS_AGENT_CODE || "",
-        BrowserKey: process.env.AKBAR_BUS_BROWSER_KEY,
-        Key: process.env.AKBAR_BUS_KEY,
-        IsMasked: true,
-      },
-      {
-        headers: { "Content-Type": "application/json" },
-        timeout: SIGNATURE_TIMEOUT_MS,
-      },
-    ));
+    const response = await axios.post(url, payload, {
+      headers,
+      timeout: SIGNATURE_TIMEOUT_MS,
+    });
+    data = response.data;
+    await logBusEvent("response", {
+      ...context,
+      durationMs: Date.now() - startedAt,
+      status: response.status,
+      headers: response.headers,
+      response: data,
+    });
   } catch (error) {
     const timedOut = error.code === "ECONNABORTED";
     const status = error.response?.status;
+    await logBusEvent("error", {
+      ...context,
+      durationMs: Date.now() - startedAt,
+      status: status ?? null,
+      errorCode: error.code ?? null,
+      timedOut,
+      headers: error.response?.headers ?? {},
+      response: error.response?.data ?? null,
+    });
 
     const signatureError = new Error(
       timedOut
@@ -153,6 +180,13 @@ const callSignatureAPI = async () => {
   }
 
   if (String(data?.Code) !== "200" || !data?.Token || !data?.ClientID) {
+    await logBusEvent("validation_failed", {
+      ...context,
+      durationMs: Date.now() - startedAt,
+      supplierCode: data?.Code ?? null,
+      hasToken: Boolean(data?.Token),
+      hasClientId: Boolean(data?.ClientID),
+    });
     const reason = Array.isArray(data?.Msg) ? data.Msg.join(", ") : data?.Msg;
 
     const error = new Error(
@@ -194,6 +228,10 @@ export const getAkbarBusSession = async ({ forceRefresh = false } = {}) => {
     const stored = await readStoredSession();
 
     if (stored) {
+      await logBusEvent("cache_hit", {
+        sessionSource: "db",
+        expiresAt: stored.expiresAt,
+      });
       return { ...stored, source: "db" };
     }
   }
