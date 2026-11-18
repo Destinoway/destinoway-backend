@@ -1,0 +1,153 @@
+Source: case-01-raw.jsonl. Captured redactions are preserved; no missing values have been reconstructed.
+
+Exchange 1 of 1
+Operation: create_itinerary
+Correlation ID: 6af6ad1ad05bd6ab5d7c4d4a
+Request timestamp (UTC): 2026-11-13T06:24:50.619Z
+Response timestamp (UTC): 2026-11-13T06:24:54.512Z
+Method: POST
+Endpoint: https://b2bapihotels.benzyinfotech.com/Hotel/CreateItinerary
+
+Request Headers:
+{
+  "Content-Type": "application/json",
+  "Authorization": {
+    "redacted": true,
+    "present": true
+  },
+  "search-tracing-key": {
+    "redacted": true,
+    "present": true
+  }
+}
+
+Request (body / query parameters as captured; null means no captured payload):
+{
+  "body": {
+    "TUI": "200beb7f-e22d-4f40-bd52-b81e65de5bd5",
+    "ServiceEnquiry": "",
+    "SpecialServiceRequest": "Nothing",
+    "ContactInfo": {
+      "Title": "Mr",
+      "FName": "gsgs",
+      "LName": "gsdgs",
+      "Mobile": "1234567890",
+      "Phone": "",
+      "Email": "info@destinoway.com",
+      "Address": "fdfd",
+      "State": "fdfsdf",
+      "City": "fdsf",
+      "PIN": "123456",
+      "GSTCompanyName": {
+        "redacted": true,
+        "present": false
+      },
+      "GSTTIN": {
+        "redacted": true,
+        "present": false
+      },
+      "GSTMobile": "",
+      "GSTEmail": "",
+      "GSTAddress": "",
+      "GSTState": "",
+      "UpdateProfile": true,
+      "IsGuest": false,
+      "CountryCode": "IN",
+      "MobileCountryCode": "+91",
+      "NetAmount": ""
+    },
+    "Auxiliaries": [
+      {
+        "Code": "PROMO",
+        "Parameters": [
+          {
+            "Type": "Code",
+            "Value": ""
+          },
+          {
+            "Type": "ID",
+            "Value": ""
+          },
+          {
+            "Type": "Amount",
+            "Value": ""
+          }
+        ]
+      }
+    ],
+    "Rooms": [
+      {
+        "RoomId": "e663501d-0cb6-483c-bc1c-dbb7b856969f",
+        "GuestCode": "|1|1:A:25|",
+        "SupplierName": "CleartripAPI",
+        "RoomGroupId": "f3b1a8c9-37b7-46e7-9450-0291d73b8839",
+        "Guests": [
+          {
+            "GuestID": "0",
+            "Operation": "U",
+            "Title": "Mr",
+            "FirstName": "gsgs",
+            "MiddleName": "",
+            "LastName": "gsdgs",
+            "MobileNo": "",
+            "PaxType": "A",
+            "Age": "25",
+            "Email": "",
+            "Pan": {
+              "redacted": true,
+              "present": false
+            }
+          }
+        ]
+      }
+    ],
+    "NetAmount": "1409.65",
+    "ClientID": "bitest",
+    "DeviceID": "",
+    "AppVersion": "",
+    "SearchId": "80cfbf6c-9226-4abb-bc4c-b75dc0a4010d.xK1p0IOwBYovhpulxsj1SQ",
+    "RecommendationId": "252e1821-230c-4553-87ec-e2ded945d5a4",
+    "LocationName": null,
+    "HotelCode": "39778998",
+    "CheckInDate": "2026-11-18",
+    "CheckOutDate": "2026-11-19",
+    "TravelingFor": "NTF"
+  }
+}
+
+Response Status: 200
+
+Response Headers:
+{
+  "cache-control": "no-cache",
+  "pragma": "no-cache",
+  "transfer-encoding": "chunked",
+  "content-type": "application/json; charset=utf-8",
+  "expires": "-1",
+  "vary": "Accept-Encoding",
+  "server": "Microsoft-IIS/10.0",
+  "x-server": "1",
+  "x-requesttime": "13-11-2026 11:57:02",
+  "x-responsetime": "13-11-2026 11:57:06",
+  "x-aspnet-version": "4.0.30319",
+  "x-powered-by": "ASP.NET",
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "Content-Type,Authorization",
+  "access-control-max-age": "86400",
+  "date": "Fri, 13 Nov 2026 06:27:05 GMT"
+}
+
+Response Body:
+{
+  "TUI": "200beb7f-e22d-4f40-bd52-b81e65de5bd5|325594fc-efc5-4955-b0cf-264de8b838d6|20261113115702",
+  "TransactionID": 260152323,
+  "NetAmount": 1409.65,
+  "priceInfo": null,
+  "TripID": 0,
+  "Sector": null,
+  "DupTransactionId": null,
+  "Code": "200",
+  "Msg": [
+    "Success"
+  ]
+}

@@ -1,0 +1,78 @@
+Source: case-01-raw.jsonl. Captured redactions are preserved; no missing values have been reconstructed.
+
+Exchange 1 of 1
+Operation: hotel_search_init
+Correlation ID: d5e4920b-3d7a-496e-ba64-b521bc1c477c
+Request timestamp (UTC): 2026-11-13T06:23:09.207Z
+Response timestamp (UTC): 2026-11-13T06:23:12.085Z
+Method: POST
+Endpoint: https://travelportalapi.benzyinfotech.com/api/hotels/search/init
+
+Request Headers:
+{
+  "Content-Type": "application/json",
+  "Authorization": {
+    "redacted": true,
+    "present": true
+  }
+}
+
+Request (body / query parameters as captured; null means no captured payload):
+{
+  "body": {
+    "geoCode": {
+      "lat": "18.520433",
+      "long": "73.856737"
+    },
+    "locationId": "328605",
+    "currency": "INR",
+    "culture": "en-US",
+    "checkIn": "11/18/2026",
+    "checkOut": "11/19/2026",
+    "rooms": [
+      {
+        "adults": "1",
+        "children": "0",
+        "childAges": []
+      }
+    ],
+    "agentCode": "",
+    "destinationCountryCode": "IN",
+    "nationality": "IN",
+    "countryOfResidence": "IN",
+    "channelId": "b2bIndiaDeals",
+    "affiliateRegion": "B2B_India",
+    "segmentId": "",
+    "companyId": {
+      "redacted": true,
+      "present": true
+    },
+    "gstPercentage": 0,
+    "tdsPercentage": 0
+  }
+}
+
+Response Status: 200
+
+Response Headers:
+{
+  "cache-control": "no-store,no-cache",
+  "pragma": "no-cache",
+  "transfer-encoding": "chunked",
+  "content-type": "application/json; charset=utf-8",
+  "vary": "Accept-Encoding",
+  "server": "Microsoft-IIS/10.0",
+  "x-powered-by": "ASP.NET",
+  "x-server": "1",
+  "date": "Fri, 13 Nov 2026 06:25:23 GMT"
+}
+
+Response Body:
+{
+  "searchId": "80cfbf6c-9226-4abb-bc4c-b75dc0a4010d.xK1p0IOwBYovhpulxsj1SQ",
+  "searchTracingKey": {
+    "redacted": true,
+    "present": true
+  },
+  "status": "success"
+}
