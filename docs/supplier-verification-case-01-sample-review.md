@@ -2,6 +2,14 @@
 
 Reference: the user-supplied `Hotel test case sample.zip`. Its contents are sample exchanges, not captured Case 01 values.
 
+## Subsequent confirmed mapping
+
+The user subsequently supplied the AgentProfile documentation. The backend now fetches and caches its `code`, `htdealCode` and `id` for Init. See [current AgentProfile integration and deployment notes](akbar-agent-profile-integration.md). Remaining-work observations below describe the earlier capture and are not the current implementation status; a fresh deployed run is still needed to verify actual supplier values.
+
+The user confirmed that Signature response `TUI` is the Init request tracing key. Init now sends the complete Signature `TUI` as body field `searchTracingKey`, together with the token from the same cached Signature session. Signature TUI is stored in MongoDB as `signatureTui`. Valid legacy token records missing that field automatically refresh Signature before Init; a fresh Signature response missing TUI blocks Init with HTTP error status 502. Init response tracing-key handling for downstream calls is unchanged. This resolves the initial-source uncertainty recorded below, but does not change historical captures or resolve AgentProfile mappings.
+
+Validation: `node --test src/modules/hotel/supplier/akbar/akbarInit.credentials.test.js src/modules/hotel/hotel/utils/hotelVerification.test.js` passes all eight tests, covering fresh, cached, expired and legacy sessions, concurrent refresh, missing TUI, full-value logging and customer details. No live supplier request was made for this validation.
+
 ## Implemented
 
 - CreateItinerary now includes `Auxiliaries` entry `Code: "CUSTOMER DETAILS"`, with lowercase `parameters` exactly as in sample file 9. The parameter types are `Nationality` and `Country of Residence`.

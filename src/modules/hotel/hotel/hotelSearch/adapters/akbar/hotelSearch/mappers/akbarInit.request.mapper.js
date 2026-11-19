@@ -23,8 +23,6 @@ export const mapAkbarInitRequest = (payload) => {
       childAges: room.childAges || [],
     })),
 
-    agentCode: process.env.AKBAR_AGENT_CODE,
-
     destinationCountryCode:
       payload.destinationCountryCode || "IN",
 
@@ -39,11 +37,6 @@ export const mapAkbarInitRequest = (payload) => {
 
     affiliateRegion:
       process.env.AKBAR_AFFILIATE_REGION || "B2B_India",
-
-    segmentId: "",
-
-    companyId:
-      process.env.AKBAR_COMPANY_ID || "1",
 
     gstPercentage:
       Number(process.env.AKBAR_GST_PERCENTAGE || 0),

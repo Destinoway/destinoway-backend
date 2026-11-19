@@ -615,6 +615,8 @@ const readMongoToken = async (context = {}) => {
     return {
       token: record.token,
       clientId: record.clientId ?? null,
+      signatureTui: record.signatureTui ?? null,
+      agentProfile: record.agentProfile ?? null,
       ttlSeconds,
     };
   } catch (error) {
@@ -625,7 +627,7 @@ const readMongoToken = async (context = {}) => {
   }
 };
 
-const saveMongoToken = async (token, clientId, context = {}) => {
+const saveMongoToken = async (token, clientId, signatureTui, context = {}) => {
   const startedAt = performance.now();
   const expiresAt = new Date(Date.now() + AKBAR_TOKEN_TTL * 1000);
 
@@ -641,8 +643,13 @@ const saveMongoToken = async (token, clientId, context = {}) => {
             clientId === undefined || clientId === null || String(clientId).trim() === ""
               ? null
               : String(clientId).trim(),
+          signatureTui:
+            typeof signatureTui === "string" && signatureTui.trim()
+              ? signatureTui.trim()
+              : null,
         },
         $unset: {
+          agentProfile: "",
           encryptedToken: "",
           iv: "",
           authTag: "",
@@ -738,7 +745,7 @@ const createAndCacheToken = async (context = {}) => {
     throw error;
   }
 
-  await saveMongoToken(data.Token, data.ClientID, context);
+  await saveMongoToken(data.Token, data.ClientID, data.TUI, context);
 
 
   return data.Token;
@@ -791,6 +798,45 @@ export const getAKBARToken = async ({
   } finally {
     tokenRefreshPromise = undefined;
   }
+};
+
+// Init must use the token and complete Signature TUI from the same session.
+// Refresh legacy cache records once when they predate signatureTui storage.
+export const getAKBARSearchCredentials = async ({ correlationId } = {}) => {
+  const context = {
+    tokenRequestedBy: "search_init",
+    correlationId,
+    processId: process.pid,
+  };
+  let storedToken = await readMongoToken(context);
+  if (!storedToken?.signatureTui?.trim()) {
+    if (!tokenRefreshPromise) {
+      tokenRefreshPromise = createAndCacheToken(context);
+    }
+    const pendingRefresh = tokenRefreshPromise;
+    try {
+      await pendingRefresh;
+    } finally {
+      if (tokenRefreshPromise === pendingRefresh) {
+        tokenRefreshPromise = undefined;
+      }
+    }
+    storedToken = await readMongoToken(context);
+  }
+
+  if (!storedToken?.signatureTui?.trim()) {
+    const error = new Error(
+      "AKBAR Signature response did not include TUI required for Init searchTracingKey",
+    );
+    error.statusCode = 502;
+    throw error;
+  }
+
+  return {
+    token: storedToken.token,
+    searchTracingKey: storedToken.signatureTui,
+    agentProfile: storedToken.agentProfile,
+  };
 };
 
 export const getAKBARSignatureClientID = async ({

@@ -1,15 +1,15 @@
 import axios from "axios";
-import { getAKBARToken } from "../../../../../../supplier/akbar/akbarAuth.service.js";
+import { getAKBARInitContext } from "../../../../../../supplier/akbar/akbarAgentProfile.service.js";
 import {
   logSupplierApiExchange,
   resetSupplierHotelLogLimit,
 } from "../../../../../../hotel/utils/hotelObservability.js";
 
 export const akbarInitAPI = async (payload, { correlationId } = {}) => {
-  const token = await getAKBARToken({
-    operation: "search_init",
+  const { token, ...initFields } = await getAKBARInitContext({
     correlationId,
   });
+  const requestBody = { ...payload, ...initFields };
   const endpoint = `${process.env.AKBAR_HOTEL_API_URL}/api/hotels/search/init`;
   const headers = {
     "Content-Type": "application/json",
@@ -25,10 +25,10 @@ export const akbarInitAPI = async (payload, { correlationId } = {}) => {
       method: "POST",
       endpoint,
       headers,
-      request: { body: payload },
+      request: { body: requestBody },
     },
     () =>
-      axios.post(endpoint, payload, {
+      axios.post(endpoint, requestBody, {
         headers,
       }),
   );
