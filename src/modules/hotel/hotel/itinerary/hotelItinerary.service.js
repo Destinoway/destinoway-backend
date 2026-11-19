@@ -2,6 +2,7 @@ import HotelItinerary, {
   generateHotelBookingRefNo,
 } from "./hotelItinerary.model.js";
 import { createAkbarHotelItineraryAPI } from "./adapters/akbar/api/createHotelItinerary.api.js";
+import { mapAkbarAuxiliaries } from "./adapters/akbar/akbarAuxiliaries.mapper.js";
 import { getHotelPriceVerificationContext } from "../priceVerify/services/hotelPriceVerify.service.js";
 import Coupon from "../../../promotionEngine/coupon.model.js";
 import { findBestCouponFromList } from "../../../promotionEngine/promotion.service.js";
@@ -322,7 +323,7 @@ const summarizeItineraryRequest = (request) => ({
     request.SpecialServiceRequest?.length ?? 0,
   auxiliaries: (request.Auxiliaries ?? []).map((auxiliary) => ({
     code: auxiliary.Code,
-    parameterTypes: (auxiliary.Parameters ?? []).map(
+    parameterTypes: (auxiliary.Parameters ?? auxiliary.parameters ?? []).map(
       (parameter) => parameter.Type
     ),
   })),
@@ -430,16 +431,7 @@ export const createHotelItinerary = async ({
     ServiceEnquiry: "",
     SpecialServiceRequest: specialServiceRequest.trim(),
     ContactInfo: mapContactInfo(contactInfo),
-    Auxiliaries: [
-      {
-        Code: "PROMO",
-        Parameters: [
-          { Type: "Code", Value: "" },
-          { Type: "ID", Value: "" },
-          { Type: "Amount", Value: "" },
-        ],
-      },
-    ],
+    Auxiliaries: mapAkbarAuxiliaries(search),
     Rooms: supplierRooms,
     NetAmount: String(netAmount),
     ClientID: process.env.AKBAR_CLIENT_ID,

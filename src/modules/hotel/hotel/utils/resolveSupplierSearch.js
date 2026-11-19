@@ -37,6 +37,8 @@ export const resolveSupplierSearch = async (searchId) => {
     searchTracingKey: meta.searchTracingKey,
     checkIn: meta.checkIn,
     checkOut: meta.checkOut,
+    nationality: meta.nationality || "IN",
+    countryOfResidence: meta.countryOfResidence || "IN",
     occupancies: meta.occupancies ?? [],
   };
 };

@@ -9,34 +9,8 @@ export const traceHotelPaymentStep = ({ operation }) => operation();
 const toPlainHeaders = (headers = {}) =>
   typeof headers?.toJSON === "function" ? headers.toJSON() : headers;
 
-// Preserve the full supplier exchange while keeping reusable credentials and
-// payment secrets out of persistent logs. Match common camelCase and
-// underscore/hyphen variants (for example accessToken and search-tracing-key).
-const SENSITIVE_LOG_FIELD =
-  /(authorization|proxy.?authorization|cookie|password|secret|api.?key|browser.?key|auth.?header|credential|token|key|rmssignature|cvv|pan|gsttin)/i;
-
-const redactSupplierLogValue = (value, fieldName = "") => {
-  if (SENSITIVE_LOG_FIELD.test(fieldName)) {
-    return value == null || value === ""
-      ? { redacted: true, present: false }
-      : { redacted: true, present: true };
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => redactSupplierLogValue(item));
-  }
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, child]) => [
-        key,
-        redactSupplierLogValue(child, key),
-      ]),
-    );
-  }
-  return value;
-};
-
-const redactSupplierLogHeaders = (headers) =>
-  redactSupplierLogValue(toPlainHeaders(headers));
+// Supplier verification requires the actual captured values, including tracing
+// keys and credentials. Preserve them in both JSONL and console exchanges.
 
 const writeSupplierApiLog = async (event) => {
   const line = JSON.stringify({
@@ -80,8 +54,8 @@ export const logSupplierApiExchange = async ({
     hotelLogKey: hotelLogKey ?? null,
     method: String(method).toUpperCase(),
     endpoint,
-    headers: redactSupplierLogHeaders(headers),
-    request: redactSupplierLogValue(request),
+    headers: toPlainHeaders(headers),
+    request,
   });
 
   try {
@@ -95,8 +69,8 @@ export const logSupplierApiExchange = async ({
       method: String(method).toUpperCase(),
       endpoint,
       status: response.status,
-      headers: redactSupplierLogHeaders(response.headers),
-      response: redactSupplierLogValue(response.data),
+      headers: toPlainHeaders(response.headers),
+      response: response.data,
     });
     return response;
   } catch (error) {
@@ -110,8 +84,8 @@ export const logSupplierApiExchange = async ({
       method: String(method).toUpperCase(),
       endpoint,
       status: errorResponse?.status ?? null,
-      headers: redactSupplierLogHeaders(errorResponse?.headers),
-      response: redactSupplierLogValue(errorResponse?.data ?? null),
+      headers: toPlainHeaders(errorResponse?.headers),
+      response: errorResponse?.data ?? null,
       error: error.message,
     });
     throw error;
@@ -129,7 +103,7 @@ export const logSupplierCredentialContext = async ({
     operation,
     correlationId: correlationId ?? null,
     credentialSource: "MongoDB token cache",
-    credentials: redactSupplierLogValue(credentials),
+    credentials,
   });
 };
 
