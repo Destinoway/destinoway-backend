@@ -106,6 +106,8 @@ test("Init sends the complete Signature TUI with its matching token", async (t) 
     assert.equal(initLog.request.body.agentCode, "account-agent");
     const profileLog = logs.find((row) => row.operation === "agent_profile" && row.event === "request");
     assert.equal(profileLog.correlationId, "fresh-search");
+    const cachedLog = logs.find((row) => row.operation === "agent_profile" && row.stage === "profile_cached");
+    assert.deepEqual(cachedLog.mappedFields, { agentCode: "account-agent", segmentId: "account-deal", companyId: "42" });
   });
 
   await t.test("valid cache reuses the matching token and TUI without Signature", async () => {
@@ -162,7 +164,26 @@ test("Init sends the complete Signature TUI with its matching token", async (t) 
     for (const field of ["code", "htdealCode", "id", "Code"]) {
       reset();
       delete profileData[field];
-      await assert.rejects(akbarInitAPI({}), (error) => error.statusCode === 502);
+      const correlationId = `missing-${field}`;
+      await assert.rejects(akbarInitAPI({}, { correlationId }), (error) => {
+        assert.equal(error.statusCode, 502);
+        if (field !== "Code") {
+          assert.deepEqual(error.missingFields, [field]);
+          assert(error.message.includes(`missing ${field} required`));
+        }
+        return true;
+      });
+      const logs = (await readFile(overrides.AKBAR_API_LOG_FILE, "utf8")).trim().split("\n").map(JSON.parse);
+      const diagnostic = logs.find((row) => row.event === "diagnostic" && row.correlationId === correlationId);
+      assert(diagnostic);
+      const failureLog = logs.find((row) => row.correlationId === correlationId && row.stage === (field === "Code" ? "supplier_status_failed" : "required_fields_missing"));
+      assert(failureLog);
+      if (field !== "Code") {
+        assert.deepEqual(failureLog.missingFields, [field]);
+        assert.equal(failureLog.fields[field].present, false);
+        assert.equal(failureLog.fields[field].type, "undefined");
+        assert.equal(failureLog.fields[field].value, null);
+      }
       assert.equal(initCalls, 0);
       assert.equal(record.agentProfile, undefined);
       profileData = { Code: "200", code: "account-agent", htdealCode: "account-deal", id: "42" };

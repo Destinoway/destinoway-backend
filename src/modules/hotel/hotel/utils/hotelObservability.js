@@ -36,6 +36,15 @@ const writeSupplierApiLog = async (event) => {
 // Retained as a no-op for existing imports; complete supplier responses are logged.
 export const resetSupplierHotelLogLimit = () => {};
 
+export const logSupplierApiDiagnostic = async ({ operation, correlationId, ...details }) =>
+  writeSupplierApiLog({
+    event: "diagnostic",
+    supplier: "AKBAR",
+    operation,
+    correlationId: correlationId ?? null,
+    ...details,
+  });
+
 export const logSupplierApiExchange = async ({
   supplier = "AKBAR",
   operation,

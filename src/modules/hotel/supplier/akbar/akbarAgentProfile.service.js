@@ -1,7 +1,7 @@
 import axios from "axios";
 import AkbarToken from "./akbarToken.model.js";
 import { getAKBARSearchCredentials } from "./akbarAuth.service.js";
-import { logSupplierApiExchange } from "../../hotel/utils/hotelObservability.js";
+import { logSupplierApiExchange, logSupplierApiDiagnostic } from "../../hotel/utils/hotelObservability.js";
 
 const pendingProfiles = new Map();
 
@@ -54,6 +54,14 @@ const fetchAndCacheProfile = async (session, correlationId) => {
 
   const data = response.data;
   if (String(data?.Code) !== "200") {
+    await logSupplierApiDiagnostic({
+      operation: "agent_profile", correlationId,
+      stage: "supplier_status_failed",
+      httpStatus: response.status,
+      responseKeys: data && typeof data === "object" ? Object.keys(data) : [],
+      supplierCode: data?.Code ?? null,
+      supplierMessage: data?.Msg ?? null,
+    });
     throw profileError("AKBAR AgentProfile did not return success");
   }
   // Lowercase code is the account's agent code; uppercase Code is API status.
@@ -63,24 +71,62 @@ const fetchAndCacheProfile = async (session, correlationId) => {
     companyId: normalizeValue(data.id),
   };
   if (!hasProfile(agentProfile)) {
-    throw profileError("AKBAR AgentProfile is missing code, htdealCode or id required for Init");
+    const requiredFields = ["code", "htdealCode", "id"];
+    const missingFields = requiredFields.filter((field) => !normalizeValue(data[field]));
+    await logSupplierApiDiagnostic({
+      operation: "agent_profile", correlationId,
+      stage: "required_fields_missing",
+      httpStatus: response.status,
+      responseKeys: Object.keys(data),
+      missingFields,
+      fields: Object.fromEntries(requiredFields.map((field) => [field, {
+        present: Object.hasOwn(data, field),
+        type: data[field] === null ? "null" : typeof data[field],
+        value: data[field] ?? null,
+      }])),
+    });
+    const error = profileError(`AKBAR AgentProfile is missing ${missingFields.join(", ")} required for Init`);
+    error.missingFields = missingFields;
+    throw error;
   }
 
   // A scheduled Signature refresh may have replaced the session while this
   // request was running. Never attach an old profile to a newer token.
-  await AkbarToken.collection.updateOne({
+  const result = await AkbarToken.collection.updateOne({
     _id: "hotel",
     token: session.token,
     signatureTui: session.searchTracingKey,
   }, { $set: { agentProfile } });
+  await logSupplierApiDiagnostic({
+    operation: "agent_profile", correlationId,
+    stage: result.matchedCount === 0 ? "cache_write_skipped_session_changed" : "profile_cached",
+    mappedFields: agentProfile,
+  });
   return agentProfile;
 };
 
 export const getAKBARInitContext = async ({ correlationId } = {}) => {
   const session = await getAKBARSearchCredentials({ correlationId });
   let agentProfile = session.agentProfile;
-  if (!hasProfile(agentProfile)) {
+  if (hasProfile(agentProfile)) {
+    await logSupplierApiDiagnostic({
+      operation: "agent_profile", correlationId,
+      stage: "cache_hit",
+      mappedFields: {
+        agentCode: agentProfile.agentCode,
+        segmentId: agentProfile.segmentId,
+        companyId: agentProfile.companyId,
+      },
+    });
+  } else {
     let pending = pendingProfiles.get(session.token);
+    await logSupplierApiDiagnostic({
+      operation: "agent_profile", correlationId,
+      stage: pending ? "waiting_for_profile" : "cache_miss",
+    });
+    // Recheck after the awaited log write so concurrent searches still share
+    // the fetch started by another caller during that write.
+    pending = pendingProfiles.get(session.token);
     if (!pending) {
       pending = fetchAndCacheProfile(session, correlationId);
       pendingProfiles.set(session.token, pending);
