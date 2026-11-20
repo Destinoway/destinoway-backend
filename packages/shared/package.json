@@ -1,0 +1,12 @@
+{
+  "name": "@destinoway/shared",
+  "version": "1.0.0",
+  "description": "Common Destinoway Express handlers and API response helpers",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "files": ["src"],
+  "engines": { "node": ">=24 <25" },
+  "publishConfig": { "access": "restricted" },
+  "license": "ISC"
+}

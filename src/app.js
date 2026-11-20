@@ -3,7 +3,7 @@ import cors from "cors";
 import express from "express";
 //import "./cron/hotelCache.cron.js";
 import { currencyMiddleware } from "./middleware/currency.middleware.js";
-import { errorHandler } from "./middleware/error.middleware.js";
+import { errorHandler } from "@destinoway/shared";
 import addBalanceRoute from "./modules/addPayment/addPaymentRoutes.js";
 import authRoutes from "./modules/auth/admin-auth/auth.routes.js";
 import otpRoutes from "./modules/auth/customer-auth/auth.routes.js";
