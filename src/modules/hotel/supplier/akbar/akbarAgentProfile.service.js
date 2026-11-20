@@ -17,8 +17,9 @@ const normalizeValue = (value) =>
     : "";
 
 const hasProfile = (profile) =>
-  profile && [profile.agentCode, profile.segmentId, profile.companyId]
-    .every((value) => normalizeValue(value) !== "");
+  profile && typeof profile.segmentId === "string" &&
+    [profile.agentCode, profile.companyId]
+      .every((value) => normalizeValue(value) !== "");
 
 const getProfileEndpoint = () => {
   try {
@@ -67,12 +68,17 @@ const fetchAndCacheProfile = async (session, correlationId) => {
   // Lowercase code is the account's agent code; uppercase Code is API status.
   const agentProfile = {
     agentCode: normalizeValue(data.code),
-    segmentId: normalizeValue(data.htdealCode),
+    // Staging AgentProfile can explicitly return "". Forward the returned
+    // string unchanged; an absent/null/non-string field remains invalid.
+    segmentId: data.htdealCode,
     companyId: normalizeValue(data.id),
   };
   if (!hasProfile(agentProfile)) {
     const requiredFields = ["code", "htdealCode", "id"];
-    const missingFields = requiredFields.filter((field) => !normalizeValue(data[field]));
+    const missingFields = requiredFields.filter((field) =>
+      field === "htdealCode"
+        ? typeof data[field] !== "string"
+        : !normalizeValue(data[field]));
     await logSupplierApiDiagnostic({
       operation: "agent_profile", correlationId,
       stage: "required_fields_missing",
@@ -88,6 +94,14 @@ const fetchAndCacheProfile = async (session, correlationId) => {
     const error = profileError(`AKBAR AgentProfile is missing ${missingFields.join(", ")} required for Init`);
     error.missingFields = missingFields;
     throw error;
+  }
+
+  if (agentProfile.segmentId === "") {
+    await logSupplierApiDiagnostic({
+      operation: "agent_profile", correlationId,
+      stage: "supplier_returned_empty_deal_code",
+      mappedFields: agentProfile,
+    });
   }
 
   // A scheduled Signature refresh may have replaced the session while this

@@ -26,6 +26,7 @@ test("Init sends the complete Signature TUI with its matching token", async (t) 
   let profileData;
   let profileFailure;
   let beforeProfileResponse;
+  let expectedSegmentId;
   const signatureTui = "signature-uuid|session-uuid|20261119130000";
   let signatureData;
   Object.assign(process.env, overrides);
@@ -60,7 +61,7 @@ test("Init sends the complete Signature TUI with its matching token", async (t) 
     assert.equal(body.searchTracingKey, signatureTui);
     assert.equal(config.headers.Authorization, "Bearer " + (beforeProfileResponse ? "original-token" : record.token));
     assert.equal(body.agentCode, "account-agent");
-    assert.equal(body.segmentId, "account-deal");
+    assert.equal(body.segmentId, expectedSegmentId);
     assert.equal(body.companyId, "42");
     return { status: 200, headers: {}, data: { searchId: "test-search", searchTracingKey: "init-response-trace" }, config };
   };
@@ -85,6 +86,7 @@ test("Init sends the complete Signature TUI with its matching token", async (t) 
     profileCalls = 0;
     profileFailure = null;
     beforeProfileResponse = null;
+    expectedSegmentId = "account-deal";
     profileData = { Code: "200", code: "account-agent", htdealCode: "account-deal", id: 42 };
     signatureData = { Code: "200", Token: "fresh-token", ClientID: "client-id", TUI: signatureTui };
   };
@@ -192,6 +194,41 @@ test("Init sends the complete Signature TUI with its matching token", async (t) 
       assert.equal(profileCalls, 2);
       assert.equal(initCalls, 1);
     }
+  });
+
+  await t.test("explicit empty supplier deal code reaches Init and is reused from cache", async () => {
+    reset();
+    profileData.htdealCode = "";
+    expectedSegmentId = "";
+    await akbarInitAPI({}, { correlationId: "empty-deal" });
+    assert.equal(record.agentProfile.segmentId, "");
+    const cached = new AkbarToken(record);
+    await cached.validate();
+    record = cached;
+    await akbarInitAPI({});
+    assert.equal(signatureCalls, 1);
+    assert.equal(profileCalls, 1);
+    assert.equal(initCalls, 2);
+    const logs = (await readFile(overrides.AKBAR_API_LOG_FILE, "utf8")).trim().split("\n").map(JSON.parse);
+    const diagnostic = logs.find((row) => row.correlationId === "empty-deal" && row.stage === "supplier_returned_empty_deal_code");
+    assert.equal(diagnostic.mappedFields.segmentId, "");
+    const initRequest = logs.find((row) => row.correlationId === "empty-deal" && row.operation === "hotel_search_init" && row.event === "request");
+    assert.equal(initRequest.request.body.segmentId, "");
+  });
+
+  await t.test("null and invalid deal codes still block Init and never enter cache", async () => {
+    for (const invalid of [null, {}, [], false, 123]) {
+      reset();
+      profileData.htdealCode = invalid;
+      await assert.rejects(akbarInitAPI({}), (error) => {
+        assert.deepEqual(error.missingFields, ["htdealCode"]);
+        return true;
+      });
+      assert.equal(initCalls, 0);
+      assert.equal(record.agentProfile, undefined);
+    }
+    const document = new AkbarToken({ token: "test-token", expiresAt: new Date(Date.now() + 3600000), agentProfile: { agentCode: "account-agent", companyId: "42" } });
+    await assert.rejects(document.validate(), /segmentId/);
   });
 
   await t.test("profile network failure leaves token usable and permits retry", async () => {

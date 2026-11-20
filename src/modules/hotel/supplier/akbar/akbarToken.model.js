@@ -21,7 +21,11 @@ const akbarTokenSchema = new mongoose.Schema(
     agentProfile: {
       type: new mongoose.Schema({
         agentCode: { type: String, required: true },
-        segmentId: { type: String, required: true },
+        segmentId: {
+          type: String,
+          // Require the field, while accepting an explicit empty supplier value.
+          required() { return this.segmentId !== ""; },
+        },
         companyId: { type: String, required: true },
       }, { _id: false }),
       default: null,
