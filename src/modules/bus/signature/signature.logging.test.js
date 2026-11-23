@@ -18,6 +18,7 @@ test("bus signature logs exchanges without leaking credentials or changing auth"
     AKBAR_BUS_BROWSER_KEY: "private-browser-key",
     AKBAR_BUS_KEY: "private-key",
     AKBAR_BUS_MERCHANT_ID: "private-merchant-id",
+    AKBAR_BUS_AGENT_CODE: "",
   };
   const previous = Object.fromEntries(Object.keys(env).map(k => [k, process.env[k]]));
   const original = {
@@ -58,6 +59,15 @@ test("bus signature logs exchanges without leaking credentials or changing auth"
     axios.defaults.adapter = async config => {
       assert.equal(config.timeout, 20000);
       assert.equal(JSON.parse(config.data).Password, env.AKBAR_BUS_PASSWORD);
+      assert.deepEqual(JSON.parse(config.data), {
+        MerchantID: env.AKBAR_BUS_MERCHANT_ID,
+        ApiKey: env.AKBAR_BUS_API_KEY,
+        ClientID: env.AKBAR_BUS_CLIENT_ID,
+        Password: env.AKBAR_BUS_PASSWORD,
+        AgentCode: "",
+        BrowserKey: env.AKBAR_BUS_BROWSER_KEY,
+      });
+      assert.equal(config.headers.Accept, "application/json");
       return { status: 200, data: successBody, headers: { "content-type": "application/json" }, config };
     };
     const session = await getAkbarBusSession({ forceRefresh: true });

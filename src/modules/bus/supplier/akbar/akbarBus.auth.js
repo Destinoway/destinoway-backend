@@ -122,7 +122,7 @@ const callSignatureAPI = async () => {
   const url = getSignatureUrl();
   const exchangeId = randomUUID();
   const startedAt = Date.now();
-  const headers = { "Content-Type": "application/json" };
+  const headers = { "Content-Type": "application/json", Accept: "application/json" };
   const payload = {
     MerchantID: process.env.AKBAR_BUS_MERCHANT_ID,
     ApiKey: process.env.AKBAR_BUS_API_KEY,
@@ -130,8 +130,6 @@ const callSignatureAPI = async () => {
     Password: process.env.AKBAR_BUS_PASSWORD,
     AgentCode: process.env.AKBAR_BUS_AGENT_CODE || "",
     BrowserKey: process.env.AKBAR_BUS_BROWSER_KEY,
-    Key: process.env.AKBAR_BUS_KEY,
-    IsMasked: true,
   };
   const context = { exchangeId, method: "POST", endpoint: safeUrl(url) };
 
@@ -172,7 +170,7 @@ const callSignatureAPI = async () => {
 
     const signatureError = new Error(
       timedOut
-        ? "AKBAR bus signature timed out (server not reachable - check IP whitelisting)"
+        ? "AKBAR bus signature timed out before receiving a response"
         : `AKBAR bus signature failed${status ? ` (HTTP ${status})` : `: ${error.message}`} at ${safeUrl(url)}`,
     );
     signatureError.statusCode = timedOut ? 504 : 502;
