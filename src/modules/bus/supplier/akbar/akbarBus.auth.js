@@ -130,6 +130,7 @@ const callSignatureAPI = async () => {
     Password: process.env.AKBAR_BUS_PASSWORD,
     AgentCode: process.env.AKBAR_BUS_AGENT_CODE || "",
     BrowserKey: process.env.AKBAR_BUS_BROWSER_KEY,
+    Key: process.env.AKBAR_BUS_KEY,
   };
   const context = { exchangeId, method: "POST", endpoint: safeUrl(url) };
 

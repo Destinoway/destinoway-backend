@@ -6,12 +6,14 @@ import path from "node:path";
 import axios from "axios";
 import AkbarBusToken from "../supplier/akbar/akbarBusToken.model.js";
 import { getAkbarBusSession } from "../supplier/akbar/akbarBus.auth.js";
+import { getBusStationsAPI } from "../stations/adapters/akbar/api/stations.api.js";
 
 test("bus signature logs exchanges without leaking credentials or changing auth", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "bus-signature-logs-"));
   const env = {
     AKBAR_BUS_API_LOG_FILE: path.join(directory, "exchanges.jsonl"),
     AKBAR_BUS_SIGNATURE_URL: "https://supplier.example/Utils/Signature?key=url-secret",
+    AKBAR_BUS_API_URL: "https://bus-connect.example",
     AKBAR_BUS_API_KEY: "private-api-key",
     AKBAR_BUS_CLIENT_ID: "private-client-id",
     AKBAR_BUS_PASSWORD: "private-password",
@@ -66,8 +68,10 @@ test("bus signature logs exchanges without leaking credentials or changing auth"
         Password: env.AKBAR_BUS_PASSWORD,
         AgentCode: "",
         BrowserKey: env.AKBAR_BUS_BROWSER_KEY,
+        Key: env.AKBAR_BUS_KEY,
       });
       assert.equal(config.headers.Accept, "application/json");
+      assert.equal(config.url, env.AKBAR_BUS_SIGNATURE_URL);
       return { status: 200, data: successBody, headers: { "content-type": "application/json" }, config };
     };
     const session = await getAkbarBusSession({ forceRefresh: true });
@@ -93,6 +97,29 @@ test("bus signature logs exchanges without leaking credentials or changing auth"
     const session = await getAkbarBusSession();
     assert.equal(session.source, "db");
     assert.equal((await events()).at(-1).event, "cache_hit");
+  });
+
+  await t.test("supplier Token and ClientID are saved and mapped to the bus stations request", async () => {
+    let stored;
+    AkbarBusToken.findByIdAndUpdate = async (id, values) => {
+      assert.equal(id, "bus");
+      stored = values;
+      return values;
+    };
+    axios.defaults.adapter = async config => ({ status: 200, data: successBody, headers: {}, config });
+    await getAkbarBusSession({ forceRefresh: true });
+    assert.equal(stored.token, successBody.Token);
+    assert.equal(stored.clientId, successBody.ClientID);
+    assert.notEqual(stored.clientId, env.AKBAR_BUS_CLIENT_ID);
+    AkbarBusToken.findById = () => ({ lean: async () => stored });
+    axios.defaults.adapter = async config => {
+      assert.equal(config.url, `${env.AKBAR_BUS_API_URL}/api/bus/getbusstations`);
+      assert.equal(config.headers.Authorization, `Bearer ${successBody.Token}`);
+      assert.equal(JSON.parse(config.data).ClientId, successBody.ClientID);
+      return { status: 200, data: { code: 0, station: [] }, headers: {}, config };
+    };
+    assert.deepEqual(await getBusStationsAPI({ term: "Jaipur" }), { code: 0, station: [] });
+    AkbarBusToken.findByIdAndUpdate = async () => ({});
   });
 
   await t.test("HTTP failure logs redacted response and keeps the existing 502 error", async () => {
