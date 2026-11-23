@@ -1,3 +1,5 @@
+import { normalizeMobileCountryCode } from "../../../../../utils/mobileNumber.js";
+
 const isNonEmptyString = (value) =>
   typeof value === "string" && value.trim().length > 0;
 
@@ -152,5 +154,17 @@ export const validateCreateHotelItineraryRequest = (req, res, next) => {
     }
   }
 
+  try {
+    for (const field of ["mobileCountryCode", "phoneCountryCode", "gstMobileCountryCode"]) {
+      if (contactInfo[field] !== undefined) contactInfo[field] = normalizeMobileCountryCode(contactInfo[field]);
+    }
+    for (const room of rooms) {
+      for (const guest of [...room.adults, ...room.children]) {
+        if (guest.mobileCountryCode !== undefined) guest.mobileCountryCode = normalizeMobileCountryCode(guest.mobileCountryCode);
+      }
+    }
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message, data: null, meta: null });
+  }
   next();
 };

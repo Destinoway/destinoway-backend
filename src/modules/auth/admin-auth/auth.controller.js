@@ -33,6 +33,7 @@ export const login = asyncHandler(async (req, res) => {
       name: data.user.name,
       email: data.user.email,
       mobile: data.user.mobile,
+      mobileCountryCode: data.user.mobileCountryCode || "+91",
 
       role: data.user.role, // ✅ role name
       type: data.user.type, // 🔥 ADD THIS

@@ -1,4 +1,5 @@
 import twilio from "twilio";
+import { parseMobileNumber } from "../../../../utils/mobileNumber.js";
 
 let twilioClient;
 
@@ -31,16 +32,9 @@ const getTwilioClient = ({ accountSid, authToken }) => {
   return twilioClient;
 };
 
-const toE164 = (mobile) => {
-  const countryCodeDigits = String(
-    process.env.TWILIO_DEFAULT_COUNTRY_CODE || "+91",
-  ).replace(/\D/g, "");
-  if (!countryCodeDigits) {
-    const error = new Error("TWILIO_DEFAULT_COUNTRY_CODE is invalid");
-    error.statusCode = 503;
-    throw error;
-  }
-  return `+${countryCodeDigits}${mobile}`;
+const toE164 = (mobile, countryCode) => {
+  const phone = parseMobileNumber(mobile, countryCode ?? process.env.TWILIO_DEFAULT_COUNTRY_CODE ?? "+91");
+  return `${phone.mobileCountryCode}${phone.mobile}`;
 };
 
 const getTwilioError = (error, action) => {
@@ -58,10 +52,10 @@ const getTwilioError = (error, action) => {
   return result;
 };
 
-export const startTwilioVerification = async (mobile) => {
+export const startTwilioVerification = async (mobile, countryCode) => {
   const config = getTwilioConfig();
   const client = getTwilioClient(config);
-  const to = toE164(mobile);
+  const to = toE164(mobile, countryCode);
 
   try {
     return await client.verify.v2
@@ -76,7 +70,7 @@ export const startTwilioVerification = async (mobile) => {
   }
 };
 
-export const checkTwilioVerification = async (mobile, code) => {
+export const checkTwilioVerification = async (mobile, code, countryCode) => {
   const config = getTwilioConfig();
   const client = getTwilioClient(config);
 
@@ -85,7 +79,7 @@ export const checkTwilioVerification = async (mobile, code) => {
     verification = await client.verify.v2
       .services(config.verifyServiceSid)
       .verificationChecks.create({
-        to: toE164(mobile),
+        to: toE164(mobile, countryCode),
         code,
       });
   } catch (error) {

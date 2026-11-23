@@ -60,6 +60,7 @@ export const googleLogin = asyncHandler(async (req, res) => {
       email: user.email,
       name: user.name,
       mobile: user.mobile || null,
+      mobileCountryCode: user.mobileCountryCode || "+91",
       avatar: user.avatar || null,
       type: user.type,
       accessToken,

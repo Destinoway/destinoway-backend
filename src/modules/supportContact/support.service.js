@@ -1,10 +1,12 @@
 import Support from "./support.model.js";
+import { normalizeSupportPhones } from "./support.phones.js";
 
 // CREATE
 export const createSupportService = async (payload) => {
   const existingSupport = await Support.findOne({
     supportType: payload.supportType,
   });
+  payload = normalizeSupportPhones(payload, existingSupport || {});
 
   // If already exists → update
   if (existingSupport) {
@@ -33,6 +35,9 @@ export const createSupportService = async (payload) => {
 };
 
 export const updateSupportService = async (id, payload) => {
+  const existing = await Support.findById(id);
+  if (!existing) throw new Error("Support not found");
+  payload = normalizeSupportPhones(payload, existing);
   const support = await Support.findByIdAndUpdate(
     id,
     payload,

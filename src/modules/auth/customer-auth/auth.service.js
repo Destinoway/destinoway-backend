@@ -1,8 +1,10 @@
 import User from "../../user/user.model.js";
+import { assertMobileCountryMatches, normalizeMobileCountryCode } from "../../../utils/mobileNumber.js";
 
 export const findOrCreateAndMergeUser = async ({
   email,
   mobile,
+  mobileCountryCode = "+91",
   name,
   avatar,
   googleId,
@@ -53,9 +55,12 @@ export const findOrCreateAndMergeUser = async ({
     }
 
     if (provider === "otp") {
+      mobileCountryCode = normalizeMobileCountryCode(mobileCountryCode);
+      assertMobileCountryMatches(userByMobile, mobileCountryCode);
       if (userByMobile) {
 
         userByMobile.isMobileVerified = true;
+        userByMobile.mobileCountryCode = mobileCountryCode;
 
         if (!userByMobile.providers.includes("otp")) {
           userByMobile.providers.push("otp");
@@ -68,6 +73,7 @@ export const findOrCreateAndMergeUser = async ({
       // 🔥 NEW USER
       return await User.create({
         mobile,
+        mobileCountryCode,
         providers: ["otp"],
         type: "customer",
         isMobileVerified: true,

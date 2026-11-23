@@ -46,6 +46,7 @@ export const verifyEmailOtp = asyncHandler(async (req, res) => {
     _id: user._id,
     email: user.email || null,
     mobile: user.mobile || null,
+      mobileCountryCode: user.mobileCountryCode || "+91",
     name: user.name || null,
     avatar: user.avatar || null,
     googleId: user.googleId || null,

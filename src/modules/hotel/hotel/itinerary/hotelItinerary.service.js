@@ -1,6 +1,7 @@
 import HotelItinerary, {
   generateHotelBookingRefNo,
 } from "./hotelItinerary.model.js";
+import { mapContactInfo, mapStoredContactInfo, mapStoredRooms } from "./hotelItineraryContact.mapper.js";
 import { createAkbarHotelItineraryAPI } from "./adapters/akbar/api/createHotelItinerary.api.js";
 import { mapAkbarAuxiliaries } from "./adapters/akbar/akbarAuxiliaries.mapper.js";
 import { getHotelPriceVerificationContext } from "../priceVerify/services/hotelPriceVerify.service.js";
@@ -58,69 +59,6 @@ export const getHotelItineraryPricing = async ({ itineraryId, userId }) => {
     currency: price.currency ?? "INR",
   };
 };
-
-const mapContactInfo = (contactInfo) => ({
-  Title: contactInfo.title.trim(),
-  FName: contactInfo.firstName.trim(),
-  LName: contactInfo.lastName.trim(),
-  Mobile: contactInfo.mobile.trim(),
-  Phone: contactInfo.phone?.trim() ?? "",
-  // Akbar sends booking vouchers and notifications to ContactInfo.Email.
-  // Route those messages to our inbox; the guest email is stored separately
-  // and used by our own booking confirmation email.
-  Email: "info@destinoway.com",
-  Address: contactInfo.address.trim(),
-  State: contactInfo.state.trim(),
-  City: contactInfo.city.trim(),
-  PIN: contactInfo.pin.trim(),
-  GSTCompanyName: contactInfo.gstCompanyName?.trim() ?? "",
-  GSTTIN: contactInfo.gstTin?.trim() ?? "",
-  GSTMobile: contactInfo.gstMobile?.trim() ?? "",
-  GSTEmail: contactInfo.gstEmail?.trim() ?? "",
-  GSTAddress: contactInfo.gstAddress?.trim() ?? "",
-  GSTState: contactInfo.gstState?.trim() ?? "",
-  UpdateProfile: true,
-  IsGuest: false,
-  CountryCode: process.env.AKBAR_COUNTRY_CODE || "IN",
-  MobileCountryCode: process.env.AKBAR_MOBILE_COUNTRY_CODE || "+91",
-  NetAmount: "",
-});
-
-const mapStoredContactInfo = (contactInfo) => ({
-  title: contactInfo.title.trim(),
-  firstName: contactInfo.firstName.trim(),
-  lastName: contactInfo.lastName.trim(),
-  mobile: contactInfo.mobile.trim(),
-  email: contactInfo.email.trim(),
-  address: contactInfo.address.trim(),
-  state: contactInfo.state.trim(),
-  city: contactInfo.city.trim(),
-  pin: contactInfo.pin.trim(),
-});
-
-const mapStoredRooms = (submittedRooms) =>
-  submittedRooms.map((room) => ({
-    occupancyId: Number(room.occupancyId),
-    adults: room.adults.map((guest) => ({
-      title: guest.title.trim(),
-      firstName: guest.firstName.trim(),
-      middleName: guest.middleName?.trim() ?? "",
-      lastName: guest.lastName.trim(),
-      mobileNo: guest.mobileNo?.trim() ?? "",
-      email: guest.email?.trim() ?? "",
-      pan: guest.pan?.trim() ?? "",
-    })),
-    children: room.children.map((guest) => ({
-      title: guest.title.trim(),
-      firstName: guest.firstName.trim(),
-      middleName: guest.middleName?.trim() ?? "",
-      lastName: guest.lastName.trim(),
-      age: Number(guest.age),
-      mobileNo: guest.mobileNo?.trim() ?? "",
-      email: guest.email?.trim() ?? "",
-      pan: guest.pan?.trim() ?? "",
-    })),
-  }));
 
 const getOccupancyGuestDetails = (occupancy, submittedRoom, pricingOccupancy) => {
   if (!submittedRoom) {

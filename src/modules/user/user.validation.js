@@ -11,13 +11,14 @@ export const createStaffValidation = Joi.object({
   email: Joi.string().email().required(),
 
   mobile: Joi.string()
-    .pattern(/^[0-9]{10}$/)
+    .pattern(/^[0-9]{4,14}$/)
     .required()
     .messages({
-      "string.pattern.base": "Mobile must be 10 digits",
+      "string.pattern.base": "Mobile must contain 4 to 14 digits",
     }),
 
   password: Joi.string().min(6).required(),
+  mobileCountryCode: Joi.string().pattern(/^\+?[1-9]\d{0,2}$/),
 
   // 🔥 role id required
   role: objectId.required(),
@@ -30,7 +31,8 @@ export const updateUserValidation = Joi.object({
 
   email: Joi.string().email(),
 
-  mobile: Joi.string().pattern(/^[0-9]{10}$/),
+  mobile: Joi.string().pattern(/^[0-9]{4,14}$/),
+  mobileCountryCode: Joi.string().pattern(/^\+?[1-9]\d{0,2}$/),
 
   password: Joi.string().min(6),
 

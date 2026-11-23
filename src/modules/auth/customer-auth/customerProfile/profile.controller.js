@@ -6,7 +6,8 @@ import {
 
 import { getProfileService, updateProfileService } from "./profile.service.js";
 
-import { normalizeMobile } from "../../../../utils/normalizeMobile.js";
+import { parseMobileNumber } from "../../../../utils/mobileNumber.js";
+import { verifyOTPService } from "../otp/otp.service.js";
 import User from "../../../user/user.model.js";
 import { verifyOtp } from "../shared/otp/otp.core.js";
 
@@ -65,19 +66,19 @@ export const verifyProfileEmail = asyncHandler(async (req, res) => {
 });
 
 export const verifyProfileMobile = asyncHandler(async (req, res) => {
-  const mobile = normalizeMobile(req.body.mobile);
+  const { mobile, mobileCountryCode } = parseMobileNumber(req.body.mobile, req.body.mobileCountryCode);
   const { otp } = req.body;
 
   if (!mobile || !otp) {
     return sendError(res, "Mobile & OTP required", 400);
   }
 
-  await verifyOtp("mobile", mobile, otp);
+  await verifyOTPService(mobile, otp, mobileCountryCode);
 
   const user = await User.findById(req.user._id);
   if (!user) return sendError(res, "User not found", 404);
 
-  if (user.mobile === mobile) {
+  if (user.mobile === mobile && (user.mobileCountryCode || "+91") === mobileCountryCode && user.isMobileVerified) {
     return sendSuccess(res, "Mobile already linked", user);
   }
 
@@ -88,6 +89,7 @@ export const verifyProfileMobile = asyncHandler(async (req, res) => {
   }
 
   user.mobile = mobile;
+  user.mobileCountryCode = mobileCountryCode;
   user.isMobileVerified = true;
 
   if (!user.providers.includes("otp")) {
@@ -101,6 +103,7 @@ export const verifyProfileMobile = asyncHandler(async (req, res) => {
   return sendSuccess(res, "Mobile linked successfully", {
     _id: user._id,
     mobile: user.mobile,
+    mobileCountryCode: user.mobileCountryCode,
     isMobileVerified: user.isMobileVerified,
     profileCompleted: user.profileCompleted,
   });

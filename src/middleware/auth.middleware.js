@@ -51,6 +51,7 @@ export const protect = async (req, res, next) => {
       name: user.name,
       email: user.email,
       mobile: user.mobile,
+      mobileCountryCode: user.mobileCountryCode || "+91",
       
 
       role: user.role?.name,

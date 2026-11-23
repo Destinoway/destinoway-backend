@@ -1,19 +1,19 @@
 
 
-import { normalizeMobile } from "../../../../utils/normalizeMobile.js";
+import { parseMobileNumber } from "../../../../utils/mobileNumber.js";
 import {
   checkTwilioVerification,
   startTwilioVerification,
 } from "./twilioVerify.service.js";
 
-export const sendOTPService = async (mobile) => {
-  const normalizedMobile = normalizeMobile(mobile);
+export const sendOTPService = async (mobile, countryCode) => {
+  const phone = parseMobileNumber(mobile, countryCode);
 
-  return startTwilioVerification(normalizedMobile);
+  return startTwilioVerification(phone.mobile, phone.mobileCountryCode);
 };
 
-export const verifyOTPService = async (mobile, otp) => {
-  const normalizedMobile = normalizeMobile(mobile);
+export const verifyOTPService = async (mobile, otp, countryCode) => {
+  const phone = parseMobileNumber(mobile, countryCode);
 
-  return checkTwilioVerification(normalizedMobile, String(otp));
+  return checkTwilioVerification(phone.mobile, String(otp), phone.mobileCountryCode);
 };
