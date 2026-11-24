@@ -6,8 +6,18 @@ export const getAkbarBusAmenities = async ({ tui, busServiceId }) => {
     () => ({ TUI: tui, ClientId: null, BusServiceId: busServiceId }),
   );
 
+  if (data?.code === 0 && data?.amenities == null) {
+    return { ...data, amenities: [] };
+  }
+
   if (data?.code !== 0 || !Array.isArray(data?.amenities)) {
     const reason = Array.isArray(data?.msg) ? data.msg.join(", ") : data?.msg;
+    console.warn("AKBAR BUS amenities unexpected response", {
+      code: data?.code ?? null,
+      message: reason || null,
+      amenitiesType: Array.isArray(data?.amenities) ? "array" : typeof data?.amenities,
+      responseKeys: data && typeof data === "object" ? Object.keys(data) : [],
+    });
     const error = new Error(`AKBAR bus amenities failed${reason ? `: ${reason}` : ""}`);
     error.statusCode = 502;
     throw error;
