@@ -52,16 +52,14 @@ app.use(
       "http://localhost:3000",
       "http://localhost:3001",
       "http://localhost:8000",
-      "https://uat.d38tnqy8q9rbjf.amplifyapp.com",
-      "http://main.d1lddnidhuqzni.amplifyapp.com",
-      "https://main.d2s4wo3hb5kyyq.amplifyapp.com",
-      "https://www.panjourney.com",
-      "https://panjourney.com",
+    
       "https://dev.destinoway.com",
       "https://uat.destinoway.com",
       "https://uat-admin.destinoway.com",
       "https://dev-admin.destinoway.com",
-      "https://develop.d1kvqncg9r5rhb.amplifyapp.com"
+      "https://develop.d1kvqncg9r5rhb.amplifyapp.com",
+      "https://www.destinoway.com",
+      "https://destinoway.com"
     ],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization", "Accept", "currency"],
