@@ -8,6 +8,14 @@ const getMetaKey = (searchId) =>
 const getResultsKey = (searchId) =>
   `hotel-search:${searchId}:results`;
 
+const getHotelContentKey = (hotelId) =>
+  `hotel-content:akbar:${hotelId}`;
+
+export const getCachedHotelContent = async (hotelId) => {
+  const data = await redisClient.get(getHotelContentKey(hotelId));
+  return data ? JSON.parse(data) : null;
+};
+
 const getActiveSearchKey = (searchSessionId) =>
   `hotel-search:session:${searchSessionId}:active`;
 
@@ -209,13 +217,44 @@ export const setHotelSearchResults = async (
   searchId,
   hotels
 ) => {
-  await redisClient.set(
+  const meta = await getHotelSearchMeta(searchId);
+  if (!meta) return;
+
+  const results = hotels || [];
+  const transaction = redisClient.multi();
+  transaction.set(
     getResultsKey(searchId),
-    JSON.stringify(hotels || []),
+    JSON.stringify(results),
     {
       EX: SEARCH_TTL,
     }
   );
+
+  for (const hotel of results) {
+    if (!hotel.supplierHotelId || !hotel.name) continue;
+
+    transaction.set(
+      getHotelContentKey(hotel.supplierHotelId),
+      JSON.stringify({
+        hotelName: hotel.name,
+        hotelImage: hotel.heroImage,
+        address: hotel.address,
+        starRating: hotel.starRating,
+        facilities: Array.isArray(hotel.facilities)
+          ? hotel.facilities
+              .map((facility) => typeof facility === "string" ? facility : facility?.name)
+              .filter((name) => typeof name === "string" && name.trim())
+          : [],
+        cityId: meta.cityId,
+        cityName: meta.cityName,
+        stateName: meta.stateName,
+        countryCode: meta.destinationCountryCode,
+        supplier: meta.supplier,
+      }),
+      { EX: SEARCH_TTL },
+    );
+  }
+  await transaction.exec();
 
   await updateHotelSearchMeta(
     searchId,

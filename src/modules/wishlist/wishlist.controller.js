@@ -10,11 +10,7 @@ import {
 } from "./wishlist.service.js";
 
 export const toggleWishlist = asyncHandler(async (req, res) => {
-  const { hotelId } = req.body;
-  if (!hotelId) {
-    throw new Error("Hotel id is required");
-  }
-  const data = await toggleWishlistService(req.user._id, req.body);
+  const data = await toggleWishlistService(req.user._id, req.body?.hotelId);
   sendSuccess(res, "Wishlist updated", data);
 });
 

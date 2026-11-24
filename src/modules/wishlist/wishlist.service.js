@@ -1,158 +1,68 @@
 import Wishlist from "./wishlist.model.js";
-
-import Country from "../priceMarkup/countryData/country.model.js"
+import Country from "../priceMarkup/countryData/country.model.js";
 import { getCurrencySymbol } from "../currencyConverter/currency.helper.js";
-
 import { getCurrencyRate } from "../currencyConverter/currency.service.js";
+import { getCachedHotelContent } from "../hotel/hotel/hotelSearch/service/hotelSearch.redis.service.js";
+import ApiError from "../../utils/response/ApiError.js";
+import { generateSlug } from "../../utils/slug/slugify.js";
 
-export const toggleWishlistService = async (
-  userId,
-  payload
-) => {
-  try {
-
-    // STEP 1 → Check existing wishlist
-    const existing = await Wishlist.findOne({
-      userId,
-      hotelId: payload.hotelId,
-    });
-
-
-    if (existing) {
-
-      await existing.deleteOne();
-
-
-      return {
-        wishlisted: false,
-      };
-    }
-
-    // STEP 2 → Validations
-    if (!payload.hotelName) {
-      throw new Error("Hotel name is required");
-    }
-
-    if (!payload.cityId) {
-      throw new Error("City id is required");
-    }
-
-    // STEP 3 → Normalize city
-    const cityParts = (payload.cityName || "")
-      .split(",")
-      .map((v) => v.trim());
-
-
-    let normalizedCity = "";
-
-    switch (payload.searchType) {
-      case "Hotel":
-      case "PointOfInterest":
-      case "Neighborhood":
-        normalizedCity =
-          cityParts[1] ||
-          cityParts[0] ||
-          "";
-        break;
-
-      default:
-        normalizedCity =
-          cityParts[0] || "";
-    }
-
-
-    // STEP 4 → Facilities cleanup
-    const facilities = [
-      ...new Set(payload.facilities || []),
-    ];
-
-
-    // STEP 5 → Country lookup
-
-    const country = await Country.findOne({
-      countryCode: payload.countryCode,   // check field name
-    }).lean();
-
-
-    const actualCountryName =
-      country?.countryName || "";
-
-
-    // STEP 6 → Final create payload
-    const createPayload = {
-      userId,
-
-      hotelId: payload.hotelId,
-      hotelName: payload.hotelName,
-      hotelSlug: payload.hotelSlug,
-      hotelImage: payload.hotelImage,
-
-      cityId: payload.cityId,
-      cityName: payload.cityName,
-      normalizedCity,
-
-      stateName:
-        payload.stateName || "",
-
-      countryCode:
-        payload.countryCode || "",
-
-      // fixed value from DB
-      countryName:
-        actualCountryName,
-
-      address:
-        payload.address || "",
-
-      starRating: Number(
-        payload.starRating || 0
-      ),
-
-      checkInDate:
-        payload.CheckInDate || "",
-
-      checkOutDate:
-        payload.CheckOutDate || "",
-
-      roomCount: Number(
-        payload.RoomCount || 1
-      ),
-
-      facilities,
-
-      freeCancellation:
-        payload.freeCancellation ||
-        false,
-
-      savedPrice: Number(
-        payload.savedPrice || 0
-      ),
-
-      savedTax: Number(
-        payload.savedTax || 0
-      ),
-
-      supplier:
-        payload.supplier || "TBO",
-    };
-
-
-    // STEP 7 → Create wishlist
-    const created =
-      await Wishlist.create(
-        createPayload
-      );
-
-
-
-    return {
-      wishlisted: true,
-    };
-
-  } catch (error) {
-
-    throw error;
+export const toggleWishlistService = async (userId, hotelId) => {
+  if (typeof hotelId !== "string" || !hotelId.trim()) {
+    throw new ApiError(400, "Hotel id is required");
   }
+
+  const key = { userId, hotelId: hotelId.trim() };
+  const removed = await Wishlist.findOneAndDelete(key);
+  if (removed) return { wishlisted: false };
+
+  const hotel = await getCachedHotelContent(key.hotelId);
+  if (!hotel) {
+    throw new ApiError(404, "Hotel details not found. Refresh your hotel search and try again.");
+  }
+
+  const address = typeof hotel.address === "string" ? hotel.address : "";
+  const addressParts = address.split(",").map((part) => part.trim());
+  // AKBAR addresses can end in "city, state, country code and postal code".
+  const hasCountrySuffix = /^[A-Z]{2}\s+\d/.test(addressParts.at(-1));
+  const city = String(hotel.cityName ?? "").split(",")[0].trim() ||
+    (hasCountrySuffix ? addressParts.at(-3) : "");
+  const cityId = String(hotel.cityId ?? "").trim();
+  if (!cityId) {
+    throw new ApiError(422, "Hotel destination is unavailable");
+  }
+
+  const countryCode = String(hotel.countryCode ?? "").trim().toUpperCase();
+  const country = countryCode
+    ? await Country.findOne({ countryCode }).lean()
+    : null;
+  const starRating = Number(hotel.starRating);
+
+  await Wishlist.updateOne(
+    key,
+    {
+      $setOnInsert: {
+        ...key,
+        hotelName: hotel.hotelName,
+        hotelSlug: generateSlug(hotel.hotelName),
+        hotelImage: hotel.hotelImage ?? "",
+        address,
+        cityId,
+        cityName: city || "Unknown city",
+        normalizedCity: city || cityId,
+        stateName: hotel.stateName || (hasCountrySuffix ? addressParts.at(-2) : "") || "",
+        countryCode,
+        countryName: country?.countryName ?? "",
+        starRating: starRating >= 0 && starRating <= 5 ? starRating : 0,
+        facilities: [...new Set(hotel.facilities)],
+        supplier: hotel.supplier,
+        savedPrice: null,
+        savedTax: null,
+      },
+    },
+    { upsert: true, runValidators: true },
+  );
+
+  return { wishlisted: true };
 };
 export const getWishlistService = async (userId) => {
   return Wishlist.aggregate([
@@ -263,17 +173,18 @@ export const getWishlistCityService = async (
     }));
   }
 
-  const rate = await getCurrencyRate({
+  const hasSavedAmounts = hotels.some((hotel) => hotel.savedPrice != null || hotel.savedTax != null);
+  const rate = hasSavedAmounts ? await getCurrencyRate({
     from: "INR",
     to: currency,
-  });
+  }) : 1;
 
 
 
   return hotels.map((hotel) => ({
     ...hotel,
-    savedPrice: Number((hotel.savedPrice * rate).toFixed(2)),
-    savedTax: Number((hotel.savedTax * rate).toFixed(2)),
+    savedPrice: hotel.savedPrice == null ? null : Number((hotel.savedPrice * rate).toFixed(2)),
+    savedTax: hotel.savedTax == null ? null : Number((hotel.savedTax * rate).toFixed(2)),
     currency,
    currencySymbol: getCurrencySymbol(currency)
   }));
