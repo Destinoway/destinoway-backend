@@ -6,11 +6,7 @@ export const getAkbarBusAmenities = async ({ tui, busServiceId }) => {
     () => ({ TUI: tui, ClientId: null, BusServiceId: busServiceId }),
   );
 
-  if (data?.code === 0 && data?.amenities == null) {
-    return { ...data, amenities: [] };
-  }
-
-  if (data?.code !== 0 || !Array.isArray(data?.amenities)) {
+  if (data?.code !== 0 || (data?.amenities != null && !Array.isArray(data.amenities))) {
     const reason = Array.isArray(data?.msg) ? data.msg.join(", ") : data?.msg;
     console.warn("AKBAR BUS amenities unexpected response", {
       code: data?.code ?? null,
