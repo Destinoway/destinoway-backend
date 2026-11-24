@@ -6,6 +6,7 @@ import cancellationPolicyRoutes from "./cancellationPolicy/cancellationPolicy.ro
 import amenitiesRoutes from "./amenities/amenities.routes.js";
 import seatLayoutRoutes from "./seatLayout/seatLayout.routes.js";
 import travelItineraryRoutes from "./travelItinerary/travelItinerary.routes.js";
+import busPaymentRoutes from "./payments/busPayment.routes.js";
 
 // Only mounts each bus sub-module. Routes are defined inside
 // each folder's own *.routes.js file.
@@ -18,5 +19,6 @@ router.use("/cancellation-policy", cancellationPolicyRoutes);
 router.use("/amenities", amenitiesRoutes);
 router.use("/seat-layout", seatLayoutRoutes);
 router.use("/travel-itinerary", travelItineraryRoutes);
+router.use("/payments", busPaymentRoutes);
 
 export default router;

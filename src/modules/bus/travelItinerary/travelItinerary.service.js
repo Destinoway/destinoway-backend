@@ -3,6 +3,7 @@ import { getCachedBusSearch } from "../search/searchCache.js";
 import { getAkbarSeatLayout } from "../seatLayout/adapters/akbar/api/seatLayout.api.js";
 import { createAkbarTravelItinerary } from "./adapters/akbar/api/travelItinerary.api.js";
 import { mapAkbarTravelItinerary } from "./adapters/akbar/mappers/travelItinerary.mapper.js";
+     import BusBooking from "../payments/busBooking.model.js";
 
 const fail = (message, statusCode = 409) => {
   const error = new Error(message);
@@ -10,7 +11,7 @@ const fail = (message, statusCode = 409) => {
   throw error;
 };
 
-export const createBusTravelItineraryService = async ({ tui, busServiceId, seatName, buid, duid, passenger, contact }) => {
+export const createBusTravelItineraryService = async ({ tui, busServiceId, seatName, buid, duid, passenger, contact, userId }) => {
   const search = await getCachedBusSearch(tui) || await getAkbarBusSearch(tui);
   if (String(search.completed).toLowerCase() !== "true") fail("Bus search is not complete");
 
@@ -36,6 +37,8 @@ export const createBusTravelItineraryService = async ({ tui, busServiceId, seatN
   if (!Number.isFinite(netFare) || netFare <= 0 || !Number.isFinite(grossFare) || grossFare <= 0) {
     fail("Supplier did not return a valid seat fare", 502);
   }
+  const customerAmount = Number(seat.fare?.customerFare);
+  if (!Number.isFinite(customerAmount) || customerAmount <= 0) fail("Supplier did not return a valid customer fare", 502);
 
   const body = {
     TUI: tui,
@@ -92,5 +95,25 @@ export const createBusTravelItineraryService = async ({ tui, busServiceId, seatN
     },
   };
 
-  return mapAkbarTravelItinerary(await createAkbarTravelItinerary(body));
+  const supplierResponse = await createAkbarTravelItinerary(body);
+  const result = mapAkbarTravelItinerary(supplierResponse);
+  if (result.fareChanged) fail("Supplier fare changed; search and select the bus again");
+
+  const booking = await BusBooking.create({
+    userId,
+    supplierTransactionId: result.transactionId,
+    tui,
+    busServiceId,
+    providerCode: bus.provider,
+    seatName,
+    journeyDate,
+    buid: String(pickPoint.buid),
+    duid: String(dropPoint.duid),
+    passenger,
+    contact,
+    customerAmount,
+    supplierNetAmount: netFare,
+  });
+
+  return { ...result, bookingId: String(booking._id), amount: customerAmount, currency: "INR" };
 };

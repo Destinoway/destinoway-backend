@@ -17,6 +17,7 @@ const akbarBusTokenSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    signatureTui: { type: String, default: null },
     expiresAt: {
       type: Date,
       required: true,

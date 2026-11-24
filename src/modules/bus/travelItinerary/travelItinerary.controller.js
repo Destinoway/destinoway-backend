@@ -12,6 +12,7 @@ export const createBusTravelItinerary = asyncHandler(async (req, res) => {
     duid,
     passenger: { ...passenger, firstName: passenger.firstName.trim(), lastName: passenger.lastName.trim() },
     contact: { email: contact.email.trim(), phone: contact.phone },
+    userId: req.user._id,
   });
   return sendSuccess(res, "Bus travel itinerary created", result);
 });

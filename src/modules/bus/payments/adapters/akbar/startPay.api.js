@@ -1,0 +1,36 @@
+import { akbarBusPost } from "../../../supplier/akbar/akbarBus.client.js";
+
+export const startAkbarBusPay = (booking) => akbarBusPost(
+  "/api/bus/startpay",
+  (session) => ({
+    TransactionID: Number(booking.supplierTransactionId),
+    PaymentAmount: 0,
+    NetAmount: booking.supplierNetAmount,
+    OnlinePayment: false,
+    DepositPayment: true,
+    ClientID: session.clientId,
+    TUI: booking.tui,
+    BrowserKey: process.env.AKBAR_BUS_BROWSER_KEY || "",
+    Hold: false,
+    Promo: null,
+    PaymentType: "",
+    BankCode: "",
+    GateWayCode: "",
+    MerchantID: "",
+    PaymentCharge: 0,
+    ReleaseDate: "",
+    ThirdPartyInfo: {},
+    CardType: null,
+    Card: {
+      Number: "", Expiry: "", CVV: "", CHName: "", Address: "", City: "",
+      State: "", Country: "", PIN: "", International: false,
+      SaveCard: false, Token: "", NumberAlias: "", EMIMonths: "0",
+    },
+    VPA: "",
+    CardAlias: "",
+    QuickPay: null,
+    RMSSignature: "",
+    TargetCurrency: "",
+    TargetAmount: 0,
+  }),
+);

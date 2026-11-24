@@ -54,6 +54,7 @@ const readStoredSession = async () => {
     return {
       token: record.token,
       clientId: record.clientId,
+      signatureTui: record.signatureTui || null,
       expiresAt: toSeconds(record.expiresAt),
       createdAt: toSeconds(record.updatedAt || record.createdAt),
     };
@@ -64,7 +65,7 @@ const readStoredSession = async () => {
   }
 };
 
-const saveSession = async ({ token, clientId }) => {
+const saveSession = async ({ token, clientId, signatureTui }) => {
   const jwtExpiry = getJwtExpiry(token);
   const nowSeconds = Math.floor(Date.now() / 1000);
 
@@ -79,7 +80,7 @@ const saveSession = async ({ token, clientId }) => {
   try {
     await AkbarBusToken.findByIdAndUpdate(
       "bus",
-      { token, clientId, expiresAt },
+      { token, clientId, signatureTui, expiresAt },
       { upsert: true, setDefaultsOnInsert: true },
     );
   } catch (error) {
@@ -90,6 +91,7 @@ const saveSession = async ({ token, clientId }) => {
   return {
     token,
     clientId,
+    signatureTui,
     expiresAt: refreshAtSeconds,
     createdAt: nowSeconds,
   };
@@ -195,7 +197,7 @@ const callSignatureAPI = async () => {
     throw error;
   }
 
-  return { token: data.Token, clientId: data.ClientID };
+  return { token: data.Token, clientId: data.ClientID, signatureTui: data.TUI || null };
 };
 
 const createNewSession = async () => {
