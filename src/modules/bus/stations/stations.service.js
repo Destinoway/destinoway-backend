@@ -5,7 +5,9 @@ import { mapAkbarStationsResponse } from "./adapters/akbar/mappers/stations.mapp
 // Station list changes rarely, so cache it for a day.
 const CACHE_TTL_SECONDS = 24 * 60 * 60;
 
-const CACHE_KEY = "AKBAR:bus:stations:_all";
+// Version the key when station-fetch behavior changes so an older list cannot
+// keep serving autocomplete results for the full cache lifetime.
+const CACHE_KEY = "AKBAR:bus:stations:full:v2";
 
 const readCache = async (key) => {
   try {
