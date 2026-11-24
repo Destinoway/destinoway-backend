@@ -10,9 +10,6 @@ export const toggleWishlistService = async (
   payload
 ) => {
   try {
-    console.log("========== TOGGLE WISHLIST START ==========");
-    console.log("Incoming userId:", userId);
-    console.log("Incoming payload:", payload);
 
     // STEP 1 → Check existing wishlist
     const existing = await Wishlist.findOne({
@@ -20,17 +17,11 @@ export const toggleWishlistService = async (
       hotelId: payload.hotelId,
     });
 
-    console.log("Existing wishlist found:", !!existing);
 
     if (existing) {
-      console.log(
-        "Hotel already wishlisted → deleting existing record"
-      );
 
       await existing.deleteOne();
 
-      console.log("Wishlist removed successfully");
-      console.log("========== TOGGLE WISHLIST END ==========");
 
       return {
         wishlisted: false,
@@ -39,12 +30,10 @@ export const toggleWishlistService = async (
 
     // STEP 2 → Validations
     if (!payload.hotelName) {
-      console.log("❌ hotelName missing");
       throw new Error("Hotel name is required");
     }
 
     if (!payload.cityId) {
-      console.log("❌ cityId missing");
       throw new Error("City id is required");
     }
 
@@ -53,7 +42,6 @@ export const toggleWishlistService = async (
       .split(",")
       .map((v) => v.trim());
 
-    console.log("City parts:", cityParts);
 
     let normalizedCity = "";
 
@@ -72,35 +60,23 @@ export const toggleWishlistService = async (
           cityParts[0] || "";
     }
 
-    console.log("Normalized city:", normalizedCity);
 
     // STEP 4 → Facilities cleanup
     const facilities = [
       ...new Set(payload.facilities || []),
     ];
 
-    console.log("Facilities count:", facilities.length);
 
     // STEP 5 → Country lookup
-    console.log(
-      "Searching country with code:",
-      payload.countryCode
-    );
 
     const country = await Country.findOne({
       countryCode: payload.countryCode,   // check field name
     }).lean();
 
-    console.log("Country found:", !!country);
-    console.log("Country data:", country);
 
     const actualCountryName =
       country?.countryName || "";
 
-    console.log(
-      "Resolved countryName:",
-      actualCountryName
-    );
 
     // STEP 6 → Final create payload
     const createPayload = {
@@ -160,16 +136,6 @@ export const toggleWishlistService = async (
         payload.supplier || "TBO",
     };
 
-    console.log(
-      "Final Wishlist Create Payload:"
-    );
-    console.log(
-      JSON.stringify(
-        createPayload,
-        null,
-        2
-      )
-    );
 
     // STEP 7 → Create wishlist
     const created =
@@ -177,31 +143,13 @@ export const toggleWishlistService = async (
         createPayload
       );
 
-    console.log(
-      "Wishlist created successfully"
-    );
-    console.log(
-      "Created document:",
-      created
-    );
 
-    console.log(
-      "========== TOGGLE WISHLIST END =========="
-    );
 
     return {
       wishlisted: true,
     };
 
   } catch (error) {
-    console.error(
-      "❌ Wishlist Service Error"
-    );
-    console.error(
-      "Message:",
-      error.message
-    );
-    console.error(error);
 
     throw error;
   }

@@ -14,7 +14,6 @@ export const googleLogin = asyncHandler(async (req, res) => {
   try {
     const { email, name, image, googleId } = req.body;
 
-    console.log("🔥 GOOGLE LOGIN HIT:", { email, googleId });
 
     if (!email) {
       return sendError(res, "Email is required", 400);
@@ -32,7 +31,6 @@ export const googleLogin = asyncHandler(async (req, res) => {
       });
     } catch (err) {
       if (err.code === 11000 || err.message.includes("duplicate")) {
-        console.log("⚠️ Duplicate detected, fetching existing user");
 
         user = await User.findOne({
           $or: [{ email }, { googleId }],
@@ -56,13 +54,13 @@ export const googleLogin = asyncHandler(async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    console.log("✅ GOOGLE LOGIN SUCCESS:", user._id);
 
     return sendSuccess(res, "Google login successful", {
       _id: user._id,
       email: user.email,
       name: user.name,
       mobile: user.mobile || null,
+      mobileCountryCode: user.mobileCountryCode || "+91",
       avatar: user.avatar || null,
       type: user.type,
       accessToken,
@@ -74,7 +72,6 @@ export const googleLogin = asyncHandler(async (req, res) => {
       profilePopupDismissed: user.profilePopupDismissed,
     });
   } catch (err) {
-    console.log("❌ GOOGLE LOGIN ERROR:", err.message);
 
     return sendError(res, "Google login failed", 500);
   }

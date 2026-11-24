@@ -5,8 +5,6 @@ import { findBestCoupon } from "../../promotionEngine/promotion.service.js";
 import HotelTempBooking from "./hotelCart.model.js";
 import { getCurrencySymbol } from "../../currencyConverter/currency.helper.js";
 export const hotelTempBookingService = async (payload, pricingData) => {
-  console.log("=================================");
-  console.log("SERVICE START");
 
   if (!pricingData) {
     throw new Error("Pricing data missing");
@@ -49,15 +47,11 @@ export const hotelTempBookingService = async (payload, pricingData) => {
       Remarks: payload.Remarks,
     };
 
-    console.log("SUPPLIER REQUEST BODY =>");
 
-    console.log(JSON.stringify(requestBody, null, 2));
 
     /*
         AUTO APPLY BEST COUPON
       */
-console.log("Currency =", pricingData.currency);
-console.log("Currency Symbol =", pricingData.currencySymbol);
     const couponData = await findBestCoupon({
       module: "hotel",
 
@@ -68,8 +62,6 @@ console.log("Currency Symbol =", pricingData.currencySymbol);
 
   currencySymbol: pricingData.currencySymbol,
     });
-    console.log(pricingData);
-console.log("cooupendata ", couponData)
     let appliedDiscount = couponData?.bestDiscount || 0;
     const maxAllowed = Number(pricingData.serviceCharge || 0) * 0.7;
 
@@ -132,22 +124,18 @@ if (appliedDiscount > maxAllowed) {
       tempBookingStatus: "initiated",
     });
 
-    console.log("DB RECORD CREATED =>", dbRecord._id);
 
     /*
         SUPPLIER API CALL
       */
 
-    console.log("CALLING SUPPLIER API...");
 
     const response = await supplierAPI.post(
       "/JSONService/HotelTempBooking",
       requestBody,
     );
 
-    console.log("SUPPLIER SUCCESS RESPONSE =>");
 
-    console.log(JSON.stringify(response.data, null, 2));
 
     const responseTime = Date.now() - requestStartTime;
 
@@ -184,17 +172,11 @@ if (appliedDiscount > maxAllowed) {
   } catch (error) {
     const responseTime = Date.now() - requestStartTime;
 
-    console.log("=================================");
 
-    console.log("SERVICE ERROR");
 
-    console.log("ERROR MESSAGE =>", error.message);
 
-    console.log("ERROR STATUS =>", error?.response?.status);
 
-    console.log("ERROR RESPONSE =>");
 
-    console.log(error?.response?.data);
 
     /*
         SAVE FAILED STATUS
@@ -211,7 +193,6 @@ if (appliedDiscount > maxAllowed) {
 
       await dbRecord.save();
 
-      console.log("FAILED STATUS UPDATED");
     }
 
     throw error;
@@ -222,7 +203,6 @@ export const updateCouponService = async ({ tempBookingId, couponCode }) => {
   const booking = await HotelTempBooking.findOne({
     _id: tempBookingId,
   });
-  console.log("booking =", booking);
   if (!booking) {
     throw new Error("Booking not found");
   }
@@ -309,9 +289,7 @@ export const getTempBookingByBookingRefService = async (
   bookingRefNo,
 ) => {
   const now = new Date();
-  console.time("Total Service");
 
-  console.time("Booking Query");
 
   const booking = await HotelTempBooking.findOne({
     userId,
@@ -319,7 +297,6 @@ export const getTempBookingByBookingRefService = async (
     tempBookingStatus: "payment_pending",
     "supplierResponse.bookingRefNo": bookingRefNo,
   }).lean();
-console.log("Booking =", booking)
   if (!booking) {
     throw new Error("Booking not found");
   }
@@ -328,9 +305,7 @@ console.log("Booking =", booking)
     booking.pricing.finalPrice - booking.pricing.platformFeeAndTax;
 
   const totalAmount = baseAmount + booking.pricing.platformFeeAndTax;
-  console.timeEnd("Booking Query");
 
-  console.time("Coupon Query");
 
   const coupons = await Coupon.find({
     isActive: true,
@@ -343,9 +318,7 @@ console.log("Booking =", booking)
       "code title image discountType discountValue minAmount maxDiscountPercentOfServiceTax isAutoApply usageLimit usedCount",
     )
     .lean();
-  console.timeEnd("Coupon Query");
 
-  console.timeEnd("Total Service");
 
   const availableCoupons = coupons.filter(
     (coupon) =>

@@ -27,7 +27,6 @@ export const protect = async (req, res, next) => {
       select: "name permissions type isActive",
     });
 
-    console.log("user-data:", user.isActive, user.role?.isActive);
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -52,6 +51,7 @@ export const protect = async (req, res, next) => {
       name: user.name,
       email: user.email,
       mobile: user.mobile,
+      mobileCountryCode: user.mobileCountryCode || "+91",
       
 
       role: user.role?.name,

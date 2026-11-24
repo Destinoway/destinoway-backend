@@ -8,6 +8,7 @@ import {
 import ApiError from "../../utils/response/ApiError.js";
 import Role from "../role/role.model.js";
 import User from "./user.model.js";
+import { parseMobileNumber } from "../../utils/mobileNumber.js";
 
 // PAGINATION
 
@@ -25,6 +26,7 @@ const getPagination = (query) => {
 // CREATE STAFF (ADMIN ONLY)
 
 export const createStaff = async (data) => {
+  data = { ...data, ...parseMobileNumber(data.mobile, data.mobileCountryCode) };
   if (!data.password) throw new ApiError(400, "Password is required");
   if (!data.role) throw new ApiError(400, "Role ID is required");
 
@@ -61,6 +63,7 @@ export const createStaff = async (data) => {
     email: data.email,
     mobile: data.mobile,
     password: hashedPassword,
+    mobileCountryCode: data.mobileCountryCode,
     role: roleDoc._id,
     type: "staff",
     providers: ["email"],
@@ -267,7 +270,11 @@ export const updateUser = async (id, data) => {
   }
 
   if (data.name) user.name = data.name;
-  if (data.mobile) user.mobile = data.mobile;
+  if (data.mobile !== undefined || data.mobileCountryCode !== undefined) {
+    const phone = parseMobileNumber(data.mobile ?? user.mobile, data.mobileCountryCode ?? user.mobileCountryCode ?? "+91");
+    if (user.mobile !== phone.mobile || (user.mobileCountryCode || "+91") !== phone.mobileCountryCode) user.isMobileVerified = false;
+    Object.assign(user, phone);
+  }
 
   if (data.password) {
     user.password = await bcrypt.hash(data.password, 10);

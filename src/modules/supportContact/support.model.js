@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 
 const supportSchema = new mongoose.Schema(
   {
+    customerSupportCountryCodes: { type: [String], default: undefined },
+    whatsappSupportCountryCodes: { type: [String], default: undefined },
+    bookingSupportCountryCodes: { type: [String], default: undefined },
+    bussinessPartnershipCountryCodes: { type: [String], default: undefined },
+    immidiateHelpNumberCountryCodes: { type: [String], default: undefined },
     customerSupport: {
       type: [String],
       required: true,

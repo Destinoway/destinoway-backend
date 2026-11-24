@@ -1,102 +1,407 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>PAN Journey OTP</title>
-  </head>
 
-  <body
-    style="
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Destinoway - Verify Email</title>
+
+  <style>
+    /* ================= GLOBAL RESET ================= */
+    * {
       margin: 0;
       padding: 0;
-      background: #f4f6fb;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+    }
+
+    body {
       font-family: Arial, Helvetica, sans-serif;
-    "
-  >
-    <table width="100%" bgcolor="#f4f6fb" cellpadding="0" cellspacing="0">
-      <tr>
-        <td align="center">
-          <!-- Main Card -->
-          <table
-            width="600"
-            cellpadding="0"
-            cellspacing="0"
-            style="
-              background: #ffffff;
-              margin-top: 40px;
-              border-radius: 10px;
-              overflow: hidden;
-              box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
-            "
-          >
-            <!-- Header -->
-            <tr>
-              <td
-                style="
-                  background: #0d6efd;
-                  padding: 20px;
-                  text-align: center;
-                  color: #fff;
-                "
-              >
-                <h1 style="margin: 0">Pan Journey</h1>
-                <p style="margin: 0; font-size: 14px">
-                  Travel Smart • Travel Easy
-                </p>
-              </td>
-            </tr>
+      background: #ffffff;
+      color: #17254f;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
 
-            <!-- Body -->
-            <tr>
-              <td style="padding: 40px; text-align: center">
-                <h2 style="margin-top: 0">Verify your email</h2>
-                <p style="color: #555; font-size: 16px">
-                  Use the OTP below to continue your login.
-                </p>
+    /* ================= EMAIL CONTAINER ================= */
+    .email-container {
+      width: 100%;
+      max-width: 600px;
+      margin: auto;
+      background: #f5f6f8;
+      border: 1px solid #f0f0f0;
+      overflow: hidden;
+    }
 
-                <!-- OTP BOX -->
-                <div
-                  style="
-                    font-size: 32px;
-                    letter-spacing: 6px;
-                    background: #f1f3f9;
-                    display: inline-block;
-                    padding: 15px 30px;
-                    border-radius: 8px;
-                    margin: 20px 0;
-                    font-weight: bold;
-                  "
-                >
-                  {{OTP}}
-                </div>
+    /* ================= LOGO HEADER ================= */
+    .logo-header {
+      width: 100%;
+      min-height: 56px;
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 8px 20px;
+      background: #f5f6f8;
+      border-bottom: 1px solid #e1e5ec;
+    }
 
-                <p style="color: #888; font-size: 14px">
-                  This OTP is valid for <b>5 minutes</b>.
-                </p>
+    .logo {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      flex-shrink: 0;
+      width: 150px;
+      height: 40px;
+      text-decoration: none;
+      line-height: 0;
+      overflow: hidden;
+    }
 
-                <p style="color: #999; font-size: 13px; margin-top: 30px">
-                  If you didn’t request this, you can safely ignore this email.
-                </p>
-              </td>
-            </tr>
+    .logo img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      object-fit: contain;
+      object-position: left center;
+      border: 0;
+      outline: none;
+    }
 
-            <!-- Footer -->
-            <tr>
-              <td
-                style="
-                  background: #f7f7f7;
-                  padding: 20px;
-                  text-align: center;
-                  font-size: 12px;
-                  color: #999;
-                "
-              >
-                © 2026 PAN Journey • All rights reserved
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
+    /* ================= MAIN HEADING ================= */
+    .heading-section {
+      min-height: 72px;
+      padding: 17px 12px 12px;
+      background: #142354;
+      color: #ffffff;
+      text-align: center;
+    }
+
+    .heading-subtitle {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      line-height: 1.5;
+      margin-bottom: 8px;
+      color: #d5d9e8;
+    }
+
+    .heading-section h1 {
+      font-size: 22px;
+      line-height: 1.3;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    /* ================= EMAIL CONTENT ================= */
+    .email-content {
+      width: 100%;
+      max-width: 434px;
+      min-height: 272px;
+      margin: 0 auto;
+      padding: 30px 28px 0;
+      background: #ffffff;
+    }
+
+    .greeting,
+    .instruction {
+      font-size: 12px;
+      line-height: 1.6;
+      color: #475673;
+    }
+
+    .greeting {
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .instruction {
+      margin-bottom: 20px;
+    }
+
+    /* ================= OTP BOXES ================= */
+    .otp-container {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      margin-bottom: 25px;
+    }
+
+    .otp-box {
+      width: 39px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border: 1px solid #7180a5;
+      border-radius: 4px;
+      background: #ffffff;
+      color: #102354;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    /* ================= EXPIRY MESSAGE ================= */
+    .expiry-message {
+      font-size: 11px;
+      line-height: 1.6;
+      color: #52617c;
+      margin-bottom: 20px;
+    }
+
+    .expiry-message strong {
+      color: #273550;
+      font-weight: 700;
+    }
+
+    /* ================= FOOTER ================= */
+    .email-footer {
+      width: calc(100% + 56px);
+      margin-left: -28px;
+      background: #f7f9fc;
+      padding: 19px 12px 17px;
+      text-align: center;
+      color: #77839b;
+      border-top: 1px solid #edf0f5;
+    }
+
+    .email-footer p {
+      font-size: 11px;
+      line-height: 1.8;
+      overflow-wrap: anywhere;
+    }
+
+    .email-footer a {
+      color: #ed4c32;
+      text-decoration: none;
+    }
+
+    .email-footer .website-link {
+      color: #152653;
+      font-weight: 700;
+    }
+
+    .email-footer .copyright {
+      margin-top: 6px;
+      color: #9aa8bf;
+    }
+
+    /* ================= TABLET RESPONSIVE ================= */
+    @media (min-width: 481px) and (max-width: 768px) {
+      body {
+        padding: 16px;
+      }
+
+      .email-container {
+        max-width: 600px;
+      }
+
+      .email-content {
+        padding: 28px 24px 0;
+      }
+
+      .email-footer {
+        width: calc(100% + 48px);
+        margin-left: -24px;
+      }
+    }
+
+    /* ================= MOBILE RESPONSIVE ================= */
+    @media (max-width: 480px) {
+      body {
+        padding: 12px;
+        align-items: flex-start;
+      }
+
+      .email-container {
+        width: 100%;
+      }
+
+      .logo-header {
+        min-height: 54px;
+        padding: 8px 14px;
+      }
+
+      .logo {
+        width: 120px;
+        height: 34px;
+      }
+
+      .heading-section {
+        padding: 17px 8px 12px;
+      }
+
+      .heading-subtitle {
+        font-size: 8px;
+        letter-spacing: 1.2px;
+      }
+
+      .heading-section h1 {
+        font-size: 19px;
+      }
+
+      .email-content {
+        max-width: 100%;
+        min-height: auto;
+        padding: 25px 20px 0;
+      }
+
+      .greeting,
+      .instruction {
+        font-size: 11px;
+      }
+
+      .otp-container {
+        gap: 8px;
+        margin-bottom: 22px;
+      }
+
+      .otp-box {
+        width: 38px;
+        height: 42px;
+        font-size: 20px;
+      }
+
+      .expiry-message {
+        font-size: 10px;
+        margin-bottom: 20px;
+      }
+
+      .email-footer {
+        width: calc(100% + 40px);
+        margin-left: -20px;
+        padding: 16px 10px;
+      }
+
+      .email-footer p {
+        font-size: 10px;
+      }
+    }
+
+    /* ================= SMALL MOBILE ================= */
+    @media (max-width: 350px) {
+      body {
+        padding: 6px;
+      }
+
+      .logo-header {
+        min-height: 48px;
+        padding: 7px 10px;
+      }
+
+      .logo {
+        width: 105px;
+        height: 30px;
+      }
+
+      .heading-section h1 {
+        font-size: 17px;
+      }
+
+      .email-content {
+        padding: 22px 14px 0;
+      }
+
+      .otp-container {
+        gap: 7px;
+      }
+
+      .otp-box {
+        width: 35px;
+        height: 39px;
+        font-size: 18px;
+      }
+
+      .email-footer {
+        width: calc(100% + 28px);
+        margin-left: -14px;
+        padding: 14px 8px;
+      }
+
+      .email-footer p {
+        font-size: 9px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="email-container">
+
+    <!-- Logo Header -->
+    <header class="logo-header">
+      <a href="https://destinoway.in" class="logo">
+        <img src="cid:destinoway-logo" alt="Destinoway Logo" />
+      </a>
+    </header>
+
+    <!-- Main Heading -->
+    <section class="heading-section">
+      <p class="heading-subtitle">
+        THANKS FOR SIGNING UP WITH DESTINOWAY!
+      </p>
+
+      <h1>Verify Your E-Mail Address</h1>
+    </section>
+
+    <!-- Email Content -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#fff">
+      <tr><td style="padding:28px 32px 0;background:#fff;text-align:left">
+
+      <p class="greeting" style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;font-weight:700;color:#475673">Hello Traveler,</p>
+
+      <p class="instruction" style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#475673">
+        Please use the following One Time Password (OTP)
+      </p>
+
+      <!-- OTP Boxes -->
+      <div class="otp-container" style="display:block;width:100%;margin:22px 0 26px;text-align:center">
+        {{OTP_BOXES}}
+      </div>
+
+      <!-- Expiry Message -->
+      <p class="expiry-message" style="margin:0 0 24px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#52617c">
+        This passcode will only be valid for the next
+        <strong>{{EXPIRY_MINUTES}} minutes.</strong>
+      </p>
+      </td></tr>
     </table>
-  </body>
+
+      <!-- Footer -->
+      <footer class="email-footer" style="width:100%;margin:0;background:#f7f9fc;padding:19px 12px 17px;text-align:center;color:#77839b;border-top:1px solid #edf0f5">
+        <p>
+          Need assistance? Contact us at
+          <a href="mailto:support@destinoway.in">
+            support@destinoway.in
+          </a>
+          or visit
+          <a
+            class="website-link"
+            href="https://destinoway.in"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            destinoway.in
+          </a>
+        </p>
+
+        <p class="copyright">
+          © {{YEAR}} Destinoway Pvt. Ltd. All rights reserved.
+        </p>
+      </footer>
+
+  </div>
+
+</body>
 </html>

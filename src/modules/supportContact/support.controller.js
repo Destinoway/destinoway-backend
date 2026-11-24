@@ -25,7 +25,7 @@ export const createSupport = async (req, res) => {
       201
     );
   } catch (error) {
-    return sendError(res, error.message, 500);
+    return sendError(res, error.message, error.statusCode || 500);
   }
 };
 
@@ -46,7 +46,6 @@ export const getAllSupport = async (req, res) => {
 
 export const getSingleSupport = async (req, res) => {
   try {
-    console.log(req.params); 
     // should print { supportType: 'contact_us' }
 
     const result = await getSingleSupportService(
@@ -59,7 +58,7 @@ export const getSingleSupport = async (req, res) => {
       result
     );
   } catch (error) {
-    return sendError(res, error.message, 404);
+    return sendError(res, error.message, error.statusCode || 404);
   }
 };
 
@@ -81,7 +80,7 @@ export const updateSupport = async (req, res) => {
       result
     );
   } catch (error) {
-    return sendError(res, error.message, 404);
+    return sendError(res, error.message, error.statusCode || 404);
   }
 };
 

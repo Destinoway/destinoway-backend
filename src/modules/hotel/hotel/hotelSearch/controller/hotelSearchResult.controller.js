@@ -1,0 +1,122 @@
+// import { asyncHandler } from "../../../../../middleware/asyncHandler.js";
+
+// import {
+//   sendSuccess,
+//   sendError,
+// } from "../../../../../utils/response/ApiResponse.js";
+
+// import {
+//   getHotelSearchResults,
+// } from "../service/hotelSearchResult.service.js";
+
+// export const getHotelSearchResultsController = asyncHandler(
+//   async (req, res) => {
+//     try {
+//       const { searchId } = req.params;
+
+//       const {
+//         page = 1,
+//         limit = 20,
+//       } = req.query;
+
+//       const result = await getHotelSearchResults({
+//         searchId,
+//         page,
+//         limit,
+//       });
+
+//       return sendSuccess(
+//         res,
+//         "Hotel search results fetched successfully",
+//         result
+//       );
+//     } catch (error) {
+//       console.error(
+//         "❌ HOTEL SEARCH RESULT ERROR:",
+//         error
+//       );
+
+//       return sendError(
+//         res,
+//         error.message ||
+//           "Unable to fetch hotel search results",
+//         error.statusCode || 500
+//       );
+//     }
+//   }
+// );
+
+
+
+
+import { asyncHandler } from "../../../../../middleware/asyncHandler.js";
+
+import {
+  sendSuccess,
+  sendError,
+} from "../../../../../utils/response/ApiResponse.js";
+
+import {
+  getHotelSearchResults,
+} from "../service/hotelSearchResult.service.js";
+
+export const getHotelSearchResultsController = asyncHandler(
+  async (req, res) => {
+    try {
+      const { searchId } = req.params;
+
+      const {
+        page = 1,
+        limit = 20,
+        hotelId,
+        hotelName,
+        minPrice,
+        maxPrice,
+        starRatings,
+        starRating,
+        amenities,
+        minReviewRating,
+        propertyType,
+        availableOnly,
+        isRecommended,
+        freeCancellation,
+        freeBreakfast,
+        sortBy = "price",
+        sortOrder = "asc",
+      } = req.query;
+
+      const result = await getHotelSearchResults({
+        searchId,
+        page,
+        limit,
+        hotelId,
+        hotelName,
+        minPrice,
+        maxPrice,
+        starRatings: starRatings ?? starRating,
+        amenities,
+        minReviewRating,
+        propertyType,
+        availableOnly,
+        isRecommended,
+        freeCancellation,
+        freeBreakfast,
+        sortBy,
+        sortOrder,
+      });
+
+      return sendSuccess(
+        res,
+        "Hotel search results fetched successfully",
+        result
+      );
+    } catch (error) {
+
+      return sendError(
+        res,
+        error.message || "Unable to fetch hotel search results",
+        error.statusCode || 500
+      );
+    }
+  }
+);

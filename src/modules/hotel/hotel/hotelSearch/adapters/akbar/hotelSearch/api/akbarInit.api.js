@@ -1,40 +1,37 @@
-
-
 import axios from "axios";
-import { getAKBARToken } from "../../../../../../supplier/akbar/akbarAuth.service.js";
+import { getAKBARInitContext } from "../../../../../../supplier/akbar/akbarAgentProfile.service.js";
+import {
+  logSupplierApiExchange,
+  resetSupplierHotelLogLimit,
+} from "../../../../../../hotel/utils/hotelObservability.js";
 
-export const akbarInitAPI = async (payload) => {
-  const token = await getAKBARToken();
+export const akbarInitAPI = async (payload, { correlationId } = {}) => {
+  const { token, ...initFields } = await getAKBARInitContext({
+    correlationId,
+  });
+  const requestBody = { ...payload, ...initFields };
+  const endpoint = `${process.env.AKBAR_HOTEL_API_URL}/api/hotels/search/init`;
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
 
-  const url = `${process.env.AKBAR_HOTEL_API_URL}/api/hotels/search/init`;
-
-  console.log("AKBAR INIT URL:", url);
-
-  try {
-  const apiStart = performance.now();
-
-const response = await axios.post(
-  url,
-  payload,
-  {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+  resetSupplierHotelLogLimit(correlationId);
+  const response = await logSupplierApiExchange(
+    {
+      operation: "hotel_search_init",
+      correlationId,
+      hotelLogKey: correlationId,
+      method: "POST",
+      endpoint,
+      headers,
+      request: { body: requestBody },
     },
-    timeout: 30000,
-  }
-);
+    () =>
+      axios.post(endpoint, requestBody, {
+        headers,
+      }),
+  );
 
-const apiEnd = performance.now();
-
-console.log(
-  `⏱️ AKBAR INIT API TIME: ${(apiEnd - apiStart).toFixed(2)} ms`
-);
-
-return response.data;
-  } catch (error) {
-    
-
-    throw error;
-  }
+  return response.data;
 };

@@ -15,7 +15,6 @@ export const updateThemeController = async (req, res) => {
       theme
     );
   } catch (error) {
-    console.error("Update Theme Error:", error);
     return sendError(
       res,
       error.message || "Failed to update theme"
@@ -33,7 +32,6 @@ export const getThemeController = async (req, res) => {
       theme
     );
   } catch (error) {
-    console.error("Get Theme Error:", error);
     return sendError(
       res,
       error.message || "Failed to fetch theme"

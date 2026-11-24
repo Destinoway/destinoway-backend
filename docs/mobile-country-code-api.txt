@@ -1,0 +1,86 @@
+MOBILE CALLING CODE FIELDS
+
+All endpoints below have prefix /api/v1.
+Calling codes are stored separately as strings such as "+91", "+44", "+1".
+Values without a plus (e.g. "91") are normalized to "+91".
+Calling codes accept 1-3 digits starting with a nonzero digit; this is format
+validation, not a comprehensive country-specific numbering-plan check.
+
+USER / OTP / PROFILE
+POST /customer/auth/otp/send
+POST /customer/auth/otp/verify
+POST /customer/profile/mobile/verify
+PATCH /customer/profile
+POST /users/staff
+PUT /users/:id
+
+Example:
+{ "mobile": "7700900123", "mobileCountryCode": "+44" }
+For OTP verification add "otp": "123456".
+Staff creation still requires name, email, password and role.
+
+OTP send and verify MUST use the same mobile and mobileCountryCode.
+Twilio receives +447700900123 for the example above. The DB stores
+mobile=7700900123 and mobileCountryCode=+44 separately after verification.
+India numbers remain 10 digits. Other national numbers accept 4-14 digits,
+with at most 15 total digits including calling code. No last-10 truncation.
+
+If omitted on new submissions, calling code defaults to +91.
+On profile/staff updates, an omitted code preserves the existing code.
+Changing a user's mobile or calling code resets isMobileVerified to false.
+Profile linking uses the same Twilio OTP verification as login.
+Email and Google login and admin login responses also expose mobileCountryCode.
+
+Existing user documents are not bulk modified. Missing calling codes are
+treated as +91 for compatibility, and are saved on subsequent phone updates
+or OTP login. Existing mobile uniqueness is unchanged: a national number
+cannot be registered twice under different calling codes. OTP login rejects
+a country mismatch rather than merging into the other account.
+
+HOTEL ITINERARY
+POST /hoteltempBooking/search/:searchId/:hotelId/itinerary
+
+Add these fields to the existing full booking payload:
+"contactInfo": {
+  "mobile": "7700900123",
+  "mobileCountryCode": "+44",
+  "phone": "12345678",
+  "phoneCountryCode": "+65",
+  "gstMobile": "9876543210",
+  "gstMobileCountryCode": "+91"
+}
+
+Each guest in rooms[].adults[] / rooms[].children[] may include:
+{ "mobileNo": "7700900123", "mobileCountryCode": "+44" }
+
+All these codes are persisted in the itinerary's contactInfo/rooms snapshots.
+Contact mobileCountryCode maps to supplier ContactInfo.MobileCountryCode.
+The contact default follows AKBAR_MOBILE_COUNTRY_CODE, or +91 when unset.
+Optional phone/GST/guest codes default to +91. Extra undocumented supplier
+fields are not added for guest/phone/GST codes; they are stored locally.
+
+SUPPORT
+POST /createSupport
+PUT /updateSupport/:id
+
+Existing string arrays are retained; each has a separate aligned code array:
+customerSupport               -> customerSupportCountryCodes
+whatsappSupport               -> whatsappSupportCountryCodes
+bookingSupport                -> bookingSupportCountryCodes
+bussinessPartnership          -> bussinessPartnershipCountryCodes
+immidiateHelpNumber           -> immidiateHelpNumberCountryCodes
+
+Example:
+{
+  "whatsappSupport": ["7700900123", "9876543210"],
+  "whatsappSupportCountryCodes": ["+44", "+91"]
+}
+
+Code arrays must have the same length and order as their number arrays.
+Existing codes are preserved when the code array is omitted and lengths
+match; otherwise omitted codes default to +91. Always send both arrays
+when reordering numbers or changing a number's country.
+
+VALIDATION
+node --test test/mobile-country-code.test.js
+Tests mock Twilio and database operations. No live SMS or DB migration is run.

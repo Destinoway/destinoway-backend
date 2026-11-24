@@ -48,6 +48,11 @@ const userSchema = new mongoose.Schema(
       match: /^\S+@\S+\.\S+$/,
     },
 
+    mobileCountryCode: {
+      type: String,
+      default: "+91",
+      match: /^\+[1-9]\d{0,2}$/,
+    },
     mobile: {
       type: String,
       unique: true,

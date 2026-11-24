@@ -3,7 +3,7 @@ import {
   generateAccessToken,
   generateRefreshToken,
 } from "../../../../utils/authentication/token.util.js";
-import { normalizeMobile } from "../../../../utils/normalizeMobile.js";
+import { parseMobileNumber } from "../../../../utils/mobileNumber.js";
 import {
   sendError,
   sendSuccess,
@@ -13,31 +13,30 @@ import { findOrCreateAndMergeUser } from "../auth.service.js";
 import { sendOTPService, verifyOTPService } from "./otp.service.js";
 
 export const sendOTP = asyncHandler(async (req, res) => {
-  const mobile = normalizeMobile(req.body.mobile);
+  const { mobile, mobileCountryCode } = parseMobileNumber(req.body.mobile, req.body.mobileCountryCode);
 
-  if (!mobile || mobile.length !== 10) {
+  if (!mobile) {
     return sendError(res, "Invalid mobile number", 400);
   }
 
-  await sendOTPService(mobile);
+  await sendOTPService(mobile, mobileCountryCode);
 
   return sendSuccess(res, "OTP sent successfully");
 });
 
 export const verifyOTP = asyncHandler(async (req, res) => {
-  const mobile = normalizeMobile(req.body.mobile);
+  const { mobile, mobileCountryCode } = parseMobileNumber(req.body.mobile, req.body.mobileCountryCode);
   const otp = String(req.body.otp || "");
 
-  console.log("🔍 VERIFY LOGIN INPUT:", mobile, otp);
-
-  if (!mobile || mobile.length !== 10 || !otp) {
+  if (!mobile || !otp) {
     return sendError(res, "Invalid mobile or OTP", 400);
   }
 
-  await verifyOTPService(mobile, otp);
+  await verifyOTPService(mobile, otp, mobileCountryCode);
 
   const user = await findOrCreateAndMergeUser({
     mobile,
+    mobileCountryCode,
     provider: "otp",
   });
 
@@ -58,6 +57,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
   return sendSuccess(res, "Login successful", {
     _id: user._id,
     mobile: user.mobile,
+    mobileCountryCode: user.mobileCountryCode || "+91",
     email: user.email || null,
     name: user.name || null,
 
