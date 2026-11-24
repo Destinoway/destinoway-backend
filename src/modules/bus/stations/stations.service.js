@@ -33,10 +33,10 @@ const writeCache = async (key, value) => {
  * @param {{ term?: string, type?: "from" | "to" | "popular" }} params
  * @returns {{ stations: Array, source: "cache" | "supplier" }}
  */
-export const getBusStationsService = async ({ term = "", type } = {}) => {
+export const getBusStationsService = async ({ term = "", type, refresh = false } = {}) => {
   const normalizedTerm = term.trim().toLowerCase();
 
-  let stations = await readCache(CACHE_KEY);
+  let stations = refresh ? null : await readCache(CACHE_KEY);
   let source = "cache";
 
   if (!stations) {

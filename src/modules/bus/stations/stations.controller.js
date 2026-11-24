@@ -5,11 +5,12 @@ import { getBusStationsService } from "./stations.service.js";
 // POST /api/v1/bus/stations
 // Body is already checked by validateBusStationsRequest.
 export const getBusStations = asyncHandler(async (req, res) => {
-  const { term = "", type } = req.body || {};
+  const { term = "", type, refresh = false } = req.body || {};
 
   const { stations, source } = await getBusStationsService({
     term,
     type: type ? String(type).toLowerCase() : undefined,
+    refresh,
   });
 
   return sendSuccess(res, "Bus stations fetched successfully", stations, {
