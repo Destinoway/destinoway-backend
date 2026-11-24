@@ -1,4 +1,5 @@
 import { getAkbarBusSearch } from "../search/adapters/akbar/api/search.api.js";
+import { getCachedBusSearch } from "../search/searchCache.js";
 import { getAkbarSeatLayout } from "../seatLayout/adapters/akbar/api/seatLayout.api.js";
 import { createAkbarTravelItinerary } from "./adapters/akbar/api/travelItinerary.api.js";
 import { mapAkbarTravelItinerary } from "./adapters/akbar/mappers/travelItinerary.mapper.js";
@@ -10,12 +11,14 @@ const fail = (message, statusCode = 409) => {
 };
 
 export const createBusTravelItineraryService = async ({ tui, busServiceId, seatName, buid, duid, passenger, contact }) => {
-  const search = await getAkbarBusSearch(tui);
+  const search = await getCachedBusSearch(tui) || await getAkbarBusSearch(tui);
   if (String(search.completed).toLowerCase() !== "true") fail("Bus search is not complete");
+
+  if (!Array.isArray(search.trips)) fail("Search results are unavailable; fetch results again before selecting a bus");
 
   const bus = search.trips?.flatMap((trip) => trip.journey || [])
     .find((item) => String(item.busServiceId) === busServiceId);
-  if (!bus) fail("Selected bus is not available in this search");
+  if (!bus) fail("busServiceId does not belong to this search TUI; use both values from the same completed result");
 
   const journeyDate = String(bus.departureTime || "").slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(journeyDate)) fail("Supplier did not return a journey date", 502);
