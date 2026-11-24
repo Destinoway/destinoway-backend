@@ -5,7 +5,7 @@ import { mapAkbarStationsResponse } from "./adapters/akbar/mappers/stations.mapp
 // Station list changes rarely, so cache it for a day.
 const CACHE_TTL_SECONDS = 24 * 60 * 60;
 
-const cacheKey = (term) => `AKBAR:bus:stations:${term || "_all"}`;
+const CACHE_KEY = "AKBAR:bus:stations:_all";
 
 const readCache = async (key) => {
   try {
@@ -33,20 +33,28 @@ const writeCache = async (key, value) => {
  */
 export const getBusStationsService = async ({ term = "", type } = {}) => {
   const normalizedTerm = term.trim().toLowerCase();
-  const key = cacheKey(normalizedTerm);
 
-  let stations = await readCache(key);
+  let stations = await readCache(CACHE_KEY);
   let source = "cache";
 
   if (!stations) {
-    const response = await getBusStationsAPI({ term: normalizedTerm });
+    // AKBAR's documented station-list request uses an empty Term. Filter the
+    // returned list here so searches also work when AKBAR ignores partial terms.
+    const response = await getBusStationsAPI({ term: "" });
     stations = mapAkbarStationsResponse(response);
     source = "supplier";
 
     // Don't cache empty results, the supplier may have had a hiccup.
     if (stations.length) {
-      await writeCache(key, stations);
+      await writeCache(CACHE_KEY, stations);
     }
+  }
+
+  if (normalizedTerm) {
+    stations = stations.filter((station) =>
+      station.name.toLowerCase().includes(normalizedTerm) ||
+      String(station.alternateCity || "").toLowerCase().includes(normalizedTerm),
+    );
   }
 
   if (type) {
