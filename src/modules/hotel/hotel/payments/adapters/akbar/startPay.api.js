@@ -435,7 +435,8 @@ const getItineraryValues = (booking) => {
   const amount = Number(
     itinerary.NetAmount ??
       itinerary.netAmount ??
-      booking.price?.total
+      booking.price?.supplierNetAmount ??
+      booking.price?.supplierTotal
   );
 
   if (typeof tui !== "string" || !tui.trim()) {

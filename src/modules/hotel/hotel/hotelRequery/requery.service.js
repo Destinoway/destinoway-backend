@@ -5,7 +5,13 @@ export const getHotelRequeryByUserService = async (
   bookingRefNo,
   status
 ) => {
-  const query = { userId };
+  // Price verification also creates itineraries. Those drafts are not bookings
+  // and have no bookingRefNo until CreateItinerary starts.
+  const query = {
+    userId,
+    itineraryStatus: { $ne: "draft" },
+    bookingRefNo: { $type: "string", $ne: "" },
+  };
 
   if (bookingRefNo) {
     query.$or = [

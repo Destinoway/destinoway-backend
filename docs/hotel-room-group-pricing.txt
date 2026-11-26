@@ -1,0 +1,37 @@
+Hotel room-group amount correction - 26 November 2026
+
+Observed Case 04: PriceVerify returned roomCount 2 and totalRate 895.59.
+The original CreateItinerary request multiplied this by 2 and sent 1791.18.
+The supplier created both room occupancies and returned NetAmount 895.59;
+RetrieveBooking also returned two rooms with total NetFare 895.59.
+
+The corrected mapping treats totalRate as the complete room-group amount.
+Distinct room groups are summed once. roomCount remains occupancy metadata.
+Single-room amounts are unchanged. For this captured rate, the outgoing
+CreateItinerary NetAmount is now 895.59 instead of 1791.18.
+
+PriceVerify customer totals, service taxes, coupon distribution and saved
+supplier totals use the same group basis. Each group's customerPrice is
+the whole group's price; clients must not multiply it by roomCount.
+Customer markup/tax/coupon calculation still applies through existing rules.
+
+StartPay uses the supplier itinerary response NetAmount. If that field is
+absent it uses saved supplierNetAmount/supplierTotal, never the marked-up
+customer total. Missing supplier amounts stop payment rather than guessing.
+
+Fresh drafts carry price.rateBasis=group_total. Old drafts must be price
+verified again before CreateItinerary or coupon updates; no historical
+bookings or previously captured logs are modified. If a supplier rate
+changes between price verification and booking, CreateItinerary stops
+with 409 so the client can run price verification again.
+
+Validation:
+npm run test:hotel-pricing
+Tests mock supplier HTTP, DB and pricing-rule configuration. They exercise
+the actual verify, coupon, create-itinerary and StartPay service paths.
+
+Deployment:
+Deploy updated source and restart the backend. Run a fresh two-room
+search/PriceVerify/CreateItinerary/StartPay/RetrieveBooking and capture
+new logs. Historical Case 04 logs still contain the original discrepancy.
+A fresh supplier run has not been performed locally for this change.
