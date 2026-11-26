@@ -3,6 +3,7 @@ import HotelItinerary from "../itinerary/hotelItinerary.model.js";
 import PaymentGateway from "../../../gateways/models/paymentGateway.model.js";
 import HotelPaymentTransaction from "./models/hotelPaymentTransaction.model.js";
 import { sendBookingConfirmationEmail } from "../../../mail/services/bookingConfirmation.mail.js";
+import { publishNotification } from "../../../notification/notification.service.js";
 import { createHotelPaymentGateway } from "./paymentGateway.factory.js";
 import { getAkbarStartPayResponseData, startAkbarHotelPay } from "./adapters/akbar/startPay.api.js";
 import {
@@ -859,6 +860,21 @@ const startSupplierBooking = async ({
       },
       () => Promise.all([claimedBooking.save(), transaction.save()])
     );
+    if (claimedBooking.userId) {
+      void publishNotification(claimedBooking.userId, {
+        title: "Hotel booking confirmed",
+        body: "Your hotel booking is confirmed. Open the app to view your booking.",
+        data: {
+          type: "hotel_booking_confirmed",
+          bookingRefNo: claimedBooking.bookingRefNo,
+        },
+      }).catch((error) => {
+        console.warn("Hotel booking confirmation notification could not be saved", {
+          bookingRefNo: claimedBooking.bookingRefNo,
+          code: error.code,
+        });
+      });
+    }
     await retrieveAndSaveAkbarBookingDetails({
       booking: claimedBooking,
       correlationId,

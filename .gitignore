@@ -31,3 +31,5 @@ Thumbs.db
 # temporary files
 tmp/
 temp/
+
+/.secrets/
