@@ -8,7 +8,10 @@ const schema = new mongoose.Schema(
         "razorpay",
         "stripe"
       ],
-      required: true
+      required: true,
+      trim: true,
+      lowercase: true,
+      unique: true
     },
 
     isActive: {

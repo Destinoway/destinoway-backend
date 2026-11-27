@@ -22,10 +22,22 @@ export const getHotelRequeryByUserController = async (req, res) => {
           req.query.bookingRefNo,
           req.query.status
         );
+    const message =
+      Array.isArray(data) && data.length === 0
+        ? "Booking does not exist"
+        : "Hotel requery fetched successfully";
+
+    if (Array.isArray(data) && data.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message,
+        meta: null,
+      });
+    }
 
     return sendSuccess(
       res,
-      "Hotel requery fetched successfully",
+      message,
       data,
       null,
       200

@@ -26,6 +26,7 @@ import hotelRequeryRoutes from "./modules/hotel/hotel/hotelRequery/requery.route
 import hotelPaymentRoutes from "./modules/hotel/hotel/payments/hotelPayment.routes.js";
 import adminHotelBookingRoutes from "./modules/hotel/adminBookings/adminHotelBookings.routes.js";
 import gatewayroutewebhook from "./modules/gateways/routes/webhook.routes.js";
+import paymentGatewayRoutes from "./modules/gateways/routes/paymentGateway.routes.js";
 import homecontent from "./modules/HomeContent/homeContent.route.js";
 import mediaRoutes from "./modules/media/media.routes.js";
 import countryRoutes from "./modules/priceMarkup/countryData/country.routes.js";
@@ -112,6 +113,7 @@ app.use("/api/v1/hotelDetails", hotelItineraryPricingRoutes);
 app.use("/api/v1/hoteltempBooking", hotelItineraryRoutes);
 app.use("/api/v1", hotelRequeryRoutes);
 app.use("/api/v1/hotel-payments", hotelPaymentRoutes);
+app.use("/api/v1/payment-gateways", paymentGatewayRoutes);
 app.use("/api/v1/admin", adminHotelBookingRoutes);
 
 app.use("/api/v1/masterData", masterRoutes);
