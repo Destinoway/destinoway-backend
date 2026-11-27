@@ -21,6 +21,7 @@
   "author": "Hanuman Sonwal",
   "license": "ISC",
   "scripts": {
+    "test:hotel-pricing": "node --experimental-test-module-mocks --test test/hotel-room-group-pricing.test.js",
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "build": "echo \"No build step required for Express\"",

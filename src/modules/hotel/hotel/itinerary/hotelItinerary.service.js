@@ -2,6 +2,7 @@ import HotelItinerary, {
   generateHotelBookingRefNo,
 } from "./hotelItinerary.model.js";
 import { mapContactInfo, mapStoredContactInfo, mapStoredRooms } from "./hotelItineraryContact.mapper.js";
+import { getVerifiedSupplierTotal, assertCurrentDraftPricing } from "../utils/hotelRoomGroupPricing.js";
 import { createAkbarHotelItineraryAPI } from "./adapters/akbar/api/createHotelItinerary.api.js";
 import { mapAkbarAuxiliaries } from "./adapters/akbar/akbarAuxiliaries.mapper.js";
 import { getHotelPriceVerificationContext } from "../priceVerify/services/hotelPriceVerify.service.js";
@@ -183,27 +184,6 @@ const mapSupplierRooms = (roomGroups, submittedRooms, occupancies) => {
   });
 };
 
-const getNetAmount = (roomGroups) => {
-  if (roomGroups.length === 0) {
-    throw getError("Price verification returned no available rooms", 409);
-  }
-
-  return roomGroups.reduce((total, room) => {
-    const amount = Number(room.totalRate);
-    const roomCount = Number(room.roomCount ?? 1);
-    if (
-      !Number.isFinite(amount) ||
-      amount <= 0 ||
-      !Number.isInteger(roomCount) ||
-      roomCount <= 0
-    ) {
-      throw getError("Verified room price is invalid", 409);
-    }
-
-    return total + amount * roomCount;
-  }, 0);
-};
-
 const getTransactionId = (response) =>
   response?.TransactionID ??
   response?.TransactionId ??
@@ -358,7 +338,7 @@ export const createHotelItinerary = async ({
       }),
     };
   });
-  const netAmount = getNetAmount(roomGroups);
+  const netAmount = getVerifiedSupplierTotal(roomGroups);
   const supplierRooms = mapSupplierRooms(
     roomGroups,
     normalizedSubmittedRooms,
@@ -434,6 +414,11 @@ export const createHotelItinerary = async ({
     itineraryStatus: "draft",
   });
   if (!booking) throw getError("Price-check itinerary draft not found", 404);
+  assertCurrentDraftPricing(booking);
+  const savedSupplierTotal = Number(booking.price.supplierTotal);
+  if (!Number.isFinite(savedSupplierTotal) || Math.abs(savedSupplierTotal - netAmount) > 0.005) {
+    throw getError("Hotel price changed; please verify the price again before continuing", 409);
+  }
   if (booking.bookingRefNo) {
     bookingData.bookingRefNo = booking.bookingRefNo;
   }
@@ -558,6 +543,7 @@ export const updateHotelItineraryCoupon = async ({
     itineraryStatus: "draft",
   });
   if (!booking) throw getError("Price-check itinerary draft not found", 404);
+  assertCurrentDraftPricing(booking);
 
   let coupon = null;
   if (couponCode) {
@@ -603,35 +589,34 @@ export const updateHotelItineraryCoupon = async ({
   let allocatedDiscount = 0;
   booking.price.roomGroups = (booking.price?.roomGroups ?? []).map(
     (group, index, groups) => {
-      const roomCount = Math.max(1, Number(group.roomCount) || 1);
       const beforeCoupon = Number(
         group.customerPrice?.totalPriceBeforeCoupon ?? 0,
       );
       const groupDiscount = index === groups.length - 1
         ? Number((discount - allocatedDiscount).toFixed(2))
         : Number(
-            ((discount * beforeCoupon * roomCount) / (totalBeforeCoupon || 1)).toFixed(2),
+            ((discount * beforeCoupon) / (totalBeforeCoupon || 1)).toFixed(2),
           );
       allocatedDiscount += groupDiscount;
-      const perRoomDiscount = Number((groupDiscount / roomCount).toFixed(2));
+      const groupCouponDiscount = groupDiscount;
       return {
         ...group,
         customerPrice: {
           ...group.customerPrice,
-          totalPrice: Number((beforeCoupon - perRoomDiscount).toFixed(2)),
+          totalPrice: Number((beforeCoupon - groupCouponDiscount).toFixed(2)),
           basePrice: Number(
             (
               beforeCoupon -
-              perRoomDiscount -
+              groupCouponDiscount -
               (Number(group.customerPrice?.["platform&servicetax"]) || 0)
             ).toFixed(2),
           ),
           appliedCouponCode: appliedCoupon?.code ?? null,
           appliedCouponTitle: appliedCoupon?.title ?? null,
-          couponDiscount: perRoomDiscount,
+          couponDiscount: groupCouponDiscount,
           couponDiscountPercent:
             beforeCoupon > 0
-              ? Number(((perRoomDiscount / beforeCoupon) * 100).toFixed(2))
+              ? Number(((groupCouponDiscount / beforeCoupon) * 100).toFixed(2))
               : 0,
         },
       };
@@ -643,8 +628,7 @@ export const updateHotelItineraryCoupon = async ({
   const platformServiceTaxTotal = booking.price.roomGroups.reduce(
     (sum, group) =>
       sum +
-      (Number(group.customerPrice?.["platform&servicetax"]) || 0) *
-        Math.max(1, Number(group.roomCount) || 1),
+      (Number(group.customerPrice?.["platform&servicetax"]) || 0),
     0,
   );
   booking.price.basePrice = Number(

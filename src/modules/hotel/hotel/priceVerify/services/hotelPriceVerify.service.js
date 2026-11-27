@@ -1,3 +1,4 @@
+import { getVerifiedSupplierTotal, ROOM_GROUP_RATE_BASIS } from "../../utils/hotelRoomGroupPricing.js";
 import { resolveSupplierSearch } from "../../utils/resolveSupplierSearch.js";
 import {
   cacheHotelRoomProviders,
@@ -101,6 +102,7 @@ export const verifyHotelPrice = async ({
   const roomGroups = Array.isArray(pricing?.roomGroup)
     ? pricing.roomGroup
     : [];
+  const verifiedSupplierTotal = getVerifiedSupplierTotal(roomGroups);
   const refundability = roomGroups.map(getRefundable);
 
   const responseData = {
@@ -163,13 +165,13 @@ export const verifyHotelPrice = async ({
   });
   const totalBeforeCoupon = Number(
     pricedRooms.reduce(
-      (sum, item) => sum + item.customerPrice.totalPriceBeforeCoupon * item.roomCount,
+      (sum, item) => sum + item.customerPrice.totalPriceBeforeCoupon,
       0,
     ).toFixed(2),
   );
   const serviceTax = Number(
     pricedRooms.reduce(
-      (sum, item) => sum + item.customerPrice.serviceTaxAmount * item.roomCount,
+      (sum, item) => sum + item.customerPrice.serviceTaxAmount,
       0,
     ).toFixed(2),
   );
@@ -205,34 +207,33 @@ export const verifyHotelPrice = async ({
       : Number(
           (
             (couponDiscount *
-              item.customerPrice.totalPriceBeforeCoupon *
-              item.roomCount) /
+              item.customerPrice.totalPriceBeforeCoupon) /
             (totalBeforeCoupon || 1)
           ).toFixed(2),
         );
     allocatedCouponDiscount += groupDiscount;
-    const perRoomDiscount = Number((groupDiscount / item.roomCount).toFixed(2));
+    const groupCouponDiscount = groupDiscount;
     return {
       ...item,
       customerPrice: {
         ...item.customerPrice,
         totalPrice: Number(
-          (item.customerPrice.totalPriceBeforeCoupon - perRoomDiscount).toFixed(2),
+          (item.customerPrice.totalPriceBeforeCoupon - groupCouponDiscount).toFixed(2),
         ),
         basePrice: Number(
           (
             item.customerPrice.totalPriceBeforeCoupon -
-            perRoomDiscount -
+            groupCouponDiscount -
             (Number(item.customerPrice["platform&servicetax"]) || 0)
           ).toFixed(2),
         ),
         appliedCouponCode: selectedCoupon?.code ?? null,
         appliedCouponTitle: selectedCoupon?.title ?? null,
-        couponDiscount: perRoomDiscount,
+        couponDiscount: groupCouponDiscount,
         couponDiscountPercent:
           item.customerPrice.totalPriceBeforeCoupon > 0
             ? Number(
-                ((perRoomDiscount / item.customerPrice.totalPriceBeforeCoupon) * 100).toFixed(2),
+                ((groupCouponDiscount / item.customerPrice.totalPriceBeforeCoupon) * 100).toFixed(2),
               )
             : 0,
       },
@@ -241,8 +242,7 @@ export const verifyHotelPrice = async ({
   const platformServiceTaxTotal = pricedRoomsWithCoupon.reduce(
     (sum, item) =>
       sum +
-      (Number(item.customerPrice?.["platform&servicetax"]) || 0) *
-        item.roomCount,
+      (Number(item.customerPrice?.["platform&servicetax"]) || 0),
     0,
   );
 
@@ -265,10 +265,8 @@ export const verifyHotelPrice = async ({
           basePrice: Number(
             (totalBeforeCoupon - couponDiscount - platformServiceTaxTotal).toFixed(2),
           ),
-          supplierTotal: pricedRooms.reduce(
-            (sum, item) => sum + (Number(item.supplierRoom?.totalRate) || 0) * item.roomCount,
-            0,
-          ),
+          supplierTotal: verifiedSupplierTotal,
+          rateBasis: ROOM_GROUP_RATE_BASIS,
           totalBeforeCoupon,
           totalPriceBeforeCoupon: totalBeforeCoupon,
           couponDiscount,
