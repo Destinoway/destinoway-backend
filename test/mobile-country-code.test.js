@@ -6,7 +6,10 @@ import { normalizeSupportPhones } from "../src/modules/supportContact/support.ph
 import User from "../src/modules/user/user.model.js";
 import { findOrCreateAndMergeUser } from "../src/modules/auth/customer-auth/auth.service.js";
 import { sendOTPService, verifyOTPService } from "../src/modules/auth/customer-auth/otp/otp.service.js";
-import { updateProfileService } from "../src/modules/auth/customer-auth/customerProfile/profile.service.js";
+import {
+  serializeCustomerProfile,
+  updateProfileService,
+} from "../src/modules/auth/customer-auth/customerProfile/profile.service.js";
 import { mapContactInfo, mapStoredContactInfo, mapStoredRooms } from "../src/modules/hotel/hotel/itinerary/hotelItineraryContact.mapper.js";
 
 test("phone normalization preserves national numbers and validates calling codes", () => {
@@ -65,6 +68,58 @@ test("profile number/code changes clear verification and preserve the saved code
   await updateProfileService("id", { mobileCountryCode: "+1" });
   assert.equal(saved.mobileCountryCode, "+1");
   assert.equal(saved.mobile, "7700900123");
+});
+
+test("profile updates ignore protected fields and keep email unverified after a change", async (t) => {
+  const existing = { email: "old@example.com", mobile: "9876543210", mobileCountryCode: "+91" };
+  t.mock.method(User, "findById", async () => existing);
+  let saved;
+  t.mock.method(User, "findByIdAndUpdate", async (_id, update) => {
+    saved = update.$set;
+    return { name: "Test", ...saved, save: async () => {} };
+  });
+
+  await updateProfileService("id", {
+    name: "Updated",
+    email: " NEW@example.com ",
+    role: "admin-role",
+    type: "admin",
+    isActive: false,
+    providers: ["google"],
+    googleId: "attacker-value",
+    refreshToken: "attacker-value",
+    password: "attacker-value",
+    isEmailVerified: true,
+    isMobileVerified: true,
+  });
+
+  assert.equal(saved.name, "Updated");
+  assert.equal(saved.email, "new@example.com");
+  assert.equal(saved.isEmailVerified, false);
+  for (const field of ["role", "type", "isActive", "providers", "googleId", "refreshToken", "password", "isMobileVerified"]) {
+    assert.equal(Object.hasOwn(saved, field), false, `${field} must not be updated`);
+  }
+});
+
+test("customer profile serializer omits credentials and authorization fields", () => {
+  const profile = serializeCustomerProfile({
+    _id: "user-id",
+    email: "customer@example.com",
+    isMobileVerified: true,
+    password: "hashed-password",
+    refreshToken: "refresh-token",
+    role: "role-id",
+    type: "customer",
+    providers: ["google"],
+    googleId: "google-subject",
+    isActive: true,
+  });
+
+  assert.equal(profile.email, "customer@example.com");
+  assert.equal(profile.isMobileVerified, true);
+  for (const field of ["password", "refreshToken", "role", "type", "providers", "googleId", "isActive"]) {
+    assert.equal(Object.hasOwn(profile, field), false, `${field} must not be returned`);
+  }
 });
 
 test("hotel stores separate calling codes and maps contact code to the supplier", () => {

@@ -4,7 +4,11 @@ import {
   sendSuccess,
 } from "../../../../utils/response/ApiResponse.js";
 
-import { getProfileService, updateProfileService } from "./profile.service.js";
+import {
+  getProfileService,
+  serializeCustomerProfile,
+  updateProfileService,
+} from "./profile.service.js";
 
 import { parseMobileNumber } from "../../../../utils/mobileNumber.js";
 import { verifyOTPService } from "../otp/otp.service.js";
@@ -13,14 +17,14 @@ import { verifyOtp } from "../shared/otp/otp.core.js";
 
 export const getProfile = asyncHandler(async (req, res) => {
   const user = await getProfileService(req.user._id);
-  return sendSuccess(res, "Profile fetched", user);
+  return sendSuccess(res, "Profile fetched", serializeCustomerProfile(user));
 });
 
 export const updateProfile = asyncHandler(async (req, res) => {
 
   const user = await updateProfileService(req.user._id, req.body);
 
-  return sendSuccess(res, "Profile updated", user);
+  return sendSuccess(res, "Profile updated", serializeCustomerProfile(user));
 });
 
 export const verifyProfileEmail = asyncHandler(async (req, res) => {
@@ -37,7 +41,7 @@ export const verifyProfileEmail = asyncHandler(async (req, res) => {
   if (!user) return sendError(res, "User not found", 404);
 
   if (user.email === email) {
-    return sendSuccess(res, "Email already linked", user);
+    return sendSuccess(res, "Email already linked", serializeCustomerProfile(user));
   }
 
   const existing = await User.findOne({ email });
@@ -79,7 +83,7 @@ export const verifyProfileMobile = asyncHandler(async (req, res) => {
   if (!user) return sendError(res, "User not found", 404);
 
   if (user.mobile === mobile && (user.mobileCountryCode || "+91") === mobileCountryCode && user.isMobileVerified) {
-    return sendSuccess(res, "Mobile already linked", user);
+    return sendSuccess(res, "Mobile already linked", serializeCustomerProfile(user));
   }
 
   const existing = await User.findOne({ mobile });
