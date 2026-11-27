@@ -4,14 +4,22 @@ import NotificationDevice from "./notificationDevice.model.js";
 import { Notification, NotificationRead } from "./notification.model.js";
 
 const FCM_BATCH_SIZE = 100;
-const UNREGISTERED_INSTALLATION = "messaging/installation-id-not-registered";
+const UNREGISTERED_TARGETS = new Set([
+  "messaging/installation-id-not-registered",
+  "messaging/registration-token-not-registered",
+  "messaging/invalid-registration-token",
+]);
 
-export function upsertDeviceRegistration(userId, fid) {
+export function upsertDeviceRegistration(userId, target, targetType) {
   return NotificationDevice.findOneAndUpdate(
-    { fid },
-    { $set: { userId } },
+    { fid: target },
+    { $set: { userId, targetType } },
     { upsert: true, returnDocument: "after", runValidators: true },
   );
+}
+
+function getMessagingTarget(device) {
+  return device.targetType === "token" ? { token: device.fid } : { fid: device.fid };
 }
 
 export function deleteDeviceRegistration(userId, id) {
@@ -95,7 +103,7 @@ export async function markNotificationRead(user, notificationId) {
 
 export async function sendToCustomer(userId, { title, body, data }) {
   const devices = await NotificationDevice.find({ userId })
-    .select("fid updatedAt")
+    .select("fid targetType updatedAt")
     .lean();
   const result = { sent: 0, failed: 0 };
   if (devices.length === 0) {
@@ -106,14 +114,14 @@ export async function sendToCustomer(userId, { title, body, data }) {
   for (const device of devices) {
     try {
       await messaging.send({
-        fid: device.fid,
+        ...getMessagingTarget(device),
         notification: { title, body },
         data,
       });
       result.sent += 1;
     } catch (error) {
       result.failed += 1;
-      if (error.code === UNREGISTERED_INSTALLATION) {
+      if (UNREGISTERED_TARGETS.has(error.code)) {
         await NotificationDevice.deleteOne({
           _id: device._id,
           userId,
@@ -130,18 +138,18 @@ export async function sendToCustomer(userId, { title, body, data }) {
 
 export async function sendToAllCustomers({ title, body, data }) {
   const result = { sent: 0, failed: 0 };
-  const cursor = NotificationDevice.find().select("fid updatedAt").lean().cursor();
+  const cursor = NotificationDevice.find().select("fid targetType updatedAt").lean().cursor();
 
   try {
     await cursor.eachAsync(async (devices) => {
       const messaging = getFirebaseMessaging();
       let batch;
       try {
-        batch = await messaging.sendEachForMulticast({
-          fids: devices.map(({ fid }) => fid),
+        batch = await messaging.sendEach(devices.map((device) => ({
+          ...getMessagingTarget(device),
           notification: { title, body },
           data,
-        });
+        })));
       } catch (error) {
         result.failed += devices.length;
         console.warn("Broadcast push batch failed", { code: error.code });
@@ -152,7 +160,7 @@ export async function sendToAllCustomers({ title, body, data }) {
       result.failed += batch.failureCount;
 
       const staleDevices = devices.filter(
-        (_, index) => batch.responses[index].error?.code === UNREGISTERED_INSTALLATION,
+        (_, index) => UNREGISTERED_TARGETS.has(batch.responses[index].error?.code),
       );
       if (staleDevices.length > 0) {
         const registrations = staleDevices.map(({ _id, updatedAt }) => ({ _id, updatedAt }));

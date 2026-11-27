@@ -8,10 +8,16 @@ const notificationDeviceSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    // Keep the existing MongoDB field and unique index for both target types.
     fid: {
       type: String,
       required: true,
       unique: true,
+    },
+    targetType: {
+      type: String,
+      enum: ["fid", "token"],
+      default: "fid",
     },
   },
   { timestamps: true },

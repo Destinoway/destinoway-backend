@@ -48,12 +48,23 @@ export const readNotification = asyncHandler(async (req, res) => {
 });
 
 export const registerDevice = asyncHandler(async (req, res) => {
-  const fid = req.body?.fid;
-  if (typeof fid !== "string" || !/^[c-f][\w-]{21}$/.test(fid)) {
+  const { fcmToken, fid } = req.body ?? {};
+  if (fcmToken !== undefined && fid !== undefined) {
+    throw new ApiError(400, "Provide either fcmToken or fid");
+  }
+  if (fcmToken !== undefined) {
+    if (typeof fcmToken !== "string" || !/^[^\s<>]{1,4096}$/.test(fcmToken)) {
+      throw new ApiError(400, "A valid FCM registration token is required");
+    }
+  } else if (typeof fid !== "string" || !/^[c-f][\w-]{21}$/.test(fid)) {
     throw new ApiError(400, "A valid Firebase Installation ID is required");
   }
 
-  const device = await upsertDeviceRegistration(req.user._id, fid);
+  const device = await upsertDeviceRegistration(
+    req.user._id,
+    fcmToken ?? fid,
+    fcmToken === undefined ? "fid" : "token",
+  );
   return sendSuccess(res, "Device registered", { id: device.id });
 });
 
