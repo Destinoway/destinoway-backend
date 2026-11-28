@@ -1,5 +1,6 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import path from "node:path";
+import { timeSupplierCall } from "../../../../utils/apiTiming.js";
 
 export const logHotelEvent = () => {};
 
@@ -68,7 +69,7 @@ export const logSupplierApiExchange = async ({
   });
 
   try {
-    const response = await execute();
+    const response = await timeSupplierCall({ supplier, operation, method }, execute);
     await writeSupplierApiLog({
       event: "response",
       supplier,

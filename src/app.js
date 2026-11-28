@@ -1,6 +1,7 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
+import { apiTimingMiddleware } from "./utils/apiTiming.js";
 //import "./cron/hotelCache.cron.js";
 import { currencyMiddleware } from "./middleware/currency.middleware.js";
 import { errorHandler } from "@destinoway/shared";
@@ -44,9 +45,7 @@ import testRoutes from "./test.routes.js";
 
 const app = express();
 app.set("trust proxy", 1);
-app.use((req, res, next) => {
-  next();
-});
+app.use(apiTimingMiddleware);
 app.use(
   cors({
     origin: [
@@ -63,6 +62,7 @@ app.use(
       "https://destinoway.com"
     ],
     credentials: true,
+    exposedHeaders: ["X-Request-Id"],
     allowedHeaders: ["Content-Type", "Authorization", "Accept", "currency"],
   }),
 );

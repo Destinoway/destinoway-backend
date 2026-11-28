@@ -1,4 +1,5 @@
 import axios from "axios";
+import { timeSupplierCall } from "../../../../utils/apiTiming.js";
 import {
   clearAkbarBusSession,
   getAkbarBusSession,
@@ -56,17 +57,17 @@ export const akbarBusPost = async (path, buildBody, options = {}) => {
   const timeout = options.timeout || DEFAULT_TIMEOUT_MS;
 
   const send = async (session) => {
-    const startedAt = Date.now();
-
-    const response = await axios.post(url, buildBody(session), {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.token}`,
-      },
-      timeout,
-    });
-
-    console.log(`AKBAR BUS ${path}: ${Date.now() - startedAt} ms`);
+    const body = buildBody(session);
+    const response = await timeSupplierCall(
+      { supplier: "AKBAR", operation: path, method: "POST" },
+      () => axios.post(url, body, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.token}`,
+        },
+        timeout,
+      }),
+    );
 
     return response.data;
   };

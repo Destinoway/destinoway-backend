@@ -1,4 +1,5 @@
 import axios from "axios";
+import { timeSupplierCall } from "../../../../utils/apiTiming.js";
 import { randomUUID } from "node:crypto";
 import AkbarBusToken from "./akbarBusToken.model.js";
 import { logBusEvent } from "../../utils/busLogger.js";
@@ -146,10 +147,10 @@ const callSignatureAPI = async () => {
   let data;
 
   try {
-    const response = await axios.post(url, payload, {
-      headers,
-      timeout: SIGNATURE_TIMEOUT_MS,
-    });
+    const response = await timeSupplierCall(
+      { supplier: "AKBAR", operation: "bus_signature", method: "POST" },
+      () => axios.post(url, payload, { headers, timeout: SIGNATURE_TIMEOUT_MS }),
+    );
     data = response.data;
     await logBusEvent("response", {
       ...context,
