@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import HotelItinerary from "../itinerary/hotelItinerary.model.js";
+import { getHotelRequeryByUserController } from "./requery.controller.js";
 import { getHotelRequeryByUserService } from "./requery.service.js";
 
 test("booking list excludes drafts and missing references without requiring paid status", async (t) => {
@@ -29,7 +30,37 @@ test("booking list excludes drafts and missing references without requiring paid
   assert.equal(query.userId, "owner");
 });
 
-test("no matching bookings retains the existing 404 contract", async (t) => {
+test("no matching bookings returns an empty list", async (t) => {
   t.mock.method(HotelItinerary, "find", () => ({ sort: () => ({ lean: async () => [] }) }));
-  await assert.rejects(getHotelRequeryByUserService("owner"), { statusCode: 404, message: "Booking not found" });
+  assert.deepEqual(await getHotelRequeryByUserService("owner"), []);
+});
+
+test("empty booking list responds with 200 and omits data", async (t) => {
+  t.mock.method(HotelItinerary, "find", () => ({ sort: () => ({ lean: async () => [] }) }));
+  const res = {
+    statusCode: null,
+    body: null,
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(body) {
+      this.body = body;
+      return body;
+    },
+  };
+
+  await getHotelRequeryByUserController(
+    {
+      params: {},
+      query: {},
+      user: { _id: "owner" },
+    },
+    res,
+  );
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.success, true);
+  assert.equal(res.body.message, "Booking does not exist");
+  assert.equal(Object.hasOwn(res.body, "data"), false);
 });

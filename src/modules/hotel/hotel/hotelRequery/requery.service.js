@@ -30,7 +30,7 @@ export const getHotelRequeryByUserService = async (
     .sort({ createdAt: -1 })
     .lean();
 
-  if (!bookings.length) {
+  if (!bookings.length && bookingRefNo) {
     const error = new Error("Booking not found");
     error.statusCode = 404;
     throw error;
